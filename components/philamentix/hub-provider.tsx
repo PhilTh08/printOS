@@ -94,6 +94,7 @@ function cleanForm(form: FilamentForm): FilamentForm {
     color: form.color.trim(),
     location: form.location.trim(),
     orderLink: form.orderLink.trim(),
+    imageUrl: form.imageUrl.trim(),
     weightPerRoll: Math.max(
       1,
       Number(form.weightPerRoll) || 1000,
@@ -686,6 +687,7 @@ export function HubProvider({
                   item.minimumStock ?? 1,
                 stock: item.stock ?? 0,
                 orderLink: item.orderLink ?? "",
+                imageUrl: item.imageUrl ?? "",
               }),
               user.id,
             ),

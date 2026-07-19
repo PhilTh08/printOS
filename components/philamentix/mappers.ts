@@ -19,6 +19,7 @@ export function rowToFilament(row: FilamentRow): Filament {
     minimumStock: row.minimum_stock,
     stock: row.stock,
     orderLink: row.order_link,
+    imageUrl: row.image_url ?? "",
   };
 }
 
@@ -51,6 +52,7 @@ export function filamentFormToRow(
     minimum_stock: form.minimumStock,
     stock: form.stock,
     order_link: form.orderLink,
+    image_url: form.imageUrl,
   };
 }
 
@@ -67,5 +69,6 @@ export function filamentToForm(
     minimumStock: filament.minimumStock,
     stock: filament.stock,
     orderLink: filament.orderLink,
+    imageUrl: filament.imageUrl,
   };
 }

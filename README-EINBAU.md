@@ -227,3 +227,36 @@ seine eigene Dashboard-Konfiguration lesen und ändern.
 
 Es sind keine Änderungen an den Tabellen `filaments` oder
 `filament_logs` erforderlich.
+
+
+## Ergänzungen in V13 – Filamentbilder
+
+Filamente können jetzt ein eigenes Produktbild besitzen.
+
+### Einmal in Supabase ausführen
+
+`supabase/filament_images.sql`
+
+Die Migration ergänzt ausschließlich die Spalte:
+
+`filaments.image_url`
+
+Bestehende Filamente bleiben unverändert und erhalten zunächst kein Bild.
+
+### Funktionen
+
+- direkte Bild-URL eintragen
+- Bildvorschau beim Erstellen und Bearbeiten
+- Bild automatisch aus einem Shopify- oder Produktlink übernehmen
+- spezieller Button „Bambu PLA Basic verwenden“
+- der Button verwendet diese offizielle Produktseite:
+  `https://eu.store.bambulab.com/de/products/pla-basic-filament`
+- Produktbild wird in der Filamentübersicht angezeigt
+- Produktbild wird auf der Filament-Detailseite angezeigt
+- alte Backups ohne Bild bleiben importierbar
+- neue Backups enthalten die Bild-URL automatisch
+
+Die Bildübernahme versucht zuerst den Shopify-Produktendpunkt und
+anschließend Open-Graph-/Twitter-Metadaten der Produktseite. Falls eine
+Seite das automatische Auslesen blockiert, kann die direkte Bild-URL
+weiterhin manuell eingetragen werden.

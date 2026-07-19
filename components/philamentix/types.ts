@@ -14,6 +14,7 @@ export type Filament = {
   minimumStock: number;
   stock: number;
   orderLink: string;
+  imageUrl: string;
 };
 
 export type FilamentForm = Omit<Filament, "id" | "userId">;
@@ -42,6 +43,7 @@ export type FilamentRow = {
   minimum_stock: number;
   stock: number;
   order_link: string;
+  image_url: string | null;
 };
 
 export type LogRow = {
@@ -86,6 +88,7 @@ export const emptyFilamentForm: FilamentForm = {
   minimumStock: 1,
   stock: 0,
   orderLink: "",
+  imageUrl: "",
 };
 
 export function normalizeBarcode(value: string): string {

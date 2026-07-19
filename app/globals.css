@@ -3986,3 +3986,259 @@ a.dashboard-link-button {
     ease-out infinite;
   pointer-events: none;
 }
+
+
+/* V13: Filamentbilder */
+.filament-card-image {
+  display: grid;
+  width: calc(100% + 34px);
+  height: 155px;
+  margin: -17px -17px 16px;
+  overflow: hidden;
+  place-items: center;
+  color: #68777e;
+  background:
+    radial-gradient(
+      circle at 50% 25%,
+      rgba(245, 166, 35, 0.08),
+      transparent 55%
+    ),
+    #091115;
+  border-bottom: 1px solid var(--border);
+}
+
+.filament-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #f4f4f2;
+  transition: transform 0.25s ease;
+}
+
+.filament-card:hover .filament-card-image img {
+  transform: scale(1.035);
+}
+
+.filament-card-image > div {
+  display: grid;
+  gap: 6px;
+  place-items: center;
+}
+
+.filament-card-image > div span {
+  color: var(--accent);
+  font-size: 29px;
+}
+
+.filament-card-image > div small {
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.detail-filament-image {
+  display: grid;
+  min-height: 220px;
+  overflow: hidden;
+  place-items: center;
+  color: var(--muted);
+  background:
+    radial-gradient(
+      circle at 50% 25%,
+      rgba(245, 166, 35, 0.08),
+      transparent 58%
+    ),
+    #091115;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.detail-filament-image img {
+  width: 100%;
+  height: 260px;
+  object-fit: contain;
+  background: #f4f4f2;
+}
+
+.detail-filament-image > div {
+  display: grid;
+  gap: 8px;
+  padding: 22px;
+  place-items: center;
+  text-align: center;
+}
+
+.detail-filament-image > div span {
+  color: var(--accent);
+  font-size: 34px;
+}
+
+.detail-filament-image > div p {
+  margin: 0;
+  font-size: 10px;
+}
+
+.filament-image-editor {
+  padding: 14px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(245, 166, 35, 0.045),
+      transparent 60%
+    ),
+    #0a1216;
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  border-radius: 9px;
+}
+
+.filament-image-editor-heading {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.filament-image-editor-heading strong,
+.filament-image-editor-heading span {
+  display: block;
+}
+
+.filament-image-editor-heading strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.filament-image-editor-heading span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.bambu-image-button,
+.product-image-fetch-button {
+  min-height: 38px;
+  padding: 0 11px;
+  cursor: pointer;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.bambu-image-button {
+  flex: 0 0 auto;
+  color: #171109;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.product-image-fetch-button {
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.07);
+  border: 1px solid rgba(245, 166, 35, 0.3);
+}
+
+.bambu-image-button:disabled,
+.product-image-fetch-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.filament-image-editor-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(190px, 0.55fr)
+    minmax(0, 1.45fr);
+  gap: 13px;
+}
+
+.filament-image-preview {
+  display: grid;
+  min-height: 245px;
+  overflow: hidden;
+  place-items: center;
+  color: var(--muted);
+  background: #f3f3f1;
+  border: 1px solid #37434a;
+  border-radius: 8px;
+}
+
+.filament-image-preview img {
+  width: 100%;
+  height: 245px;
+  object-fit: contain;
+}
+
+.filament-image-preview > div {
+  display: grid;
+  gap: 7px;
+  place-items: center;
+  color: #627078;
+}
+
+.filament-image-preview > div span {
+  color: var(--accent);
+  font-size: 32px;
+}
+
+.filament-image-preview > div p {
+  margin: 0;
+  font-size: 9px;
+}
+
+.filament-image-fields {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.filament-image-fields label {
+  display: grid;
+  gap: 7px;
+}
+
+.filament-image-message {
+  margin: 0;
+  padding: 9px;
+  border-radius: 7px;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.filament-image-message.success {
+  color: #a9edc2;
+  background: rgba(57, 217, 138, 0.07);
+  border: 1px solid rgba(57, 217, 138, 0.23);
+}
+
+.filament-image-message.error {
+  color: #ffb0b0;
+  background: rgba(255, 100, 100, 0.07);
+  border: 1px solid rgba(255, 100, 100, 0.23);
+}
+
+@media (max-width: 700px) {
+  .filament-image-editor-heading {
+    flex-direction: column;
+  }
+
+  .bambu-image-button {
+    width: 100%;
+  }
+
+  .filament-image-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filament-card-image {
+    height: 185px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filament-card-image img {
+    transition: none;
+  }
+}

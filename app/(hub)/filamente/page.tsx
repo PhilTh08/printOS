@@ -121,6 +121,27 @@ export default function FilamentsPage() {
               }`}
               key={filament.id}
             >
+              <div
+                className={`filament-card-image ${
+                  filament.imageUrl
+                    ? "has-image"
+                    : ""
+                }`}
+              >
+                {filament.imageUrl ? (
+                  <img
+                    src={filament.imageUrl}
+                    alt={`${filament.manufacturer} ${filament.material} ${filament.color}`}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div>
+                    <span>▤</span>
+                    <small>Kein Bild</small>
+                  </div>
+                )}
+              </div>
+
               <div className="filament-card-header">
                 <div>
                   <span className="filament-id-badge">

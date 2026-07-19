@@ -206,6 +206,26 @@ export function FilamentDetailClient({
         </article>
 
         <aside className="panel detail-stock-panel">
+          <div
+            className={`detail-filament-image ${
+              filament.imageUrl
+                ? "has-image"
+                : ""
+            }`}
+          >
+            {filament.imageUrl ? (
+              <img
+                src={filament.imageUrl}
+                alt={`${filament.manufacturer} ${filament.material} ${filament.color}`}
+              />
+            ) : (
+              <div>
+                <span>▤</span>
+                <p>Kein Filamentbild hinterlegt</p>
+              </div>
+            )}
+          </div>
+
           <div className="detail-stock-value">
             <span>Aktueller Bestand</span>
             <strong>{filament.stock}</strong>
