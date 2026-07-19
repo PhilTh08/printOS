@@ -260,3 +260,31 @@ Die Bildübernahme versucht zuerst den Shopify-Produktendpunkt und
 anschließend Open-Graph-/Twitter-Metadaten der Produktseite. Falls eine
 Seite das automatische Auslesen blockiert, kann die direkte Bild-URL
 weiterhin manuell eingetragen werden.
+
+
+## Ergänzungen in V14 – Produktbild-Auswahl
+
+V13 hat auf Produktseiten mit vielen Varianten teilweise eine
+Farbvorschau oder ein Variantenbild als erstes Bild übernommen.
+
+V14 behebt das:
+
+- mehrere Bilder aus Shopify, Open Graph, JSON-LD und der Produktseite
+- Farb-Swatches, Icons und Logos werden deutlich schlechter bewertet
+- bis zu zwölf passende Produktbilder werden angeboten
+- Bildauswahl direkt im Filamentformular
+- deutlich sichtbare Markierung des ausgewählten Bildes
+- vorhandenes Bild kann entfernt werden
+- Bambu PLA Basic öffnet jetzt eine Bilderauswahl statt blind das erste Bild zu verwenden
+
+### Nach dem Update
+
+Bei einem Filament mit dem falschen Bild:
+
+1. „Details & Bearbeiten“ öffnen
+2. „Produktbilder laden“ drücken
+3. das richtige Produktfoto anklicken
+4. Änderungen speichern
+
+Für V14 ist keine neue Supabase-Migration erforderlich.
+Die V13-Spalte `image_url` wird weiterverwendet.

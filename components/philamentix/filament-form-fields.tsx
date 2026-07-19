@@ -9,6 +9,7 @@ const BAMBU_PLA_BASIC_URL =
 
 type ProductImageResponse = {
   imageUrl?: string;
+  images?: string[];
   error?: string;
 };
 
@@ -25,6 +26,8 @@ export function FilamentFormFields({
     useState("");
   const [imageError, setImageError] =
     useState("");
+  const [productImages, setProductImages] =
+    useState<string[]>([]);
 
   function setField<K extends keyof FilamentForm>(
     key: K,
@@ -36,13 +39,14 @@ export function FilamentFormFields({
     });
   }
 
-  async function loadProductImage(
+  async function loadProductImages(
     productUrl = value.orderLink,
   ) {
     const cleanedUrl = productUrl.trim();
 
     setImageMessage("");
     setImageError("");
+    setProductImages([]);
 
     if (!cleanedUrl) {
       setImageError(
@@ -61,27 +65,48 @@ export function FilamentFormFields({
       );
       const result =
         (await response.json()) as ProductImageResponse;
+      const images = [
+        ...new Set(
+          [
+            ...(result.images ?? []),
+            result.imageUrl,
+          ].filter(
+            (image): image is string =>
+              typeof image === "string" &&
+              image.length > 0,
+          ),
+        ),
+      ];
 
-      if (!response.ok || !result.imageUrl) {
+      if (!response.ok || images.length === 0) {
         throw new Error(
           result.error ??
             "Auf der Produktseite wurde kein Bild gefunden.",
         );
       }
 
+      setProductImages(images);
+
+      const selectedImage =
+        images.includes(value.imageUrl)
+          ? value.imageUrl
+          : images[0];
+
       onChange({
         ...value,
         orderLink: cleanedUrl,
-        imageUrl: result.imageUrl,
+        imageUrl: selectedImage,
       });
       setImageMessage(
-        "Produktbild wurde übernommen.",
+        images.length === 1
+          ? "Ein Produktbild wurde gefunden und ausgewählt."
+          : `${images.length} Produktbilder gefunden. Wähle unten das passende Bild aus.`,
       );
     } catch (caughtError) {
       setImageError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Produktbild konnte nicht geladen werden.",
+          : "Produktbilder konnten nicht geladen werden.",
       );
     } finally {
       setImageLoading(false);
@@ -97,7 +122,7 @@ export function FilamentFormFields({
       orderLink: BAMBU_PLA_BASIC_URL,
     });
 
-    await loadProductImage(
+    await loadProductImages(
       BAMBU_PLA_BASIC_URL,
     );
   }
@@ -213,8 +238,8 @@ export function FilamentFormFields({
           <div>
             <strong>Filamentbild</strong>
             <span>
-              Bild-URL eintragen oder automatisch aus
-              dem Produktlink übernehmen.
+              Produktbilder laden und das passende
+              Motiv auswählen.
             </span>
           </div>
 
@@ -226,7 +251,7 @@ export function FilamentFormFields({
               void useBambuPlaBasic()
             }
           >
-            Bambu PLA Basic verwenden
+            Bambu PLA Basic Bilder laden
           </button>
         </div>
 
@@ -253,12 +278,15 @@ export function FilamentFormFields({
               <input
                 type="url"
                 value={value.orderLink}
-                onChange={(event) =>
+                onChange={(event) => {
                   setField(
                     "orderLink",
                     event.target.value,
-                  )
-                }
+                  );
+                  setProductImages([]);
+                  setImageMessage("");
+                  setImageError("");
+                }}
                 placeholder="https://eu.store.bambulab.com/..."
               />
             </label>
@@ -271,12 +299,12 @@ export function FilamentFormFields({
                 !value.orderLink.trim()
               }
               onClick={() =>
-                void loadProductImage()
+                void loadProductImages()
               }
             >
               {imageLoading
-                ? "Bild wird gesucht …"
-                : "Bild aus Produktlink übernehmen"}
+                ? "Produktbilder werden gesucht …"
+                : "Produktbilder laden"}
             </button>
 
             <label>
@@ -294,6 +322,22 @@ export function FilamentFormFields({
               />
             </label>
 
+            {value.imageUrl && (
+              <button
+                className="product-image-remove-button"
+                type="button"
+                onClick={() => {
+                  setField("imageUrl", "");
+                  setImageMessage(
+                    "Filamentbild wurde entfernt.",
+                  );
+                  setImageError("");
+                }}
+              >
+                Bild entfernen
+              </button>
+            )}
+
             {(imageMessage || imageError) && (
               <p
                 className={
@@ -307,6 +351,62 @@ export function FilamentFormFields({
             )}
           </div>
         </div>
+
+        {productImages.length > 0 && (
+          <div className="product-image-picker">
+            <div className="product-image-picker-heading">
+              <strong>Passendes Bild auswählen</strong>
+              <span>
+                Bambu führt auf einer Produktseite
+                mehrere Farben und Varianten.
+              </span>
+            </div>
+
+            <div className="product-image-options">
+              {productImages.map(
+                (imageUrl, index) => (
+                  <button
+                    className={
+                      imageUrl === value.imageUrl
+                        ? "selected"
+                        : ""
+                    }
+                    type="button"
+                    key={`${imageUrl}-${index}`}
+                    aria-label={`Produktbild ${
+                      index + 1
+                    } auswählen`}
+                    onClick={() => {
+                      setField(
+                        "imageUrl",
+                        imageUrl,
+                      );
+                      setImageMessage(
+                        `Produktbild ${
+                          index + 1
+                        } wurde ausgewählt.`,
+                      );
+                      setImageError("");
+                    }}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`Produktbild ${
+                        index + 1
+                      }`}
+                      loading="lazy"
+                    />
+                    <span>
+                      {imageUrl === value.imageUrl
+                        ? "Ausgewählt"
+                        : `Bild ${index + 1}`}
+                    </span>
+                  </button>
+                ),
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
