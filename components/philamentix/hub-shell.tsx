@@ -27,6 +27,7 @@ const navigation = [
     items: [
       { href: "/ein-auslagern", icon: "▣", label: "Ein-/Auslagerung" },
       { href: "/filamente", icon: "▤", label: "Filamenttypen" },
+      { href: "/nachbestellen", icon: "!", label: "Nachbestellen" },
       { href: "/protokoll", icon: "≡", label: "Protokoll" },
     ],
   },
@@ -58,12 +59,17 @@ export function HubShell({
     busy,
     error,
     displayName,
+    filaments,
     signOut,
     exportData,
     importData,
   } = useHub();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const reorderCount = filaments.filter(
+    (filament) =>
+      filament.stock <= filament.minimumStock,
+  ).length;
 
   useEffect(() => {
     if (authReady && !user) {
@@ -228,7 +234,17 @@ export function HubShell({
                     }`}
                   >
                     <span>{item.icon}</span>
-                    {item.label}
+                    <span className="nav-item-label">
+                      {item.label}
+                    </span>
+                    {item.href === "/nachbestellen" &&
+                      reorderCount > 0 && (
+                        <span className="nav-alert-badge">
+                          {reorderCount > 99
+                            ? "99+"
+                            : reorderCount}
+                        </span>
+                      )}
                   </Link>
                 );
               })}

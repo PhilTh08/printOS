@@ -89,3 +89,25 @@ Nach dem Einbau die Website neu deployen. Auf dem iPhone anschließend
 die alte PWA vollständig schließen und erneut öffnen. Bei einer
 installierten PWA kann es zusätzlich helfen, sie einmal vom Home-
 Bildschirm zu entfernen und nach dem Deployment neu zu installieren.
+
+
+## Ergänzungen in V7 – Nachbestellseite
+
+Neue Route:
+
+`/nachbestellen`
+
+Enthalten:
+
+- automatische Liste für Bestand kleiner oder gleich Mindestbestand
+- Suche nach Hersteller, Material, Farbe, Barcode, ID und Lagerplatz
+- Filter für leere, unterschrittene und genau erreichte Bestände
+- Kennzahlen für kritische und knappe Filamente
+- empfohlene Bestellmenge
+- direkter Bestelllink, sofern beim Filament hinterlegt
+- direkter Sprung zum Eintragen eines fehlenden Bestelllinks
+- roter Zähler in der Navigation
+- Dashboard-Verknüpfung zur Nachbestellseite
+- responsive Darstellung für Smartphone und Desktop
+
+Es sind keine Änderungen an Supabase erforderlich.

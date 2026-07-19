@@ -3914,3 +3914,23 @@ a.dashboard-link-button {
     cubic-bezier(0.2, 0.8, 0.2, 1) both;
   will-change: transform, opacity;
 }
+
+
+.nav-item-label {
+  min-width: 0;
+  flex: 1;
+}
+
+.nav-alert-badge {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  place-items: center;
+  color: #160b0b;
+  background: var(--red);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 950;
+  box-shadow: 0 0 12px rgba(255, 100, 100, 0.28);
+}

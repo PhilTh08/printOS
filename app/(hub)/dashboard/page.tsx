@@ -153,9 +153,9 @@ export default function DashboardPage() {
 
             <Link
               className="dashboard-link-button"
-              href="/filamente"
+              href="/nachbestellen"
             >
-              Verwalten
+              Nachbestellen
             </Link>
           </div>
 
