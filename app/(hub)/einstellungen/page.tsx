@@ -7,8 +7,34 @@ import {
 } from "react";
 
 import { useHub } from "@/components/philamentix/hub-provider";
+import type { FilamentImageMode } from "@/components/philamentix/types";
 
 import styles from "./page.module.css";
+
+const IMAGE_MODES: Array<{
+  id: FilamentImageMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "off",
+    label: "Aus",
+    description:
+      "Keine Bilder in Übersicht und Detailansicht. Die Karten sind besonders kompakt.",
+  },
+  {
+    id: "small",
+    label: "Klein",
+    description:
+      "Kompakte Vorschaubilder mit mehr Platz für Bestandsinformationen.",
+  },
+  {
+    id: "large",
+    label: "Groß",
+    description:
+      "Große Produktbilder wie bisher. Ideal für die visuelle Erkennung.",
+  },
+];
 
 export default function SettingsPage() {
   const {
@@ -18,6 +44,10 @@ export default function SettingsPage() {
     busy,
     exportData,
     importData,
+    filamentImageMode,
+    preferenceSyncState,
+    preferenceMessage,
+    updateFilamentImageMode,
   } = useHub();
   const importInputRef =
     useRef<HTMLInputElement>(null);
@@ -27,6 +57,29 @@ export default function SettingsPage() {
   function clearFeedback() {
     setMessage("");
     setError("");
+  }
+
+  async function selectImageMode(
+    mode: FilamentImageMode,
+  ) {
+    clearFeedback();
+
+    try {
+      await updateFilamentImageMode(mode);
+      setMessage(
+        `Filamentbilder wurden auf „${
+          IMAGE_MODES.find(
+            (item) => item.id === mode,
+          )?.label ?? mode
+        }“ gestellt.`,
+      );
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Bilddarstellung konnte nicht gespeichert werden.",
+      );
+    }
   }
 
   function handleExport() {
@@ -97,6 +150,17 @@ export default function SettingsPage() {
     }
   }
 
+  const preferenceStatusLabel =
+    preferenceSyncState === "loading"
+      ? "Wird geladen"
+      : preferenceSyncState === "saving"
+        ? "Wird gespeichert"
+        : preferenceSyncState === "synced"
+          ? "Cloud-Sync aktiv"
+          : preferenceSyncState === "local"
+            ? "Nur lokal"
+            : "Sync-Fehler";
+
   return (
     <div className={styles.page}>
       <header className="topbar">
@@ -106,8 +170,8 @@ export default function SettingsPage() {
           </span>
           <h1>Einstellungen</h1>
           <p>
-            Backups, Daten und Philamentix Hub
-            verwalten
+            Darstellung, Backups und persönliche
+            Daten verwalten
           </p>
         </div>
 
@@ -128,6 +192,98 @@ export default function SettingsPage() {
       )}
 
       <section className={styles.settingsGrid}>
+        <article
+          className={`${styles.settingsCard} ${styles.displayCard}`}
+        >
+          <div className={styles.cardHeading}>
+            <span className={styles.settingsIcon}>
+              ◫
+            </span>
+
+            <div>
+              <span className={styles.eyebrow}>
+                Darstellung
+              </span>
+              <h2>Filamentbilder anzeigen</h2>
+              <p>
+                Bestimme, wie groß Produktbilder in
+                den Filamenttypen und auf der
+                Detailseite dargestellt werden.
+                Beim Bearbeiten bleibt die
+                Bildvorschau immer verfügbar.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.imageModeOptions}>
+            {IMAGE_MODES.map((mode) => (
+              <button
+                className={`${styles.imageModeButton} ${
+                  filamentImageMode === mode.id
+                    ? styles.imageModeSelected
+                    : ""
+                }`}
+                type="button"
+                key={mode.id}
+                aria-pressed={
+                  filamentImageMode === mode.id
+                }
+                disabled={
+                  preferenceSyncState ===
+                  "saving"
+                }
+                onClick={() =>
+                  void selectImageMode(mode.id)
+                }
+              >
+                <span
+                  className={`${styles.modePreview} ${
+                    mode.id === "off"
+                      ? styles.modePreviewOff
+                      : mode.id === "small"
+                        ? styles.modePreviewSmall
+                        : styles.modePreviewLarge
+                  }`}
+                >
+                  {mode.id !== "off" && (
+                    <i>FILAMENT</i>
+                  )}
+                  <b>
+                    <em />
+                    <em />
+                    <em />
+                  </b>
+                </span>
+
+                <strong>{mode.label}</strong>
+                <small>{mode.description}</small>
+              </button>
+            ))}
+          </div>
+
+          <div
+            className={`${styles.preferenceStatus} ${
+              preferenceSyncState === "synced"
+                ? styles.preferenceSynced
+                : preferenceSyncState ===
+                      "error"
+                  ? styles.preferenceError
+                  : preferenceSyncState ===
+                        "local"
+                    ? styles.preferenceLocal
+                    : styles.preferenceWorking
+            }`}
+          >
+            <span />
+            <div>
+              <strong>
+                {preferenceStatusLabel}
+              </strong>
+              <small>{preferenceMessage}</small>
+            </div>
+          </div>
+        </article>
+
         <article
           className={`${styles.settingsCard} ${styles.backupCard}`}
         >

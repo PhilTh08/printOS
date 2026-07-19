@@ -322,3 +322,48 @@ Bereits gespeicherte, zugeschnittene URLs sollten einmal neu geladen werden:
 4. speichern
 
 Keine neue Supabase-Migration erforderlich.
+
+
+## V14.3 – Bestandsstatus an Filamentkarten
+
+Der farbige Streifen der Filamentkarten arbeitet jetzt als Ampel:
+
+- Rot: Bestand ist 0
+- Orange: Bestand ist größer als 0, aber am oder unter dem Mindestbestand
+- Grün: Bestand liegt über dem Mindestbestand
+
+Die Grenze verwendet den bereits pro Filament gespeicherten Mindestbestand.
+Es ist keine neue Supabase-Migration erforderlich.
+
+Zusätzlich liegt dem Paket `CODE-CHECK-V14.3.md` mit den ausgeführten
+Prüfungen und deren Grenzen bei.
+
+
+## V14.4 – Bilddarstellung in den Einstellungen
+
+Unter `Einstellungen → Filamentbilder anzeigen` stehen jetzt drei Modi
+zur Auswahl:
+
+- Aus:
+  - keine Bilder in der Filamentübersicht
+  - keine Bilder in der Filament-Detailansicht
+  - besonders kompakte Karten
+- Klein:
+  - flache, kompakte Vorschaubilder
+  - mehr Platz für Bestandsinformationen
+- Groß:
+  - bisherige große Produktdarstellung
+
+Die Bildvorschau im Bearbeitungsformular bleibt in allen Modi sichtbar,
+damit ein Bild weiterhin ausgewählt, geändert oder entfernt werden kann.
+
+### Einmal in Supabase ausführen
+
+`supabase/user_preferences.sql`
+
+Die Einstellung wird pro Benutzer gespeichert und zwischen Geräten
+synchronisiert. Ohne ausgeführte SQL-Datei funktioniert die Option
+weiterhin lokal in dem jeweiligen Browser.
+
+Die Filament- und Protokolldatenbanken werden durch die Migration nicht
+verändert.

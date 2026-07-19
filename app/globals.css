@@ -436,8 +436,17 @@ button {
   background: var(--accent);
 }
 
-.filament-card.low-stock::before {
+.filament-card.empty-stock::before {
   background: var(--red);
+}
+
+.filament-card.low-stock::before {
+  background: var(--accent);
+}
+
+.filament-card.healthy-stock::before {
+  background: var(--green);
+  box-shadow: 0 0 12px rgba(57, 217, 138, 0.24);
 }
 
 .filament-card-header {
@@ -4366,4 +4375,38 @@ a.dashboard-link-button {
 .product-image-options img {
   object-fit: contain !important;
   object-position: center center;
+}
+
+
+/* V14.4: persönliche Bilddarstellung */
+.filament-card-image.image-mode-small {
+  min-height: 88px;
+  aspect-ratio: 3 / 1;
+}
+
+.filament-card-image.image-mode-small img {
+  max-height: 112px;
+}
+
+.detail-filament-image.image-mode-small {
+  min-height: 125px;
+}
+
+.detail-filament-image.image-mode-small img {
+  height: 145px;
+}
+
+.filament-card.filament-images-off {
+  padding-top: 18px;
+}
+
+@media (max-width: 700px) {
+  .filament-card-image.image-mode-small {
+    min-height: 105px;
+    aspect-ratio: 5 / 2;
+  }
+
+  .detail-filament-image.image-mode-small img {
+    height: 170px;
+  }
 }

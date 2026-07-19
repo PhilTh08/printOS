@@ -207,3 +207,240 @@
     width: 100%;
   }
 }
+
+
+.displayCard {
+  grid-column: 1 / -1;
+  border-color: rgba(85, 167, 255, 0.28);
+}
+
+.imageModeOptions {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 17px;
+}
+
+.imageModeButton {
+  display: grid;
+  min-width: 0;
+  padding: 11px;
+  cursor: pointer;
+  color: var(--text);
+  background: #0b1317;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 9px;
+  text-align: left;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.imageModeButton:hover {
+  transform: translateY(-1px);
+  border-color: rgba(245, 166, 35, 0.38);
+}
+
+.imageModeButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.imageModeSelected {
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(245, 166, 35, 0.12),
+      transparent 56%
+    ),
+    #10191d;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(245, 166, 35, 0.08);
+}
+
+.imageModeButton > strong {
+  margin-top: 10px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.imageModeButton > small {
+  min-height: 36px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.modePreview {
+  display: grid;
+  height: 92px;
+  overflow: hidden;
+  align-content: start;
+  color: #1f292e;
+  background: #111b20;
+  border: 1px solid #344148;
+  border-left: 4px solid var(--green);
+  border-radius: 7px;
+}
+
+.modePreview i {
+  display: grid;
+  width: 100%;
+  place-items: center;
+  color: #303a3f;
+  background:
+    linear-gradient(
+      135deg,
+      #f5f5f2,
+      #d9ddda
+    );
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.modePreview b {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+}
+
+.modePreview em {
+  display: block;
+  height: 5px;
+  background: #59666c;
+  border-radius: 999px;
+}
+
+.modePreview em:nth-child(2) {
+  width: 72%;
+}
+
+.modePreview em:nth-child(3) {
+  width: 48%;
+}
+
+.modePreviewLarge i {
+  height: 51px;
+}
+
+.modePreviewSmall i {
+  height: 25px;
+}
+
+.modePreviewOff {
+  align-content: center;
+}
+
+.modePreviewOff::before {
+  content: "OHNE BILD";
+  display: grid;
+  height: 28px;
+  place-items: center;
+  color: #76848a;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.preferenceStatus {
+  display: flex;
+  margin-top: 12px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.preferenceStatus > span {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.preferenceStatus strong,
+.preferenceStatus small {
+  display: block;
+}
+
+.preferenceStatus strong {
+  font-size: 9px;
+}
+
+.preferenceStatus small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.preferenceSynced {
+  color: #a3ecc0;
+  background: rgba(57, 217, 138, 0.055);
+  border-color: rgba(57, 217, 138, 0.22);
+}
+
+.preferenceSynced > span {
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(57, 217, 138, 0.55);
+}
+
+.preferenceWorking {
+  color: #ffd28c;
+  background: rgba(245, 166, 35, 0.055);
+  border-color: rgba(245, 166, 35, 0.23);
+}
+
+.preferenceWorking > span {
+  background: var(--accent);
+}
+
+.preferenceLocal {
+  color: #c0cbd0;
+  background: rgba(192, 203, 208, 0.045);
+  border-color: rgba(192, 203, 208, 0.18);
+}
+
+.preferenceLocal > span {
+  background: #87959b;
+}
+
+.preferenceError {
+  color: #ffadad;
+  background: rgba(255, 100, 100, 0.055);
+  border-color: rgba(255, 100, 100, 0.22);
+}
+
+.preferenceError > span {
+  background: var(--red);
+}
+
+@media (max-width: 720px) {
+  .imageModeOptions {
+    grid-template-columns: 1fr;
+  }
+
+  .modePreview {
+    height: 105px;
+  }
+
+  .modePreviewLarge i {
+    height: 60px;
+  }
+
+  .modePreviewSmall i {
+    height: 31px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imageModeButton {
+    transition: none;
+  }
+}

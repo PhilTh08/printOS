@@ -28,6 +28,7 @@ export function FilamentDetailClient({
     updateFilament,
     deleteFilament,
     adjustStock,
+    filamentImageMode,
   } = useHub();
   const filament = filaments.find(
     (item) => item.id === filamentId,
@@ -206,25 +207,27 @@ export function FilamentDetailClient({
         </article>
 
         <aside className="panel detail-stock-panel">
-          <div
-            className={`detail-filament-image ${
-              filament.imageUrl
-                ? "has-image"
-                : ""
-            }`}
-          >
-            {filament.imageUrl ? (
-              <img
-                src={filament.imageUrl}
-                alt={`${filament.manufacturer} ${filament.material} ${filament.color}`}
-              />
-            ) : (
-              <div>
-                <span>▤</span>
-                <p>Kein Filamentbild hinterlegt</p>
-              </div>
-            )}
-          </div>
+          {filamentImageMode !== "off" && (
+            <div
+              className={`detail-filament-image image-mode-${filamentImageMode} ${
+                filament.imageUrl
+                  ? "has-image"
+                  : ""
+              }`}
+            >
+              {filament.imageUrl ? (
+                <img
+                  src={filament.imageUrl}
+                  alt={`${filament.manufacturer} ${filament.material} ${filament.color}`}
+                />
+              ) : (
+                <div>
+                  <span>▤</span>
+                  <p>Kein Filamentbild hinterlegt</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="detail-stock-value">
             <span>Aktueller Bestand</span>

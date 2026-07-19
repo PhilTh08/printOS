@@ -13,6 +13,7 @@ export default function FilamentsPage() {
     adjustStock,
     deleteFilament,
     busy,
+    filamentImageMode,
   } = useHub();
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<
@@ -114,33 +115,38 @@ export default function FilamentsPage() {
         ) : (
           filteredFilaments.map((filament) => (
             <article
-              className={`filament-card ${
-                filament.stock <= filament.minimumStock
-                  ? "low-stock"
-                  : ""
+              className={`filament-card filament-images-${filamentImageMode} ${
+                filament.stock === 0
+                  ? "empty-stock"
+                  : filament.stock <=
+                      filament.minimumStock
+                    ? "low-stock"
+                    : "healthy-stock"
               }`}
               key={filament.id}
             >
-              <div
-                className={`filament-card-image ${
-                  filament.imageUrl
-                    ? "has-image"
-                    : ""
-                }`}
-              >
-                {filament.imageUrl ? (
-                  <img
-                    src={filament.imageUrl}
-                    alt={`${filament.manufacturer} ${filament.material} ${filament.color}`}
-                    loading="lazy"
-                  />
-                ) : (
-                  <div>
-                    <span>▤</span>
-                    <small>Kein Bild</small>
-                  </div>
-                )}
-              </div>
+              {filamentImageMode !== "off" && (
+                <div
+                  className={`filament-card-image image-mode-${filamentImageMode} ${
+                    filament.imageUrl
+                      ? "has-image"
+                      : ""
+                  }`}
+                >
+                  {filament.imageUrl ? (
+                    <img
+                      src={filament.imageUrl}
+                      alt={`${filament.manufacturer} ${filament.material} ${filament.color}`}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div>
+                      <span>▤</span>
+                      <small>Kein Bild</small>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="filament-card-header">
                 <div>

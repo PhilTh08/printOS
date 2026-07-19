@@ -23,12 +23,20 @@ import {
   type BackupData,
   type Filament,
   type FilamentForm,
+  type FilamentImageMode,
   type FilamentRow,
   type LogEntry,
   type LogRow,
   type LogSource,
   type StockMode,
 } from "./types";
+
+type PreferenceSyncState =
+  | "loading"
+  | "saving"
+  | "synced"
+  | "local"
+  | "error";
 
 type HubContextValue = {
   user: User | null;
@@ -39,6 +47,12 @@ type HubContextValue = {
   filaments: Filament[];
   logs: LogEntry[];
   displayName: string;
+  filamentImageMode: FilamentImageMode;
+  preferenceSyncState: PreferenceSyncState;
+  preferenceMessage: string;
+  updateFilamentImageMode: (
+    mode: FilamentImageMode,
+  ) => Promise<void>;
   refresh: () => Promise<void>;
   createFilament: (
     form: FilamentForm,
@@ -85,6 +99,45 @@ function getDisplayName(user: User | null): string {
   return user.email?.split("@")[0] ?? "Benutzer";
 }
 
+const DEFAULT_FILAMENT_IMAGE_MODE: FilamentImageMode =
+  "large";
+
+function normalizeFilamentImageMode(
+  value: unknown,
+): FilamentImageMode {
+  return value === "off" ||
+    value === "small" ||
+    value === "large"
+    ? value
+    : DEFAULT_FILAMENT_IMAGE_MODE;
+}
+
+function preferenceStorageKey(userId: string): string {
+  return `philamentix-filament-image-mode-${userId}`;
+}
+
+function isMissingPreferencesTable(
+  error: unknown,
+): boolean {
+  if (
+    typeof error !== "object" ||
+    error === null
+  ) {
+    return false;
+  }
+
+  const code =
+    "code" in error &&
+    typeof error.code === "string"
+      ? error.code
+      : "";
+
+  return (
+    code === "42P01" ||
+    code === "PGRST205"
+  );
+}
+
 function cleanForm(form: FilamentForm): FilamentForm {
   return {
     ...form,
@@ -121,6 +174,22 @@ export function HubProvider({
     Filament[]
   >([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [
+    filamentImageMode,
+    setFilamentImageMode,
+  ] = useState<FilamentImageMode>(
+    DEFAULT_FILAMENT_IMAGE_MODE,
+  );
+  const [
+    preferenceSyncState,
+    setPreferenceSyncState,
+  ] = useState<PreferenceSyncState>("loading");
+  const [
+    preferenceMessage,
+    setPreferenceMessage,
+  ] = useState(
+    "Darstellungseinstellungen werden geladen.",
+  );
 
   const loadDataForUser = useCallback(
     async (userId: string) => {
@@ -226,6 +295,213 @@ export function HubProvider({
       // Fehler wird im Context angezeigt.
     });
   }, [authReady, user, loadDataForUser]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
+    if (!user) {
+      setFilamentImageMode(
+        DEFAULT_FILAMENT_IMAGE_MODE,
+      );
+      setPreferenceSyncState("local");
+      setPreferenceMessage(
+        "Darstellung wird ohne Anmeldung nur lokal verwendet.",
+      );
+      return;
+    }
+
+    let active = true;
+    const storageKey = preferenceStorageKey(
+      user.id,
+    );
+    const localMode =
+      normalizeFilamentImageMode(
+        window.localStorage.getItem(storageKey),
+      );
+
+    setFilamentImageMode(localMode);
+    setPreferenceSyncState("loading");
+    setPreferenceMessage(
+      "Darstellungseinstellungen werden synchronisiert.",
+    );
+
+    void (async () => {
+      const {
+        data,
+        error: loadError,
+      } = await supabase
+        .from("user_preferences")
+        .select(
+          "filament_image_mode, updated_at",
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!active) {
+        return;
+      }
+
+      if (loadError) {
+        if (
+          isMissingPreferencesTable(loadError)
+        ) {
+          setPreferenceSyncState("local");
+          setPreferenceMessage(
+            "Bilddarstellung wird lokal gespeichert. Für Geräte-Sync bitte user_preferences.sql ausführen.",
+          );
+          return;
+        }
+
+        setPreferenceSyncState("error");
+        setPreferenceMessage(
+          `Darstellung konnte nicht aus der Cloud geladen werden: ${loadError.message}`,
+        );
+        return;
+      }
+
+      if (data) {
+        const cloudMode =
+          normalizeFilamentImageMode(
+            data.filament_image_mode,
+          );
+
+        setFilamentImageMode(cloudMode);
+        window.localStorage.setItem(
+          storageKey,
+          cloudMode,
+        );
+        setPreferenceSyncState("synced");
+        setPreferenceMessage(
+          "Bilddarstellung ist mit der Cloud synchronisiert.",
+        );
+        return;
+      }
+
+      const {
+        error: createError,
+      } = await supabase
+        .from("user_preferences")
+        .upsert(
+          {
+            user_id: user.id,
+            filament_image_mode: localMode,
+            updated_at:
+              new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id",
+          },
+        );
+
+      if (!active) {
+        return;
+      }
+
+      if (createError) {
+        if (
+          isMissingPreferencesTable(
+            createError,
+          )
+        ) {
+          setPreferenceSyncState("local");
+          setPreferenceMessage(
+            "Bilddarstellung wird lokal gespeichert. Für Geräte-Sync bitte user_preferences.sql ausführen.",
+          );
+          return;
+        }
+
+        setPreferenceSyncState("error");
+        setPreferenceMessage(
+          `Darstellung konnte nicht in der Cloud angelegt werden: ${createError.message}`,
+        );
+        return;
+      }
+
+      setPreferenceSyncState("synced");
+      setPreferenceMessage(
+        "Deine bisherige lokale Bilddarstellung wurde in die Cloud übernommen.",
+      );
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [authReady, user]);
+
+  const updateFilamentImageMode =
+    useCallback(
+      async (mode: FilamentImageMode) => {
+        const normalized =
+          normalizeFilamentImageMode(mode);
+
+        setFilamentImageMode(normalized);
+
+        if (!user) {
+          setPreferenceSyncState("local");
+          setPreferenceMessage(
+            "Bilddarstellung wurde lokal gespeichert.",
+          );
+          return;
+        }
+
+        const storageKey =
+          preferenceStorageKey(user.id);
+
+        window.localStorage.setItem(
+          storageKey,
+          normalized,
+        );
+        setPreferenceSyncState("saving");
+        setPreferenceMessage(
+          "Bilddarstellung wird gespeichert.",
+        );
+
+        const {
+          error: saveError,
+        } = await supabase
+          .from("user_preferences")
+          .upsert(
+            {
+              user_id: user.id,
+              filament_image_mode:
+                normalized,
+              updated_at:
+                new Date().toISOString(),
+            },
+            {
+              onConflict: "user_id",
+            },
+          );
+
+        if (saveError) {
+          if (
+            isMissingPreferencesTable(
+              saveError,
+            )
+          ) {
+            setPreferenceSyncState("local");
+            setPreferenceMessage(
+              "Bilddarstellung wurde in diesem Browser gespeichert. Für Geräte-Sync bitte user_preferences.sql ausführen.",
+            );
+            return;
+          }
+
+          setPreferenceSyncState("error");
+          setPreferenceMessage(
+            `Cloud-Speicherung fehlgeschlagen: ${saveError.message}`,
+          );
+          throw new Error(saveError.message);
+        }
+
+        setPreferenceSyncState("synced");
+        setPreferenceMessage(
+          "Bilddarstellung wurde gespeichert und synchronisiert.",
+        );
+      },
+      [user],
+    );
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -755,6 +1031,10 @@ export function HubProvider({
       filaments,
       logs,
       displayName: getDisplayName(user),
+      filamentImageMode,
+      preferenceSyncState,
+      preferenceMessage,
+      updateFilamentImageMode,
       refresh,
       createFilament,
       updateFilament,
@@ -775,6 +1055,10 @@ export function HubProvider({
       error,
       filaments,
       logs,
+      filamentImageMode,
+      preferenceSyncState,
+      preferenceMessage,
+      updateFilamentImageMode,
       refresh,
       createFilament,
       updateFilament,

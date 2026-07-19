@@ -1,6 +1,7 @@
 export type StockMode = "in" | "out";
 export type LogSource = "scan" | "manual";
 export type StatisticsRange = "7" | "30" | "90" | "all";
+export type FilamentImageMode = "off" | "small" | "large";
 
 export type Filament = {
   id: number;
