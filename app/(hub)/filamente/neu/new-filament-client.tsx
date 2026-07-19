@@ -2,6 +2,8 @@
 
 import {
   FormEvent,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 import Link from "next/link";
@@ -25,12 +27,45 @@ export function NewFilamentClient({
   fromScanner: boolean;
 }) {
   const router = useRouter();
-  const { createFilament, busy } = useHub();
+  const {
+    createFilament,
+    busy,
+    filamentDefaults,
+    preferenceSyncState,
+  } = useHub();
+  const defaultsAppliedRef = useRef(false);
+  const formTouchedRef = useRef(false);
   const [form, setForm] = useState({
     ...emptyFilamentForm,
     barcode: normalizeBarcode(initialBarcode),
     stock: initialStock,
   });
+  useEffect(() => {
+    if (
+      defaultsAppliedRef.current ||
+      formTouchedRef.current ||
+      preferenceSyncState === "loading"
+    ) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      manufacturer:
+        filamentDefaults.manufacturer,
+      material: filamentDefaults.material,
+      weightPerRoll:
+        filamentDefaults.weightPerRoll,
+      location: filamentDefaults.location,
+      minimumStock:
+        filamentDefaults.minimumStock,
+    }));
+    defaultsAppliedRef.current = true;
+  }, [
+    filamentDefaults,
+    preferenceSyncState,
+  ]);
+
   const [error, setError] = useState("");
   const [createdFilamentName, setCreatedFilamentName] =
     useState("");
@@ -113,7 +148,11 @@ export function NewFilamentClient({
         <form onSubmit={save}>
           <FilamentFormFields
             value={form}
-            onChange={setForm}
+            onChange={(nextForm) => {
+              formTouchedRef.current = true;
+              defaultsAppliedRef.current = true;
+              setForm(nextForm);
+            }}
           />
 
           <div className="detail-form-actions">

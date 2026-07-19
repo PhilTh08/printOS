@@ -367,3 +367,39 @@ weiterhin lokal in dem jeweiligen Browser.
 
 Die Filament- und Protokolldatenbanken werden durch die Migration nicht
 verändert.
+
+
+## V14.5 – Standardwerte für neue Filamente
+
+Unter `Einstellungen → Neue Filamente → Standardwerte` können jetzt
+persönlich gespeichert werden:
+
+- Hersteller
+- Material
+- Gewicht pro Rolle
+- Lagerplatz
+- Mindestbestand
+
+Die Werte werden automatisch verwendet bei:
+
+- `Filamente → Filament hinzufügen`
+- dem Anlegen nach einem unbekannten Barcode-Scan
+
+Barcode, Farbe, aktueller Bestand, Bestelllink und Bild bleiben weiterhin
+individuell pro neuem Filament.
+
+Bestehende Filamente werden durch eine Änderung der Standardwerte niemals
+verändert.
+
+### Supabase erneut aktualisieren
+
+Die vorhandene Datei wurde erweitert und muss einmal erneut vollständig
+ausgeführt werden:
+
+`supabase/user_preferences.sql`
+
+Sie ergänzt ausschließlich neue Spalten in `user_preferences`. Die Datei
+ist erneut ausführbar und behält die persönliche RLS-Isolation bei.
+
+Ohne die aktualisierte Migration funktionieren die Standardwerte weiterhin
+lokal im jeweiligen Browser.

@@ -1,6 +1,6 @@
--- Philamentix Hub V14.4
--- Einmal im Supabase SQL Editor ausführen.
--- Speichert persönliche Darstellungsoptionen geräteübergreifend.
+-- Philamentix Hub V14.5
+-- Diese Datei erneut vollständig im Supabase SQL Editor ausführen.
+-- Speichert Darstellung und Standardwerte pro Benutzer.
 
 begin;
 
@@ -11,6 +11,16 @@ create table if not exists public.user_preferences (
     default auth.uid(),
   filament_image_mode text not null
     default 'large',
+  default_manufacturer text not null
+    default '',
+  default_material text not null
+    default 'PLA',
+  default_weight_per_roll integer not null
+    default 1000,
+  default_location text not null
+    default '',
+  default_minimum_stock integer not null
+    default 1,
   updated_at timestamptz not null
     default now()
 );
@@ -18,6 +28,26 @@ create table if not exists public.user_preferences (
 alter table public.user_preferences
   add column if not exists filament_image_mode text
   not null default 'large';
+
+alter table public.user_preferences
+  add column if not exists default_manufacturer text
+  not null default '';
+
+alter table public.user_preferences
+  add column if not exists default_material text
+  not null default 'PLA';
+
+alter table public.user_preferences
+  add column if not exists default_weight_per_roll integer
+  not null default 1000;
+
+alter table public.user_preferences
+  add column if not exists default_location text
+  not null default '';
+
+alter table public.user_preferences
+  add column if not exists default_minimum_stock integer
+  not null default 1;
 
 alter table public.user_preferences
   add column if not exists updated_at timestamptz
@@ -40,6 +70,36 @@ begin
           'small',
           'large'
         )
+      );
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname =
+      'user_preferences_default_weight_check'
+  ) then
+    alter table public.user_preferences
+      add constraint
+        user_preferences_default_weight_check
+      check (
+        default_weight_per_roll
+        between 1 and 50000
+      );
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname =
+      'user_preferences_default_minimum_check'
+  ) then
+    alter table public.user_preferences
+      add constraint
+        user_preferences_default_minimum_check
+      check (
+        default_minimum_stock
+        between 0 and 9999
       );
   end if;
 end

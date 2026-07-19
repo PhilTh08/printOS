@@ -1,7 +1,18 @@
 export type StockMode = "in" | "out";
 export type LogSource = "scan" | "manual";
 export type StatisticsRange = "7" | "30" | "90" | "all";
-export type FilamentImageMode = "off" | "small" | "large";
+export type FilamentImageMode =
+  | "off"
+  | "small"
+  | "large";
+
+export type FilamentDefaults = {
+  manufacturer: string;
+  material: string;
+  weightPerRoll: number;
+  location: string;
+  minimumStock: number;
+};
 
 export type Filament = {
   id: number;
@@ -79,14 +90,25 @@ export type MaterialSummary = {
   lastOut: string | null;
 };
 
-export const emptyFilamentForm: FilamentForm = {
-  barcode: "",
+export const defaultFilamentDefaults: FilamentDefaults = {
   manufacturer: "",
   material: "PLA",
-  color: "",
   weightPerRoll: 1000,
   location: "",
   minimumStock: 1,
+};
+
+export const emptyFilamentForm: FilamentForm = {
+  barcode: "",
+  manufacturer:
+    defaultFilamentDefaults.manufacturer,
+  material: defaultFilamentDefaults.material,
+  color: "",
+  weightPerRoll:
+    defaultFilamentDefaults.weightPerRoll,
+  location: defaultFilamentDefaults.location,
+  minimumStock:
+    defaultFilamentDefaults.minimumStock,
   stock: 0,
   orderLink: "",
   imageUrl: "",

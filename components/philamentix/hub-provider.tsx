@@ -18,10 +18,12 @@ import {
   rowToLog,
 } from "./mappers";
 import {
+  defaultFilamentDefaults,
   filamentLabel,
   normalizeBarcode,
   type BackupData,
   type Filament,
+  type FilamentDefaults,
   type FilamentForm,
   type FilamentImageMode,
   type FilamentRow,
@@ -48,10 +50,14 @@ type HubContextValue = {
   logs: LogEntry[];
   displayName: string;
   filamentImageMode: FilamentImageMode;
+  filamentDefaults: FilamentDefaults;
   preferenceSyncState: PreferenceSyncState;
   preferenceMessage: string;
   updateFilamentImageMode: (
     mode: FilamentImageMode,
+  ) => Promise<void>;
+  updateFilamentDefaults: (
+    defaults: FilamentDefaults,
   ) => Promise<void>;
   refresh: () => Promise<void>;
   createFilament: (
@@ -116,6 +122,76 @@ function preferenceStorageKey(userId: string): string {
   return `philamentix-filament-image-mode-${userId}`;
 }
 
+function defaultsStorageKey(userId: string): string {
+  return `philamentix-filament-defaults-${userId}`;
+}
+
+function normalizeFilamentDefaults(
+  value: Partial<FilamentDefaults> | null | undefined,
+): FilamentDefaults {
+  return {
+    manufacturer:
+      typeof value?.manufacturer === "string"
+        ? value.manufacturer.trim()
+        : defaultFilamentDefaults.manufacturer,
+    material:
+      typeof value?.material === "string" &&
+      value.material.trim()
+        ? value.material.trim()
+        : defaultFilamentDefaults.material,
+    weightPerRoll: Math.min(
+      50000,
+      Math.max(
+        1,
+        Number(value?.weightPerRoll) ||
+          defaultFilamentDefaults.weightPerRoll,
+      ),
+    ),
+    location:
+      typeof value?.location === "string"
+        ? value.location.trim()
+        : defaultFilamentDefaults.location,
+    minimumStock: Math.min(
+      9999,
+      Math.max(
+        0,
+        Number(value?.minimumStock) ||
+          defaultFilamentDefaults.minimumStock,
+      ),
+    ),
+  };
+}
+
+function readLocalFilamentDefaults(
+  userId: string,
+): FilamentDefaults {
+  try {
+    const rawValue = window.localStorage.getItem(
+      defaultsStorageKey(userId),
+    );
+
+    if (!rawValue) {
+      return defaultFilamentDefaults;
+    }
+
+    return normalizeFilamentDefaults(
+      JSON.parse(rawValue) as Partial<FilamentDefaults>,
+    );
+  } catch {
+    return defaultFilamentDefaults;
+  }
+}
+
+function writeLocalFilamentDefaults(
+  userId: string,
+  defaults: FilamentDefaults,
+) {
+  window.localStorage.setItem(
+    defaultsStorageKey(userId),
+    JSON.stringify(defaults),
+  );
+}
+
 function isMissingPreferencesTable(
   error: unknown,
 ): boolean {
@@ -134,6 +210,8 @@ function isMissingPreferencesTable(
 
   return (
     code === "42P01" ||
+    code === "42703" ||
+    code === "PGRST204" ||
     code === "PGRST205"
   );
 }
@@ -179,6 +257,12 @@ export function HubProvider({
     setFilamentImageMode,
   ] = useState<FilamentImageMode>(
     DEFAULT_FILAMENT_IMAGE_MODE,
+  );
+  const [
+    filamentDefaults,
+    setFilamentDefaults,
+  ] = useState<FilamentDefaults>(
+    defaultFilamentDefaults,
   );
   const [
     preferenceSyncState,
@@ -305,6 +389,9 @@ export function HubProvider({
       setFilamentImageMode(
         DEFAULT_FILAMENT_IMAGE_MODE,
       );
+      setFilamentDefaults(
+        defaultFilamentDefaults,
+      );
       setPreferenceSyncState("local");
       setPreferenceMessage(
         "Darstellung wird ohne Anmeldung nur lokal verwendet.",
@@ -320,8 +407,11 @@ export function HubProvider({
       normalizeFilamentImageMode(
         window.localStorage.getItem(storageKey),
       );
+    const localDefaults =
+      readLocalFilamentDefaults(user.id);
 
     setFilamentImageMode(localMode);
+    setFilamentDefaults(localDefaults);
     setPreferenceSyncState("loading");
     setPreferenceMessage(
       "Darstellungseinstellungen werden synchronisiert.",
@@ -334,7 +424,7 @@ export function HubProvider({
       } = await supabase
         .from("user_preferences")
         .select(
-          "filament_image_mode, updated_at",
+          "filament_image_mode, default_manufacturer, default_material, default_weight_per_roll, default_location, default_minimum_stock, updated_at",
         )
         .eq("user_id", user.id)
         .maybeSingle();
@@ -366,15 +456,31 @@ export function HubProvider({
           normalizeFilamentImageMode(
             data.filament_image_mode,
           );
+        const cloudDefaults =
+          normalizeFilamentDefaults({
+            manufacturer:
+              data.default_manufacturer,
+            material: data.default_material,
+            weightPerRoll:
+              data.default_weight_per_roll,
+            location: data.default_location,
+            minimumStock:
+              data.default_minimum_stock,
+          });
 
         setFilamentImageMode(cloudMode);
+        setFilamentDefaults(cloudDefaults);
         window.localStorage.setItem(
           storageKey,
           cloudMode,
         );
+        writeLocalFilamentDefaults(
+          user.id,
+          cloudDefaults,
+        );
         setPreferenceSyncState("synced");
         setPreferenceMessage(
-          "Bilddarstellung ist mit der Cloud synchronisiert.",
+          "Darstellung und Standardwerte sind mit der Cloud synchronisiert.",
         );
         return;
       }
@@ -387,6 +493,16 @@ export function HubProvider({
           {
             user_id: user.id,
             filament_image_mode: localMode,
+            default_manufacturer:
+              localDefaults.manufacturer,
+            default_material:
+              localDefaults.material,
+            default_weight_per_roll:
+              localDefaults.weightPerRoll,
+            default_location:
+              localDefaults.location,
+            default_minimum_stock:
+              localDefaults.minimumStock,
             updated_at:
               new Date().toISOString(),
           },
@@ -421,7 +537,7 @@ export function HubProvider({
 
       setPreferenceSyncState("synced");
       setPreferenceMessage(
-        "Deine bisherige lokale Bilddarstellung wurde in die Cloud übernommen.",
+        "Deine lokalen Darstellungs- und Standardwerte wurden in die Cloud übernommen.",
       );
     })();
 
@@ -498,6 +614,84 @@ export function HubProvider({
         setPreferenceSyncState("synced");
         setPreferenceMessage(
           "Bilddarstellung wurde gespeichert und synchronisiert.",
+        );
+      },
+      [user],
+    );
+
+  const updateFilamentDefaults =
+    useCallback(
+      async (defaults: FilamentDefaults) => {
+        const normalized =
+          normalizeFilamentDefaults(defaults);
+
+        setFilamentDefaults(normalized);
+
+        if (!user) {
+          setPreferenceSyncState("local");
+          setPreferenceMessage(
+            "Standardwerte wurden lokal gespeichert.",
+          );
+          return;
+        }
+
+        writeLocalFilamentDefaults(
+          user.id,
+          normalized,
+        );
+        setPreferenceSyncState("saving");
+        setPreferenceMessage(
+          "Standardwerte werden gespeichert.",
+        );
+
+        const {
+          error: saveError,
+        } = await supabase
+          .from("user_preferences")
+          .upsert(
+            {
+              user_id: user.id,
+              default_manufacturer:
+                normalized.manufacturer,
+              default_material:
+                normalized.material,
+              default_weight_per_roll:
+                normalized.weightPerRoll,
+              default_location:
+                normalized.location,
+              default_minimum_stock:
+                normalized.minimumStock,
+              updated_at:
+                new Date().toISOString(),
+            },
+            {
+              onConflict: "user_id",
+            },
+          );
+
+        if (saveError) {
+          if (
+            isMissingPreferencesTable(
+              saveError,
+            )
+          ) {
+            setPreferenceSyncState("local");
+            setPreferenceMessage(
+              "Standardwerte wurden in diesem Browser gespeichert. Für Geräte-Sync bitte die aktualisierte user_preferences.sql ausführen.",
+            );
+            return;
+          }
+
+          setPreferenceSyncState("error");
+          setPreferenceMessage(
+            `Standardwerte konnten nicht in der Cloud gespeichert werden: ${saveError.message}`,
+          );
+          throw new Error(saveError.message);
+        }
+
+        setPreferenceSyncState("synced");
+        setPreferenceMessage(
+          "Darstellung und Standardwerte sind gespeichert und synchronisiert.",
         );
       },
       [user],
@@ -1032,9 +1226,11 @@ export function HubProvider({
       logs,
       displayName: getDisplayName(user),
       filamentImageMode,
+      filamentDefaults,
       preferenceSyncState,
       preferenceMessage,
       updateFilamentImageMode,
+      updateFilamentDefaults,
       refresh,
       createFilament,
       updateFilament,
@@ -1056,9 +1252,11 @@ export function HubProvider({
       filaments,
       logs,
       filamentImageMode,
+      filamentDefaults,
       preferenceSyncState,
       preferenceMessage,
       updateFilamentImageMode,
+      updateFilamentDefaults,
       refresh,
       createFilament,
       updateFilament,

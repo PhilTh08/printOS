@@ -2,12 +2,18 @@
 
 import {
   ChangeEvent,
+  FormEvent,
+  useEffect,
   useRef,
   useState,
 } from "react";
 
 import { useHub } from "@/components/philamentix/hub-provider";
-import type { FilamentImageMode } from "@/components/philamentix/types";
+import {
+  defaultFilamentDefaults,
+  type FilamentDefaults,
+  type FilamentImageMode,
+} from "@/components/philamentix/types";
 
 import styles from "./page.module.css";
 
@@ -45,18 +51,40 @@ export default function SettingsPage() {
     exportData,
     importData,
     filamentImageMode,
+    filamentDefaults,
     preferenceSyncState,
     preferenceMessage,
     updateFilamentImageMode,
+    updateFilamentDefaults,
   } = useHub();
   const importInputRef =
     useRef<HTMLInputElement>(null);
+  const [defaultsForm, setDefaultsForm] =
+    useState<FilamentDefaults>(
+      filamentDefaults,
+    );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setDefaultsForm(filamentDefaults);
+  }, [filamentDefaults]);
 
   function clearFeedback() {
     setMessage("");
     setError("");
+  }
+
+  function setDefaultField<
+    K extends keyof FilamentDefaults,
+  >(
+    key: K,
+    value: FilamentDefaults[K],
+  ) {
+    setDefaultsForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
   }
 
   async function selectImageMode(
@@ -78,6 +106,48 @@ export default function SettingsPage() {
         caughtError instanceof Error
           ? caughtError.message
           : "Bilddarstellung konnte nicht gespeichert werden.",
+      );
+    }
+  }
+
+  async function saveDefaults(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    clearFeedback();
+
+    try {
+      await updateFilamentDefaults(
+        defaultsForm,
+      );
+      setMessage(
+        "Standardwerte für neue Filamente wurden gespeichert.",
+      );
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Standardwerte konnten nicht gespeichert werden.",
+      );
+    }
+  }
+
+  async function resetDefaults() {
+    clearFeedback();
+    setDefaultsForm(defaultFilamentDefaults);
+
+    try {
+      await updateFilamentDefaults(
+        defaultFilamentDefaults,
+      );
+      setMessage(
+        "Standardwerte wurden auf die Werkseinstellungen zurückgesetzt.",
+      );
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Standardwerte konnten nicht zurückgesetzt werden.",
       );
     }
   }
@@ -170,8 +240,8 @@ export default function SettingsPage() {
           </span>
           <h1>Einstellungen</h1>
           <p>
-            Darstellung, Backups und persönliche
-            Daten verwalten
+            Darstellung, Standardwerte, Backups und
+            persönliche Daten verwalten
           </p>
         </div>
 
@@ -260,28 +330,192 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </article>
 
-          <div
-            className={`${styles.preferenceStatus} ${
-              preferenceSyncState === "synced"
-                ? styles.preferenceSynced
-                : preferenceSyncState ===
-                      "error"
-                  ? styles.preferenceError
-                  : preferenceSyncState ===
-                        "local"
-                    ? styles.preferenceLocal
-                    : styles.preferenceWorking
-            }`}
-          >
-            <span />
+        <article
+          className={`${styles.settingsCard} ${styles.defaultsCard}`}
+        >
+          <div className={styles.cardHeading}>
+            <span className={styles.settingsIcon}>
+              ⎘
+            </span>
+
             <div>
-              <strong>
-                {preferenceStatusLabel}
-              </strong>
-              <small>{preferenceMessage}</small>
+              <span className={styles.eyebrow}>
+                Neue Filamente
+              </span>
+              <h2>Standardwerte</h2>
+              <p>
+                Diese Werte werden beim manuellen
+                Anlegen und nach einem unbekannten
+                Barcode automatisch vorausgefüllt.
+                Bestehende Filamente werden nicht
+                verändert.
+              </p>
             </div>
           </div>
+
+          <form
+            className={styles.defaultsForm}
+            onSubmit={(event) =>
+              void saveDefaults(event)
+            }
+          >
+            <label>
+              <span>Standard-Hersteller</span>
+              <input
+                value={
+                  defaultsForm.manufacturer
+                }
+                onChange={(event) =>
+                  setDefaultField(
+                    "manufacturer",
+                    event.target.value,
+                  )
+                }
+                placeholder="z. B. Bambu Lab"
+              />
+            </label>
+
+            <label>
+              <span>Standard-Material</span>
+              <input
+                value={defaultsForm.material}
+                onChange={(event) =>
+                  setDefaultField(
+                    "material",
+                    event.target.value,
+                  )
+                }
+                placeholder="z. B. PLA"
+              />
+            </label>
+
+            <label>
+              <span>Gewicht pro Rolle</span>
+              <div
+                className={
+                  styles.numberInputWithUnit
+                }
+              >
+                <input
+                  type="number"
+                  min="1"
+                  max="50000"
+                  value={
+                    defaultsForm.weightPerRoll
+                  }
+                  onChange={(event) =>
+                    setDefaultField(
+                      "weightPerRoll",
+                      Number(
+                        event.target.value,
+                      ) || 1,
+                    )
+                  }
+                />
+                <b>g</b>
+              </div>
+            </label>
+
+            <label>
+              <span>Standard-Lagerplatz</span>
+              <input
+                value={defaultsForm.location}
+                onChange={(event) =>
+                  setDefaultField(
+                    "location",
+                    event.target.value,
+                  )
+                }
+                placeholder="z. B. Regal A2"
+              />
+            </label>
+
+            <label>
+              <span>Standard-Mindestbestand</span>
+              <div
+                className={
+                  styles.numberInputWithUnit
+                }
+              >
+                <input
+                  type="number"
+                  min="0"
+                  max="9999"
+                  value={
+                    defaultsForm.minimumStock
+                  }
+                  onChange={(event) =>
+                    setDefaultField(
+                      "minimumStock",
+                      Math.max(
+                        0,
+                        Number(
+                          event.target.value,
+                        ) || 0,
+                      ),
+                    )
+                  }
+                />
+                <b>Rollen</b>
+              </div>
+            </label>
+
+            <div
+              className={styles.defaultsPreview}
+            >
+              <span>Vorschau für neue Einträge</span>
+              <strong>
+                {defaultsForm.manufacturer ||
+                  "Kein Hersteller"}{" "}
+                ·{" "}
+                {defaultsForm.material || "PLA"}
+              </strong>
+              <small>
+                {defaultsForm.weightPerRoll} g ·{" "}
+                {defaultsForm.location ||
+                  "Kein Lagerplatz"}{" "}
+                · Mindestbestand{" "}
+                {defaultsForm.minimumStock}
+              </small>
+            </div>
+
+            <div
+              className={styles.defaultsActions}
+            >
+              <button
+                className={
+                  styles.secondarySettingsButton
+                }
+                type="button"
+                disabled={
+                  preferenceSyncState ===
+                  "saving"
+                }
+                onClick={() =>
+                  void resetDefaults()
+                }
+              >
+                Werkseinstellungen
+              </button>
+
+              <button
+                className={
+                  styles.primarySettingsButton
+                }
+                type="submit"
+                disabled={
+                  preferenceSyncState ===
+                  "saving"
+                }
+              >
+                {preferenceSyncState === "saving"
+                  ? "Wird gespeichert …"
+                  : "Standardwerte speichern"}
+              </button>
+            </div>
+          </form>
         </article>
 
         <article
@@ -414,6 +648,28 @@ export default function SettingsPage() {
             </button>
           </div>
         </article>
+
+        <div
+          className={`${styles.preferenceStatus} ${
+            preferenceSyncState === "synced"
+              ? styles.preferenceSynced
+              : preferenceSyncState ===
+                    "error"
+                ? styles.preferenceError
+                : preferenceSyncState ===
+                      "local"
+                  ? styles.preferenceLocal
+                  : styles.preferenceWorking
+          }`}
+        >
+          <span />
+          <div>
+            <strong>
+              {preferenceStatusLabel}
+            </strong>
+            <small>{preferenceMessage}</small>
+          </div>
+        </div>
       </section>
     </div>
   );
