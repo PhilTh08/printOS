@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 type Mode = "in" | "out";
 type StatisticsRange = "7" | "30" | "90" | "all";
 type AuthMode = "login" | "signup" | "forgot";
-type Page = "dashboard" | "statistics" | "storage" | "filaments" | "log" | "profile";
+type Page = "dashboard" | "statistics" | "storage" | "filaments" | "log" | "profile" | "settings";
 
 type Filament = {
   id: number;
@@ -29,6 +29,16 @@ type Filament = {
 };
 
 type FilamentForm = Omit<Filament, "id">;
+
+type FilamentPreset = {
+  ean: string;
+  manufacturer: string;
+  material: string;
+  color: string;
+  weightPerRoll: number;
+  price: string;
+  variant?: string;
+};
 
 type LogEntry = {
   id: string;
@@ -61,6 +71,56 @@ const emptyForm: FilamentForm = {
   stock: 0,
   orderLink: "",
 };
+
+const FILAMENT_PRESETS: FilamentPreset[] = [
+  { ean: "6975337038207", manufacturer: "Bambu Lab", material: "PETG HF", color: "White", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337038221", manufacturer: "Bambu Lab", material: "PETG HF", color: "Black", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337038214", manufacturer: "Bambu Lab", material: "PETG HF", color: "Gray", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337038245", manufacturer: "Bambu Lab", material: "PETG HF", color: "Red", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337038269", manufacturer: "Bambu Lab", material: "PETG HF", color: "Blue", weightPerRoll: 1000, price: "25,99 €" },
+
+  { ean: "6975337038016", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Clear", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337036005", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Orange", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "921159956009", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Pink", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337036104", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Purple", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337035992", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Teal", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337035978", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Olive", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337035961", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Light Blue", weightPerRoll: 1000, price: "25,99 €" },
+  { ean: "6975337035985", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Brown", weightPerRoll: 1000, price: "25,99 €" },
+
+  { ean: "6975337032243", manufacturer: "Bambu Lab", material: "PETG-CF", color: "Black", weightPerRoll: 1000, price: "35,99 €" },
+  { ean: "6975337032502", manufacturer: "Bambu Lab", material: "PETG-CF", color: "Indigo Blue", weightPerRoll: 1000, price: "35,99 €" },
+  { ean: "6975337033707", manufacturer: "Bambu Lab", material: "PETG-CF", color: "Titan Gray", weightPerRoll: 1000, price: "35,99 €" },
+
+  { ean: "6975337030164", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Jade White", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337030201", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Beige", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6977252427197", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Sunflower Yellow", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337037354", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Gold", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6977252426954", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Pumpkin Orange", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6977252426978", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Hot Pink", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337037392", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Magenta", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6977252427203", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Maroon Red", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337037378", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Purple", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6977252427227", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Indigo Purple", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6977252426961", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Cobalt Blue", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6977252426992", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Bright Green", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337039082", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Light Gray", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337030195", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Gray", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337039075", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Dark Gray", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337030232", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Blue Gray", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337037361", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Bronze", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+  { ean: "6975337030263", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Brown", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
+
+  { ean: "6975337031956", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Yellow", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+  { ean: "6975337032311", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Orange", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+  { ean: "6975337032359", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Pink", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+  { ean: "6975337031413", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Red", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+  { ean: "6975337032052", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Cyan", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+  { ean: "6975337032533", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Blue", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+  { ean: "6975337033684", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Bambu Green", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+  { ean: "6975337035046", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Mistletoe Green", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+  { ean: "6975337031390", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Silver", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
+];
 
 const exampleFilaments: Filament[] = [
   {
@@ -271,6 +331,8 @@ export default function Home() {
 
   const [search, setSearch] = useState("");
   const [unknownBarcode, setUnknownBarcode] = useState("");
+  const [selectedPresetEan, setSelectedPresetEan] =
+    useState("");
   const [selectedMaterial, setSelectedMaterial] =
     useState<string | null>(null);
 
@@ -1069,7 +1131,29 @@ export default function Home() {
     }
   }
 
+  function applyFilamentPreset(ean: string) {
+    setSelectedPresetEan(ean);
+
+    const preset = FILAMENT_PRESETS.find(
+      (item) => item.ean === ean,
+    );
+
+    if (!preset) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      barcode: preset.ean,
+      manufacturer: preset.manufacturer,
+      material: preset.material,
+      color: preset.color,
+      weightPerRoll: preset.weightPerRoll,
+    }));
+  }
+
   function openCreateForm(prefilledBarcode = "") {
+    setSelectedPresetEan("");
     setEditingId(null);
     setForm({
       ...emptyForm,
@@ -1079,6 +1163,7 @@ export default function Home() {
   }
 
   function openEditForm(filament: Filament) {
+    setSelectedPresetEan("");
     setEditingId(filament.id);
 
     setForm({
@@ -1097,6 +1182,7 @@ export default function Home() {
   }
 
   function closeForm() {
+    setSelectedPresetEan("");
     setIsFormOpen(false);
     setEditingId(null);
     setForm(emptyForm);
@@ -1344,7 +1430,7 @@ export default function Home() {
     }
 
     const confirmed = window.confirm(
-      "Möchtest du das komplette Protokoll wirklich löschen?",
+      "Möchtest du wirklich alle Statistikdaten und das komplette Protokoll löschen? Filamente und Bestände bleiben erhalten.",
     );
 
     if (!confirmed) {
@@ -2630,6 +2716,22 @@ export default function Home() {
           >
             <span>●</span>
             Profil & Sicherheit
+          </button>
+
+          <p className="nav-title">System</p>
+
+          <button
+            className={`nav-button ${
+              activePage === "settings"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              changePage("settings")
+            }
+          >
+            <span>⚙</span>
+            Einstellungen
           </button>
 
           <p className="nav-title">Daten</p>
@@ -4260,6 +4362,71 @@ export default function Home() {
           </>
         )}
 
+        {activePage === "settings" && (
+          <>
+            <header className="topbar">
+              <div>
+                <span className="welcome-label">
+                  System
+                </span>
+                <h1>Einstellungen</h1>
+                <p>
+                  Philamentix Hub verwalten und zurücksetzen
+                </p>
+              </div>
+
+              <div className="system-status">
+                <span className="status-dot" />
+                System bereit
+              </div>
+            </header>
+
+            <section className="settings-grid">
+              <article className="panel settings-card">
+                <div className="settings-card-heading">
+                  <div>
+                    <span className="settings-icon">
+                      ↺
+                    </span>
+
+                    <div>
+                      <h2>Statistiken zurücksetzen</h2>
+                      <p>
+                        Entfernt alle bisherigen Lagerbewegungen und startet die Statistik bei null.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="settings-warning">
+                  <strong>Achtung</strong>
+                  <p>
+                    Da die Statistiken aus dem Protokoll berechnet werden,
+                    wird dabei auch das vollständige Ein- und
+                    Auslagerungsprotokoll gelöscht. Filamente und aktuelle
+                    Bestände bleiben erhalten.
+                  </p>
+                </div>
+
+                <div className="settings-actions">
+                  <button
+                    className="danger-reset-button"
+                    type="button"
+                    disabled={isSaving || logs.length === 0}
+                    onClick={() => void clearLogs()}
+                  >
+                    {isSaving
+                      ? "Wird zurückgesetzt …"
+                      : logs.length === 0
+                        ? "Statistiken bereits leer"
+                        : "Statistiken zurücksetzen"}
+                  </button>
+                </div>
+              </article>
+            </section>
+          </>
+        )}
+
         {activePage === "profile" && (
           <>
             <header className="topbar">
@@ -4590,6 +4757,101 @@ export default function Home() {
 
             <form onSubmit={saveFilament}>
               <div className="form-grid">
+                {editingId === null && (
+                  <label className="full-width preset-field">
+                    Bambu-Lab-Preset auswählen
+                    <select
+                      value={selectedPresetEan}
+                      onChange={(event) =>
+                        applyFilamentPreset(
+                          event.target.value,
+                        )
+                      }
+                    >
+                      <option value="">
+                        Manuell eingeben …
+                      </option>
+
+                      <optgroup label="PETG HF">
+                        {FILAMENT_PRESETS.filter(
+                          (preset) =>
+                            preset.material === "PETG HF",
+                        ).map((preset) => (
+                          <option
+                            key={preset.ean}
+                            value={preset.ean}
+                          >
+                            {preset.color} · {preset.price} · EAN {preset.ean}
+                          </option>
+                        ))}
+                      </optgroup>
+
+                      <optgroup label="PETG Translucent">
+                        {FILAMENT_PRESETS.filter(
+                          (preset) =>
+                            preset.material ===
+                            "PETG Translucent",
+                        ).map((preset) => (
+                          <option
+                            key={preset.ean}
+                            value={preset.ean}
+                          >
+                            {preset.color} · {preset.price} · EAN {preset.ean}
+                          </option>
+                        ))}
+                      </optgroup>
+
+                      <optgroup label="PETG-CF">
+                        {FILAMENT_PRESETS.filter(
+                          (preset) =>
+                            preset.material === "PETG-CF",
+                        ).map((preset) => (
+                          <option
+                            key={preset.ean}
+                            value={preset.ean}
+                          >
+                            {preset.color} · {preset.price} · EAN {preset.ean}
+                          </option>
+                        ))}
+                      </optgroup>
+
+                      <optgroup label="PLA Basic · Refill">
+                        {FILAMENT_PRESETS.filter(
+                          (preset) =>
+                            preset.material === "PLA Basic" &&
+                            preset.variant === "Refill",
+                        ).map((preset) => (
+                          <option
+                            key={preset.ean}
+                            value={preset.ean}
+                          >
+                            {preset.color} · {preset.price} · EAN {preset.ean}
+                          </option>
+                        ))}
+                      </optgroup>
+
+                      <optgroup label="PLA Basic · Rolle">
+                        {FILAMENT_PRESETS.filter(
+                          (preset) =>
+                            preset.material === "PLA Basic" &&
+                            preset.variant === "Rolle",
+                        ).map((preset) => (
+                          <option
+                            key={preset.ean}
+                            value={preset.ean}
+                          >
+                            {preset.color} · {preset.price} · EAN {preset.ean}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+
+                    <small>
+                      Füllt EAN, Hersteller, Material, Farbe und Gewicht automatisch aus.
+                    </small>
+                  </label>
+                )}
+
                 <label>
                   Barcode *
                   <input
@@ -4634,7 +4896,11 @@ export default function Home() {
                     }
                   >
                     <option>PLA</option>
+                    <option>PLA Basic</option>
                     <option>PETG</option>
+                    <option>PETG HF</option>
+                    <option>PETG Translucent</option>
+                    <option>PETG-CF</option>
                     <option>ASA</option>
                     <option>ABS</option>
                     <option>TPU</option>
