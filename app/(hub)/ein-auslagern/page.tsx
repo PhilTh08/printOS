@@ -15,21 +15,37 @@ import {
 
 import styles from "./page.module.css";
 
-type DetectedBarcode = {
-  rawValue?: string;
+type ZxingResult = {
+  getText: () => string;
 };
 
-type BarcodeDetectorInstance = {
-  detect: (
-    source: CanvasImageSource,
-  ) => Promise<DetectedBarcode[]>;
+type ZxingScannerControls = {
+  stop: () => void;
+  switchTorch?: (enabled: boolean) => Promise<void>;
 };
 
-type BarcodeDetectorConstructor = {
-  new (options?: {
-    formats?: string[];
-  }): BarcodeDetectorInstance;
-  getSupportedFormats?: () => Promise<string[]>;
+type ZxingReader = {
+  possibleFormats: unknown[];
+  decodeFromConstraints: (
+    constraints: MediaStreamConstraints,
+    previewElement: HTMLVideoElement,
+    callback: (
+      result: ZxingResult | undefined,
+      error: unknown,
+      controls: ZxingScannerControls,
+    ) => void,
+  ) => Promise<ZxingScannerControls>;
+};
+
+type ZxingBrowserApi = {
+  BrowserMultiFormatReader: new () => ZxingReader;
+  BarcodeFormat: {
+    EAN_13: unknown;
+    EAN_8: unknown;
+    UPC_A: unknown;
+    UPC_E: unknown;
+    CODE_128: unknown;
+  };
 };
 
 type CameraTrackCapabilities =
@@ -37,10 +53,93 @@ type CameraTrackCapabilities =
     torch?: boolean;
   };
 
-type CameraTrackConstraintSet =
-  MediaTrackConstraintSet & {
-    torch?: boolean;
+let zxingLoaderPromise:
+  | Promise<ZxingBrowserApi>
+  | null = null;
+
+function loadZxingBrowser(): Promise<ZxingBrowserApi> {
+  const browserWindow = window as typeof window & {
+    ZXingBrowser?: ZxingBrowserApi;
   };
+
+  if (browserWindow.ZXingBrowser) {
+    return Promise.resolve(
+      browserWindow.ZXingBrowser,
+    );
+  }
+
+  if (zxingLoaderPromise) {
+    return zxingLoaderPromise;
+  }
+
+  zxingLoaderPromise = new Promise(
+    (resolve, reject) => {
+      const finishLoading = () => {
+        if (browserWindow.ZXingBrowser) {
+          resolve(browserWindow.ZXingBrowser);
+          return;
+        }
+
+        zxingLoaderPromise = null;
+        reject(
+          new Error(
+            "Der Safari-kompatible Barcode-Scanner konnte nicht geladen werden.",
+          ),
+        );
+      };
+
+      const failLoading = () => {
+        zxingLoaderPromise = null;
+        reject(
+          new Error(
+            "Der Barcode-Scanner konnte nicht geladen werden. Bitte prüfe die Internetverbindung und lade die Seite neu.",
+          ),
+        );
+      };
+
+      const existingScript =
+        document.getElementById(
+          "philamentix-zxing-browser",
+        ) as HTMLScriptElement | null;
+
+      if (existingScript) {
+        existingScript.addEventListener(
+          "load",
+          finishLoading,
+          { once: true },
+        );
+        existingScript.addEventListener(
+          "error",
+          failLoading,
+          { once: true },
+        );
+        return;
+      }
+
+      const script =
+        document.createElement("script");
+
+      script.id = "philamentix-zxing-browser";
+      script.src =
+        "/vendor/zxing-browser.min.js";
+      script.async = true;
+      script.addEventListener(
+        "load",
+        finishLoading,
+        { once: true },
+      );
+      script.addEventListener(
+        "error",
+        failLoading,
+        { once: true },
+      );
+
+      document.head.appendChild(script);
+    },
+  );
+
+  return zxingLoaderPromise;
+}
 
 export default function StoragePage() {
   const router = useRouter();
@@ -63,12 +162,10 @@ export default function StoragePage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const cameraStreamRef =
-    useRef<MediaStream | null>(null);
-  const barcodeDetectorRef =
-    useRef<BarcodeDetectorInstance | null>(null);
+  const scannerControlsRef =
+    useRef<ZxingScannerControls | null>(null);
   const cameraRunningRef = useRef(false);
-  const scanTimerRef = useRef<number | null>(null);
+  const scanLockedRef = useRef(false);
 
   const lastScanRef = useRef({
     barcode: "",
@@ -102,14 +199,13 @@ export default function StoragePage() {
   useEffect(() => {
     return () => {
       cameraRunningRef.current = false;
+      scanLockedRef.current = false;
+      scannerControlsRef.current?.stop();
+      scannerControlsRef.current = null;
 
-      if (scanTimerRef.current !== null) {
-        window.clearTimeout(scanTimerRef.current);
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
-
-      cameraStreamRef.current
-        ?.getTracks()
-        .forEach((track) => track.stop());
     };
   }, []);
 
@@ -121,18 +217,9 @@ export default function StoragePage() {
 
   function stopCamera() {
     cameraRunningRef.current = false;
-
-    if (scanTimerRef.current !== null) {
-      window.clearTimeout(scanTimerRef.current);
-      scanTimerRef.current = null;
-    }
-
-    cameraStreamRef.current
-      ?.getTracks()
-      .forEach((track) => track.stop());
-
-    cameraStreamRef.current = null;
-    barcodeDetectorRef.current = null;
+    scanLockedRef.current = false;
+    scannerControlsRef.current?.stop();
+    scannerControlsRef.current = null;
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
@@ -144,15 +231,11 @@ export default function StoragePage() {
   }
 
   async function startCamera() {
-    setCameraMessage("Kamera wird gestartet …");
+    setCameraMessage(
+      "Safari-kompatibler Scanner wird geladen …",
+    );
     setUnknownBarcode("");
     inputRef.current?.blur();
-
-    const BarcodeDetectorApi = (
-      window as typeof window & {
-        BarcodeDetector?: BarcodeDetectorConstructor;
-      }
-    ).BarcodeDetector;
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraMessage(
@@ -161,87 +244,123 @@ export default function StoragePage() {
       return;
     }
 
-    if (!BarcodeDetectorApi) {
-      setCameraMessage(
-        "Die automatische Barcode-Erkennung wird von diesem Browser nicht unterstützt. Nutze bitte die manuelle Eingabe.",
-      );
-      return;
-    }
-
     stopCamera();
 
     try {
-      const stream =
-        await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: {
-              ideal: "environment",
-            },
-            width: {
-              ideal: 1280,
-            },
-            height: {
-              ideal: 720,
-            },
-          },
-          audio: false,
-        });
-
-      cameraStreamRef.current = stream;
-
+      const zxing = await loadZxingBrowser();
       const video = videoRef.current;
 
       if (!video) {
-        stream
-          .getTracks()
-          .forEach((track) => track.stop());
         throw new Error(
           "Die Kameraansicht konnte nicht geladen werden.",
         );
       }
 
-      video.srcObject = stream;
-      await video.play();
+      const reader =
+        new zxing.BrowserMultiFormatReader();
 
-      const videoTrack = stream.getVideoTracks()[0];
-      const capabilities =
-        videoTrack?.getCapabilities() as
-          | CameraTrackCapabilities
-          | undefined;
-
-      setTorchSupported(Boolean(capabilities?.torch));
-
-      const preferredFormats = [
-        "ean_13",
-        "ean_8",
-        "upc_a",
-        "upc_e",
-        "code_128",
+      reader.possibleFormats = [
+        zxing.BarcodeFormat.EAN_13,
+        zxing.BarcodeFormat.EAN_8,
+        zxing.BarcodeFormat.UPC_A,
+        zxing.BarcodeFormat.UPC_E,
+        zxing.BarcodeFormat.CODE_128,
       ];
 
-      let formats = preferredFormats;
+      cameraRunningRef.current = true;
+      scanLockedRef.current = false;
 
-      if (BarcodeDetectorApi.getSupportedFormats) {
-        const supportedFormats =
-          await BarcodeDetectorApi.getSupportedFormats();
+      const controls =
+        await reader.decodeFromConstraints(
+          {
+            video: {
+              facingMode: {
+                ideal: "environment",
+              },
+              width: {
+                ideal: 1920,
+              },
+              height: {
+                ideal: 1080,
+              },
+            },
+            audio: false,
+          },
+          video,
+          (
+            result,
+            _error,
+            activeControls,
+          ) => {
+            if (
+              !cameraRunningRef.current ||
+              scanLockedRef.current ||
+              !result
+            ) {
+              return;
+            }
 
-        formats = preferredFormats.filter((format) =>
-          supportedFormats.includes(format),
+            const cleanedBarcode =
+              normalizeBarcode(
+                result.getText(),
+              );
+
+            if (cleanedBarcode.length < 8) {
+              return;
+            }
+
+            scanLockedRef.current = true;
+            cameraRunningRef.current = false;
+
+            activeControls.stop();
+            scannerControlsRef.current = null;
+
+            if (videoRef.current) {
+              videoRef.current.srcObject = null;
+            }
+
+            setCameraActive(false);
+            setTorchSupported(false);
+            setTorchOn(false);
+            setCameraMessage(
+              `Barcode ${cleanedBarcode} erkannt.`,
+            );
+
+            void processBarcode(
+              cleanedBarcode,
+              false,
+            );
+          },
         );
+
+      if (!cameraRunningRef.current) {
+        controls.stop();
+        return;
       }
 
-      barcodeDetectorRef.current =
-        formats.length > 0
-          ? new BarcodeDetectorApi({ formats })
-          : new BarcodeDetectorApi();
-
-      cameraRunningRef.current = true;
+      scannerControlsRef.current = controls;
       setCameraActive(true);
       setCameraMessage(
         "EAN-Code ruhig und gut beleuchtet in den Rahmen halten.",
       );
 
-      scheduleCameraScan();
+      const stream =
+        video.srcObject instanceof MediaStream
+          ? video.srcObject
+          : null;
+      const videoTrack =
+        stream?.getVideoTracks()[0];
+      const capabilities =
+        videoTrack?.getCapabilities() as
+          | CameraTrackCapabilities
+          | undefined;
+
+      setTorchSupported(
+        Boolean(
+          capabilities?.torch &&
+            controls.switchTorch,
+        ),
+      );
     } catch (caughtError) {
       stopCamera();
 
@@ -255,7 +374,14 @@ export default function StoragePage() {
         errorName === "PermissionDeniedError"
       ) {
         setCameraMessage(
-          "Kamerazugriff wurde abgelehnt. Erlaube die Kamera in den Browser-Einstellungen oder nutze die manuelle Eingabe.",
+          "Kamerazugriff wurde abgelehnt. Erlaube die Kamera unter Einstellungen → Safari → Kamera und lade die Seite neu.",
+        );
+        return;
+      }
+
+      if (errorName === "NotReadableError") {
+        setCameraMessage(
+          "Die Kamera wird bereits von einer anderen App verwendet. Schließe die andere App und versuche es erneut.",
         );
         return;
       }
@@ -268,88 +394,27 @@ export default function StoragePage() {
     }
   }
 
-  function scheduleCameraScan() {
-    if (!cameraRunningRef.current) {
-      return;
-    }
-
-    scanTimerRef.current = window.setTimeout(() => {
-      void scanCameraFrame();
-    }, 170);
-  }
-
-  async function scanCameraFrame() {
-    const detector = barcodeDetectorRef.current;
-    const video = videoRef.current;
+  async function toggleTorch() {
+    const controls =
+      scannerControlsRef.current;
 
     if (
-      !cameraRunningRef.current ||
-      !detector ||
-      !video
+      !controls?.switchTorch ||
+      !torchSupported
     ) {
-      return;
-    }
-
-    try {
-      if (
-        video.readyState >=
-        HTMLMediaElement.HAVE_CURRENT_DATA
-      ) {
-        const detectedCodes =
-          await detector.detect(video);
-        const detectedValue = detectedCodes.find(
-          (entry) =>
-            normalizeBarcode(entry.rawValue ?? "")
-              .length >= 8,
-        )?.rawValue;
-
-        if (detectedValue) {
-          const cleanedBarcode =
-            normalizeBarcode(detectedValue);
-
-          setCameraMessage(
-            `Barcode ${cleanedBarcode} erkannt.`,
-          );
-          stopCamera();
-          await processBarcode(
-            cleanedBarcode,
-            false,
-          );
-          return;
-        }
-      }
-    } catch {
-      setCameraMessage(
-        "Barcode wird gesucht … Halte die Kamera etwas ruhiger oder verändere den Abstand.",
-      );
-    }
-
-    scheduleCameraScan();
-  }
-
-  async function toggleTorch() {
-    const videoTrack =
-      cameraStreamRef.current?.getVideoTracks()[0];
-
-    if (!videoTrack || !torchSupported) {
       return;
     }
 
     const nextTorchState = !torchOn;
 
     try {
-      await videoTrack.applyConstraints({
-        advanced: [
-          {
-            torch: nextTorchState,
-          } as CameraTrackConstraintSet,
-        ],
-      });
-
+      await controls.switchTorch(
+        nextTorchState,
+      );
       setTorchOn(nextTorchState);
     } catch {
       setCameraMessage(
-        "Die Taschenlampe konnte nicht geschaltet werden.",
+        "Die Taschenlampe wird von Safari auf diesem Gerät nicht freigegeben.",
       );
     }
   }

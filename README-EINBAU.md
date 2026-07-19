@@ -72,3 +72,20 @@ vorher eine Sicherheitsabfrage an.
 - Unbekannte EAN öffnet weiterhin das persönliche Formular zum Anlegen.
 - Kamera wird beim Verlassen der Seite automatisch beendet.
 - Manuelle Barcode-Eingabe bleibt als Fallback sichtbar.
+
+
+## Safari-Korrektur in V6
+
+Safari auf iPhone stellt die experimentelle `BarcodeDetector`-API
+standardmäßig nicht bereit. V6 verwendet deshalb einen lokal
+mitgelieferten ZXing-Scanner als Safari-kompatible Erkennung.
+
+Es muss kein zusätzliches npm-Paket installiert werden. Die benötigte
+Browserdatei liegt unter:
+
+`public/vendor/zxing-browser.min.js`
+
+Nach dem Einbau die Website neu deployen. Auf dem iPhone anschließend
+die alte PWA vollständig schließen und erneut öffnen. Bei einer
+installierten PWA kann es zusätzlich helfen, sie einmal vom Home-
+Bildschirm zu entfernen und nach dem Deployment neu zu installieren.
