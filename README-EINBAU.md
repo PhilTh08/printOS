@@ -61,3 +61,14 @@ vorher eine Sicherheitsabfrage an.
 - Danach wird automatisch die individuelle Filamentseite geöffnet.
 - Das Bewegungsdiagramm baut sich beim Öffnen der Statistik von unten nach oben auf.
 - Beim Wechsel des Statistikzeitraums wird die Diagrammanimation erneut abgespielt.
+
+
+## Ergänzungen in V5
+
+- Kamera-Barcodescanner nur in der mobilen Ansicht.
+- Desktop zeigt weiterhin ausschließlich die vorhandene manuelle Scanner-Eingabe.
+- Rückkamera mit automatischer EAN-Erkennung.
+- Taschenlampen-Schalter, wenn das Gerät ihn unterstützt.
+- Unbekannte EAN öffnet weiterhin das persönliche Formular zum Anlegen.
+- Kamera wird beim Verlassen der Seite automatisch beendet.
+- Manuelle Barcode-Eingabe bleibt als Fallback sichtbar.

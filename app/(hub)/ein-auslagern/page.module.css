@@ -1,3 +1,259 @@
 .page {
   min-width: 0;
 }
+
+
+.mobileCameraOnly {
+  display: none;
+}
+
+@keyframes mobileScanLine {
+  0% {
+    top: 18%;
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 79%;
+    opacity: 0.45;
+  }
+}
+
+@media (max-width: 900px) and (pointer: coarse) {
+  .mobileCameraOnly {
+    display: block;
+    margin-bottom: 14px;
+    padding: 14px;
+    background:
+      radial-gradient(
+        circle at 50% 0%,
+        rgba(245, 166, 35, 0.08),
+        transparent 58%
+      ),
+      #0c1215;
+    border: 1px solid #2d3940;
+    border-radius: 10px;
+  }
+
+  .mobileCameraHeading {
+    display: flex;
+    margin-bottom: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .mobileCameraHeading span {
+    display: block;
+    color: var(--accent);
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .mobileCameraHeading h3 {
+    margin: 4px 0 0;
+    font-size: 17px;
+  }
+
+  .cameraState {
+    padding: 5px 8px;
+    color: var(--muted) !important;
+    background: #151d21;
+    border: 1px solid #334047;
+    border-radius: 999px;
+    font-size: 9px !important;
+  }
+
+  .cameraStateActive {
+    color: #7ff0b2 !important;
+    background: #123324;
+    border-color: #2b6b4c;
+  }
+
+  .cameraViewport {
+    position: relative;
+    min-height: 230px;
+    overflow: hidden;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.025),
+        transparent
+      ),
+      #05090b;
+    border: 1px solid #36444c;
+    border-radius: 10px;
+  }
+
+  .cameraViewportActive {
+    border-color: rgba(245, 166, 35, 0.55);
+    box-shadow:
+      0 0 0 3px rgba(245, 166, 35, 0.08),
+      inset 0 0 45px rgba(0, 0, 0, 0.28);
+  }
+
+  .cameraVideo {
+    display: block;
+    width: 100%;
+    min-height: 230px;
+    max-height: 58vh;
+    object-fit: cover;
+  }
+
+  .cameraPlaceholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    padding: 28px;
+    place-content: center;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .cameraPlaceholder > span {
+    color: var(--accent);
+    font-size: 36px;
+  }
+
+  .cameraPlaceholder p {
+    max-width: 260px;
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .cameraScanFrame {
+    position: absolute;
+    top: 25%;
+    right: 8%;
+    bottom: 25%;
+    left: 8%;
+    border: 2px solid rgba(245, 166, 35, 0.82);
+    border-radius: 9px;
+    box-shadow:
+      0 0 0 999px rgba(0, 0, 0, 0.23),
+      0 0 22px rgba(245, 166, 35, 0.22);
+    pointer-events: none;
+  }
+
+  .cameraScanFrame::before,
+  .cameraScanFrame::after {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    content: "";
+  }
+
+  .cameraScanFrame::before {
+    top: -3px;
+    left: -3px;
+    border-top: 4px solid var(--accent);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px 0 0;
+  }
+
+  .cameraScanFrame::after {
+    right: -3px;
+    bottom: -3px;
+    border-right: 4px solid var(--accent);
+    border-bottom: 4px solid var(--accent);
+    border-radius: 0 0 8px;
+  }
+
+  .cameraScanLine {
+    position: absolute;
+    right: 11%;
+    left: 11%;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      #ffd477,
+      var(--accent),
+      #ffd477,
+      transparent
+    );
+    box-shadow: 0 0 13px rgba(245, 166, 35, 0.8);
+    animation: mobileScanLine 1.65s ease-in-out
+      infinite alternate;
+    pointer-events: none;
+  }
+
+  .cameraMessage {
+    min-height: 38px;
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .cameraActions {
+    display: grid;
+    grid-template-columns: repeat(
+      2,
+      minmax(0, 1fr)
+    );
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .cameraActions button {
+    min-height: 43px;
+    padding: 0 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 850;
+  }
+
+  .cameraStartButton {
+    grid-column: 1 / -1;
+    color: #17120a;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+  }
+
+  .cameraSecondaryButton {
+    color: #dfe8eb;
+    background: #151d21;
+    border: 1px solid #3a474e;
+  }
+
+  .cameraStopButton {
+    color: #ffabab;
+    background: #32191c;
+    border: 1px solid #6f3339;
+  }
+
+  .manualDivider {
+    display: flex;
+    margin: 15px 0 0;
+    align-items: center;
+    gap: 9px;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .manualDivider::before,
+  .manualDivider::after {
+    height: 1px;
+    flex: 1;
+    content: "";
+    background: #2d3940;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cameraScanLine {
+    animation: none;
+    top: 50%;
+  }
+}
