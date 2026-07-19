@@ -54,7 +54,8 @@
   border-bottom: 1px solid var(--border);
 }
 
-.editorHeader span {
+.editorHeader span,
+.libraryHeader > span {
   display: block;
   color: var(--accent);
   font-size: 8px;
@@ -63,12 +64,14 @@
   text-transform: uppercase;
 }
 
-.editorHeader h2 {
+.editorHeader h2,
+.libraryHeader h2 {
   margin: 5px 0 0;
   font-size: 17px;
 }
 
-.editorHeader p {
+.editorHeader p,
+.libraryHeader p {
   margin: 5px 0 0;
   color: var(--muted);
   font-size: 10px;
@@ -95,40 +98,50 @@
 .editorRow {
   display: grid;
   grid-template-columns:
-    100px minmax(160px, 1fr)
-    minmax(180px, 0.55fr) auto;
+    auto minmax(190px, 1fr)
+    minmax(170px, 0.45fr) auto;
   gap: 10px;
   align-items: center;
-  min-height: 53px;
-  padding: 8px;
+  min-height: 62px;
+  padding: 9px;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.055);
   border-radius: 8px;
 }
 
-.editorRow > strong {
-  font-size: 11px;
+.editorIcon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.09);
+  border: 1px solid rgba(245, 166, 35, 0.24);
+  border-radius: 7px;
+  font-size: 16px;
+  font-weight: 950;
 }
 
-.visibilityButton,
-.visibilityActive {
-  min-height: 33px;
-  cursor: pointer;
-  border-radius: 6px;
-  font-size: 8px;
-  font-weight: 900;
+.editorWidgetText {
+  min-width: 0;
 }
 
-.visibilityButton {
+.editorWidgetText strong,
+.editorWidgetText small {
+  display: block;
+}
+
+.editorWidgetText strong {
+  font-size: 10px;
+}
+
+.editorWidgetText small {
+  margin-top: 3px;
+  overflow: hidden;
   color: var(--muted);
-  background: #10171a;
-  border: 1px solid #364249;
-}
-
-.visibilityActive {
-  color: #07120c;
-  background: var(--green);
-  border: 1px solid var(--green);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editorRow label {
@@ -146,7 +159,7 @@
 }
 
 .editorRow select {
-  min-height: 33px;
+  min-height: 34px;
   padding: 0 8px;
   color: var(--text);
   background: #091115;
@@ -155,35 +168,122 @@
   font-size: 9px;
 }
 
-.orderButtons {
+.editorActions {
   display: flex;
   gap: 5px;
 }
 
-.orderButtons button {
-  width: 34px;
+.editorActions button {
+  min-width: 34px;
   height: 34px;
-  padding: 0;
+  padding: 0 9px;
   cursor: pointer;
   color: var(--accent);
   background: rgba(245, 166, 35, 0.07);
   border: 1px solid rgba(245, 166, 35, 0.28);
   border-radius: 6px;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 900;
 }
 
-.orderButtons button:disabled {
+.editorActions button:disabled {
   color: #465158;
   cursor: not-allowed;
   background: transparent;
   border-color: #303a40;
 }
 
+.editorActions .removeButton {
+  color: #ffaaaa;
+  background: rgba(255, 100, 100, 0.07);
+  border-color: rgba(255, 100, 100, 0.28);
+  font-size: 8px;
+}
+
+.libraryHeader {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+}
+
+.widgetLibrary {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.widgetLibrary article {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  padding: 11px;
+  background: #0c1418;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 8px;
+}
+
+.widgetLibrary article > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.08);
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  border-radius: 7px;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.widgetLibrary article > div {
+  min-width: 0;
+}
+
+.widgetLibrary strong {
+  display: block;
+  font-size: 10px;
+}
+
+.widgetLibrary p {
+  min-height: 31px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.widgetLibrary button {
+  grid-column: 1 / -1;
+  min-height: 34px;
+  color: #171109;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 900;
+}
+
 .storageNote {
   margin: 11px 0 0;
   color: #748188;
   font-size: 8px;
+}
+
+.emptyEditor,
+.emptyLibrary {
+  margin-top: 12px;
+  padding: 18px;
+  color: var(--muted);
+  background: #0b1317;
+  border: 1px dashed #3a464d;
+  border-radius: 8px;
+  font-size: 9px;
+  text-align: center;
 }
 
 .dashboardGrid {
@@ -423,7 +523,8 @@
 .healthContent {
   display: grid;
   grid-template-columns:
-    minmax(125px, 0.7fr) minmax(170px, 1fr);
+    minmax(125px, 0.7fr)
+    minmax(170px, 1fr);
   gap: 18px;
   align-items: center;
   min-height: 210px;
@@ -516,7 +617,9 @@
 }
 
 .reorderList,
-.activityList {
+.activityList,
+.locationList,
+.searchResults {
   display: grid;
   gap: 7px;
 }
@@ -656,6 +759,347 @@
   white-space: nowrap;
 }
 
+.quickStock {
+  display: grid;
+  gap: 12px;
+}
+
+.quickStock label {
+  display: grid;
+  gap: 6px;
+}
+
+.quickStock label > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.quickStock select,
+.searchWidget input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--text);
+  background: #091115;
+  border: 1px solid #364249;
+  border-radius: 7px;
+  outline: none;
+}
+
+.quickStock select:focus,
+.searchWidget input:focus {
+  border-color: rgba(245, 166, 35, 0.65);
+  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.08);
+}
+
+.quickStockCurrent {
+  display: grid;
+  grid-template-columns:
+    minmax(110px, 0.45fr) minmax(180px, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.quickStockCurrent > div:first-child {
+  padding: 12px;
+  background: #0c1418;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.quickStockCurrent span,
+.quickStockCurrent strong,
+.quickStockCurrent small {
+  display: block;
+}
+
+.quickStockCurrent span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.quickStockCurrent strong {
+  margin-top: 7px;
+  font-size: 27px;
+}
+
+.quickStockCurrent small {
+  margin-top: 5px;
+  color: #77858b;
+  font-size: 8px;
+}
+
+.quickStockButtons {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quickStockButtons button {
+  min-height: 54px;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.quickStockButtons button:first-child {
+  color: #ffb0b0;
+  background: rgba(255, 100, 100, 0.08);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+}
+
+.quickStockButtons button:last-child {
+  color: #07120c;
+  background: var(--green);
+  border: 1px solid var(--green);
+}
+
+.quickStockButtons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.widgetSuccess,
+.widgetError {
+  margin: 0;
+  padding: 9px;
+  border-radius: 7px;
+  font-size: 8px;
+}
+
+.widgetSuccess {
+  color: #a9edc2;
+  background: rgba(57, 217, 138, 0.07);
+  border: 1px solid rgba(57, 217, 138, 0.23);
+}
+
+.widgetError {
+  color: #ffb0b0;
+  background: rgba(255, 100, 100, 0.07);
+  border: 1px solid rgba(255, 100, 100, 0.23);
+}
+
+.searchWidget {
+  display: grid;
+  gap: 10px;
+}
+
+.searchPlaceholder {
+  display: grid;
+  min-height: 130px;
+  padding: 18px;
+  place-content: center;
+  color: var(--muted);
+  background: #0c1418;
+  border: 1px dashed #354148;
+  border-radius: 8px;
+  font-size: 9px;
+  text-align: center;
+}
+
+.searchResults a {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  min-height: 48px;
+  padding: 7px 9px;
+  color: var(--text);
+  background: #0c1418;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 7px;
+  text-decoration: none;
+}
+
+.searchResults a > div {
+  min-width: 0;
+}
+
+.searchResults strong,
+.searchResults small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchResults strong {
+  font-size: 9px;
+}
+
+.searchResults small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.searchResults b {
+  color: var(--accent);
+}
+
+.searchStockLow,
+.searchStockOk {
+  display: grid;
+  min-width: 29px;
+  height: 29px;
+  padding: 0 6px;
+  place-items: center;
+  color: #110b0b;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.searchStockLow {
+  background: var(--red);
+}
+
+.searchStockOk {
+  background: var(--green);
+}
+
+.balanceGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.balanceGrid > div {
+  padding: 12px;
+  background: #0c1418;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 8px;
+}
+
+.balanceGrid span,
+.balanceGrid strong {
+  display: block;
+}
+
+.balanceGrid span {
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.balanceGrid strong {
+  margin-top: 8px;
+  font-size: 21px;
+}
+
+.balanceIn strong,
+.balanceNetPositive strong {
+  color: var(--green);
+}
+
+.balanceOut strong,
+.balanceNetNegative strong {
+  color: var(--red);
+}
+
+.balanceBar {
+  margin-top: 13px;
+}
+
+.balanceBar > div {
+  height: 7px;
+  overflow: hidden;
+  background: rgba(255, 100, 100, 0.48);
+  border-radius: 999px;
+}
+
+.balanceBar > div > span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  border-radius: 999px;
+  transition: width 250ms ease;
+}
+
+.balanceBar small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.balanceAction {
+  display: flex;
+  min-height: 37px;
+  margin-top: 12px;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.07);
+  border: 1px solid rgba(245, 166, 35, 0.25);
+  border-radius: 7px;
+  font-size: 8px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.locationList > div {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  min-height: 48px;
+  padding: 7px 9px;
+  background: #0c1418;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 7px;
+}
+
+.locationList > div > span {
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.locationList > div > div {
+  min-width: 0;
+}
+
+.locationList strong,
+.locationList small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locationList strong {
+  font-size: 9px;
+}
+
+.locationList small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.locationList b {
+  color: var(--text);
+  font-size: 12px;
+  text-align: right;
+}
+
+.locationList b small {
+  margin-top: 2px;
+  font-size: 7px;
+  font-weight: 500;
+}
+
 .allGood,
 .emptyState,
 .noWidgets {
@@ -732,10 +1176,23 @@
       repeat(2, minmax(0, 1fr));
   }
 
+  .widgetLibrary {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
   .editorRow {
     grid-template-columns:
-      100px minmax(140px, 1fr)
-      minmax(170px, 0.7fr) auto;
+      auto minmax(170px, 1fr) auto;
+  }
+
+  .editorRow label {
+    grid-column: 2;
+  }
+
+  .editorActions {
+    grid-column: 3;
+    grid-row: 1 / span 2;
   }
 }
 
@@ -750,13 +1207,8 @@
       repeat(2, minmax(0, 1fr));
   }
 
-  .editorRow {
-    grid-template-columns:
-      100px minmax(0, 1fr) auto;
-  }
-
-  .editorRow label {
-    grid-column: 1 / -1;
+  .widgetLibrary {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -784,36 +1236,35 @@
     grid-template-columns: 1fr;
   }
 
-  .healthContent {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 470px) {
-  .summaryGrid {
+  .healthContent,
+  .quickStockCurrent {
     grid-template-columns: 1fr;
   }
 
   .editorRow {
-    grid-template-columns: 1fr auto;
-  }
-
-  .editorRow > strong {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  .visibilityButton,
-  .visibilityActive {
-    grid-column: 1;
-  }
-
-  .orderButtons {
-    grid-column: 2;
+    grid-template-columns:
+      auto minmax(0, 1fr);
   }
 
   .editorRow label {
     grid-column: 1 / -1;
+  }
+
+  .editorActions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .editorActions .removeButton {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 470px) {
+  .summaryGrid,
+  .balanceGrid,
+  .quickStockButtons {
+    grid-template-columns: 1fr;
   }
 
   .activityRow {
@@ -824,11 +1275,16 @@
   .activityRow time {
     grid-column: 2;
   }
+
+  .widgetHeading {
+    flex-direction: column;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .quickAction,
-  .quickActionPrimary {
+  .quickActionPrimary,
+  .balanceBar > div > span {
     transition: none;
   }
 }

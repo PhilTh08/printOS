@@ -11,6 +11,7 @@ import { useHub } from "@/components/philamentix/hub-provider";
 import type {
   Filament,
   LogEntry,
+  StockMode,
 } from "@/components/philamentix/types";
 
 import styles from "./page.module.css";
@@ -20,64 +21,152 @@ type WidgetId =
   | "inventory-summary"
   | "stock-health"
   | "urgent-reorders"
-  | "recent-activity";
+  | "recent-activity"
+  | "quick-stock"
+  | "filament-search"
+  | "today-balance"
+  | "storage-locations";
 
 type WidgetSize = "half" | "full";
 
-type WidgetSetting = {
+type ActiveWidget = {
   id: WidgetId;
-  visible: boolean;
   size: WidgetSize;
 };
 
-const DEFAULT_WIDGETS: WidgetSetting[] = [
+type WidgetDefinition = {
+  id: WidgetId;
+  label: string;
+  description: string;
+  icon: string;
+  defaultSize: WidgetSize;
+};
+
+const WIDGET_CATALOG: WidgetDefinition[] = [
   {
     id: "quick-actions",
-    visible: true,
+    label: "Schnellzugriffe",
+    description:
+      "Scanner, neues Filament, Nachbestellen und Statistiken.",
+    icon: "⌁",
+    defaultSize: "full",
+  },
+  {
+    id: "inventory-summary",
+    label: "Lagerübersicht",
+    description:
+      "Rollen, Gesamtgewicht, kritische Bestände und heutige Bewegungen.",
+    icon: "▦",
+    defaultSize: "full",
+  },
+  {
+    id: "urgent-reorders",
+    label: "Dringend nachbestellen",
+    description:
+      "Zeigt die drei wichtigsten offenen Nachbestellungen.",
+    icon: "!",
+    defaultSize: "half",
+  },
+  {
+    id: "recent-activity",
+    label: "Letzte Bewegungen",
+    description:
+      "Die neuesten Ein- und Auslagerungen im Überblick.",
+    icon: "≡",
+    defaultSize: "half",
+  },
+  {
+    id: "stock-health",
+    label: "Lagergesundheit",
+    description:
+      "Prozentuale Übersicht stabiler und kritischer Filamenttypen.",
+    icon: "◉",
+    defaultSize: "half",
+  },
+  {
+    id: "quick-stock",
+    label: "Schnellbestand",
+    description:
+      "Ein Filament auswählen und den Bestand direkt um eine Rolle ändern.",
+    icon: "±",
+    defaultSize: "half",
+  },
+  {
+    id: "filament-search",
+    label: "Filamentsuche",
+    description:
+      "Filamente sofort nach Farbe, Material, Hersteller oder Barcode finden.",
+    icon: "⌕",
+    defaultSize: "half",
+  },
+  {
+    id: "today-balance",
+    label: "Tagesbilanz",
+    description:
+      "Heutige Einlagerungen, Auslagerungen und Nettoveränderung.",
+    icon: "↕",
+    defaultSize: "half",
+  },
+  {
+    id: "storage-locations",
+    label: "Lagerplätze",
+    description:
+      "Die wichtigsten Lagerplätze mit Rollen- und Typanzahl.",
+    icon: "▤",
+    defaultSize: "half",
+  },
+];
+
+const DEFAULT_ACTIVE_WIDGETS: ActiveWidget[] = [
+  {
+    id: "quick-actions",
     size: "full",
   },
   {
     id: "inventory-summary",
-    visible: true,
     size: "full",
   },
   {
     id: "urgent-reorders",
-    visible: true,
     size: "half",
   },
   {
     id: "recent-activity",
-    visible: true,
-    size: "half",
-  },
-  {
-    id: "stock-health",
-    visible: false,
     size: "half",
   },
 ];
 
-const WIDGET_LABELS: Record<WidgetId, string> = {
-  "quick-actions": "Schnellzugriffe",
-  "inventory-summary": "Lagerübersicht",
-  "stock-health": "Lagergesundheit",
-  "urgent-reorders": "Dringend nachbestellen",
-  "recent-activity": "Letzte Bewegungen",
-};
+function isWidgetId(value: unknown): value is WidgetId {
+  return WIDGET_CATALOG.some(
+    (widget) => widget.id === value,
+  );
+}
 
-function normalizeWidgetSettings(
-  value: unknown,
-): WidgetSetting[] {
-  if (!Array.isArray(value)) {
-    return DEFAULT_WIDGETS;
+function getWidgetDefinition(
+  id: WidgetId,
+): WidgetDefinition {
+  const definition = WIDGET_CATALOG.find(
+    (widget) => widget.id === id,
+  );
+
+  if (!definition) {
+    throw new Error(
+      `Unbekanntes Dashboard-Widget: ${id}`,
+    );
   }
 
-  const validIds = new Set<WidgetId>(
-    DEFAULT_WIDGETS.map((widget) => widget.id),
-  );
+  return definition;
+}
+
+function normalizeActiveWidgets(
+  value: unknown,
+): ActiveWidget[] {
+  if (!Array.isArray(value)) {
+    return DEFAULT_ACTIVE_WIDGETS;
+  }
+
   const seenIds = new Set<WidgetId>();
-  const normalized: WidgetSetting[] = [];
+  const normalized: ActiveWidget[] = [];
 
   for (const entry of value) {
     if (
@@ -87,12 +176,16 @@ function normalizeWidgetSettings(
       continue;
     }
 
-    const candidate = entry as Partial<WidgetSetting>;
+    const candidate = entry as Partial<
+      ActiveWidget & {
+        visible: boolean;
+      }
+    >;
 
     if (
-      !candidate.id ||
-      !validIds.has(candidate.id) ||
-      seenIds.has(candidate.id)
+      !isWidgetId(candidate.id) ||
+      seenIds.has(candidate.id) ||
+      candidate.visible === false
     ) {
       continue;
     }
@@ -100,18 +193,11 @@ function normalizeWidgetSettings(
     seenIds.add(candidate.id);
     normalized.push({
       id: candidate.id,
-      visible: candidate.visible !== false,
       size:
         candidate.size === "full"
           ? "full"
           : "half",
     });
-  }
-
-  for (const defaultWidget of DEFAULT_WIDGETS) {
-    if (!seenIds.has(defaultWidget.id)) {
-      normalized.push(defaultWidget);
-    }
   }
 
   return normalized;
@@ -179,13 +265,31 @@ export default function DashboardPage() {
     logs,
     displayName,
     user,
+    busy,
+    adjustStock,
   } = useHub();
 
   const [editMode, setEditMode] = useState(false);
   const [settingsLoaded, setSettingsLoaded] =
     useState(false);
-  const [widgets, setWidgets] =
-    useState<WidgetSetting[]>(DEFAULT_WIDGETS);
+  const [activeWidgets, setActiveWidgets] =
+    useState<ActiveWidget[]>(
+      DEFAULT_ACTIVE_WIDGETS,
+    );
+  const [
+    selectedQuickStockId,
+    setSelectedQuickStockId,
+  ] = useState<number | null>(null);
+  const [
+    quickStockMessage,
+    setQuickStockMessage,
+  ] = useState("");
+  const [
+    quickStockError,
+    setQuickStockError,
+  ] = useState("");
+  const [filamentSearch, setFilamentSearch] =
+    useState("");
 
   const storageKey = `philamentix-dashboard-widgets-${
     user?.id ?? "guest"
@@ -199,16 +303,18 @@ export default function DashboardPage() {
         window.localStorage.getItem(storageKey);
 
       if (!savedValue) {
-        setWidgets(DEFAULT_WIDGETS);
+        setActiveWidgets(
+          DEFAULT_ACTIVE_WIDGETS,
+        );
       } else {
-        setWidgets(
-          normalizeWidgetSettings(
+        setActiveWidgets(
+          normalizeActiveWidgets(
             JSON.parse(savedValue),
           ),
         );
       }
     } catch {
-      setWidgets(DEFAULT_WIDGETS);
+      setActiveWidgets(DEFAULT_ACTIVE_WIDGETS);
     }
 
     setSettingsLoaded(true);
@@ -221,9 +327,33 @@ export default function DashboardPage() {
 
     window.localStorage.setItem(
       storageKey,
-      JSON.stringify(widgets),
+      JSON.stringify(activeWidgets),
     );
-  }, [settingsLoaded, storageKey, widgets]);
+  }, [
+    activeWidgets,
+    settingsLoaded,
+    storageKey,
+  ]);
+
+  useEffect(() => {
+    if (filaments.length === 0) {
+      setSelectedQuickStockId(null);
+      return;
+    }
+
+    const selectionStillExists =
+      selectedQuickStockId !== null &&
+      filaments.some(
+        (filament) =>
+          filament.id === selectedQuickStockId,
+      );
+
+    if (!selectionStillExists) {
+      setSelectedQuickStockId(
+        filaments[0].id,
+      );
+    }
+  }, [filaments, selectedQuickStockId]);
 
   const totalRolls = filaments.reduce(
     (sum, filament) => sum + filament.stock,
@@ -281,22 +411,109 @@ export default function DashboardPage() {
   const todaysOut = todaysLogs.filter(
     (entry) => entry.action === "out",
   ).length;
+  const todayNet = todaysIn - todaysOut;
   const recentLogs = logs.slice(0, 6);
 
-  const visibleWidgets = widgets.filter(
-    (widget) => widget.visible,
-  );
+  const selectedQuickStock =
+    filaments.find(
+      (filament) =>
+        filament.id === selectedQuickStockId,
+    ) ??
+    filaments[0] ??
+    null;
 
-  function updateWidget(
+  const searchResults = useMemo(() => {
+    const query =
+      filamentSearch.trim().toLowerCase();
+
+    if (!query) {
+      return [];
+    }
+
+    return filaments
+      .filter((filament) =>
+        [
+          filament.id,
+          filament.barcode,
+          filament.manufacturer,
+          filament.material,
+          filament.color,
+          filament.location,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+      )
+      .slice(0, 6);
+  }, [filamentSearch, filaments]);
+
+  const storageLocations = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        location: string;
+        rolls: number;
+        types: number;
+        critical: number;
+      }
+    >();
+
+    for (const filament of filaments) {
+      const location =
+        filament.location.trim() ||
+        "Ohne Lagerplatz";
+      const current = groups.get(location) ?? {
+        location,
+        rolls: 0,
+        types: 0,
+        critical: 0,
+      };
+
+      current.rolls += filament.stock;
+      current.types += 1;
+
+      if (
+        filament.stock <=
+        filament.minimumStock
+      ) {
+        current.critical += 1;
+      }
+
+      groups.set(location, current);
+    }
+
+    return [...groups.values()]
+      .sort((first, second) => {
+        if (first.rolls !== second.rolls) {
+          return second.rolls - first.rolls;
+        }
+
+        return first.location.localeCompare(
+          second.location,
+          "de",
+        );
+      })
+      .slice(0, 6);
+  }, [filaments]);
+
+  const activeIds = new Set(
+    activeWidgets.map((widget) => widget.id),
+  );
+  const availableWidgets =
+    WIDGET_CATALOG.filter(
+      (widget) => !activeIds.has(widget.id),
+    );
+
+  function updateWidgetSize(
     id: WidgetId,
-    update: Partial<WidgetSetting>,
+    size: WidgetSize,
   ) {
-    setWidgets((current) =>
+    setActiveWidgets((current) =>
       current.map((widget) =>
         widget.id === id
           ? {
               ...widget,
-              ...update,
+              size,
             }
           : widget,
       ),
@@ -307,7 +524,7 @@ export default function DashboardPage() {
     id: WidgetId,
     direction: -1 | 1,
   ) {
-    setWidgets((current) => {
+    setActiveWidgets((current) => {
       const currentIndex = current.findIndex(
         (widget) => widget.id === id,
       );
@@ -333,6 +550,37 @@ export default function DashboardPage() {
     });
   }
 
+  function removeWidget(id: WidgetId) {
+    setActiveWidgets((current) =>
+      current.filter(
+        (widget) => widget.id !== id,
+      ),
+    );
+  }
+
+  function addWidget(id: WidgetId) {
+    setActiveWidgets((current) => {
+      if (
+        current.some(
+          (widget) => widget.id === id,
+        )
+      ) {
+        return current;
+      }
+
+      const definition =
+        getWidgetDefinition(id);
+
+      return [
+        ...current,
+        {
+          id,
+          size: definition.defaultSize,
+        },
+      ];
+    });
+  }
+
   function resetWidgets() {
     const confirmed = window.confirm(
       "Dashboard auf die Standardansicht zurücksetzen?",
@@ -342,7 +590,36 @@ export default function DashboardPage() {
       return;
     }
 
-    setWidgets(DEFAULT_WIDGETS);
+    setActiveWidgets(DEFAULT_ACTIVE_WIDGETS);
+  }
+
+  async function handleQuickStock(
+    mode: StockMode,
+  ) {
+    if (!selectedQuickStock) {
+      return;
+    }
+
+    setQuickStockMessage("");
+    setQuickStockError("");
+
+    try {
+      const updated = await adjustStock(
+        selectedQuickStock.id,
+        mode,
+        "manual",
+      );
+
+      setQuickStockMessage(
+        `${updated.material} ${updated.color}: Bestand ist jetzt ${updated.stock}.`,
+      );
+    } catch (caughtError) {
+      setQuickStockError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Bestand konnte nicht geändert werden.",
+      );
+    }
   }
 
   function renderWidget(id: WidgetId) {
@@ -350,12 +627,10 @@ export default function DashboardPage() {
       case "quick-actions":
         return (
           <>
-            <div className={styles.widgetHeading}>
-              <div>
-                <span>Schnellzugriff</span>
-                <h2>Direkt loslegen</h2>
-              </div>
-            </div>
+            <WidgetHeading
+              eyebrow="Schnellzugriff"
+              title="Direkt loslegen"
+            />
 
             <div className={styles.quickActions}>
               <Link
@@ -427,16 +702,12 @@ export default function DashboardPage() {
       case "inventory-summary":
         return (
           <>
-            <div className={styles.widgetHeading}>
-              <div>
-                <span>Überblick</span>
-                <h2>Lagerübersicht</h2>
-              </div>
-
-              <Link href="/filamente">
-                Bestand verwalten
-              </Link>
-            </div>
+            <WidgetHeading
+              eyebrow="Überblick"
+              title="Lagerübersicht"
+              href="/filamente"
+              linkLabel="Bestand verwalten"
+            />
 
             <div className={styles.summaryGrid}>
               <div>
@@ -504,16 +775,12 @@ export default function DashboardPage() {
       case "stock-health":
         return (
           <>
-            <div className={styles.widgetHeading}>
-              <div>
-                <span>Lagerstatus</span>
-                <h2>Lagergesundheit</h2>
-              </div>
-
-              <Link href="/nachbestellen">
-                Details
-              </Link>
-            </div>
+            <WidgetHeading
+              eyebrow="Lagerstatus"
+              title="Lagergesundheit"
+              href="/nachbestellen"
+              linkLabel="Details"
+            />
 
             <div className={styles.healthContent}>
               <div
@@ -565,16 +832,12 @@ export default function DashboardPage() {
       case "urgent-reorders":
         return (
           <>
-            <div className={styles.widgetHeading}>
-              <div>
-                <span>Priorität</span>
-                <h2>Dringend nachbestellen</h2>
-              </div>
-
-              <Link href="/nachbestellen">
-                Alle anzeigen
-              </Link>
-            </div>
+            <WidgetHeading
+              eyebrow="Priorität"
+              title="Dringend nachbestellen"
+              href="/nachbestellen"
+              linkLabel="Alle anzeigen"
+            />
 
             {urgentReorders.length === 0 ? (
               <div className={styles.allGood}>
@@ -644,16 +907,12 @@ export default function DashboardPage() {
       case "recent-activity":
         return (
           <>
-            <div className={styles.widgetHeading}>
-              <div>
-                <span>Aktivität</span>
-                <h2>Letzte Bewegungen</h2>
-              </div>
-
-              <Link href="/protokoll">
-                Protokoll
-              </Link>
-            </div>
+            <WidgetHeading
+              eyebrow="Aktivität"
+              title="Letzte Bewegungen"
+              href="/protokoll"
+              linkLabel="Protokoll"
+            />
 
             {recentLogs.length === 0 ? (
               <div className={styles.emptyState}>
@@ -694,6 +953,298 @@ export default function DashboardPage() {
                     </time>
                   </div>
                 ))}
+              </div>
+            )}
+          </>
+        );
+
+      case "quick-stock":
+        return (
+          <>
+            <WidgetHeading
+              eyebrow="Bestand"
+              title="Schnellbestand"
+              href="/ein-auslagern"
+              linkLabel="Scanner öffnen"
+            />
+
+            {selectedQuickStock ? (
+              <div className={styles.quickStock}>
+                <label>
+                  <span>Filament auswählen</span>
+                  <select
+                    value={selectedQuickStock.id}
+                    onChange={(event) => {
+                      setSelectedQuickStockId(
+                        Number(event.target.value),
+                      );
+                      setQuickStockMessage("");
+                      setQuickStockError("");
+                    }}
+                  >
+                    {filaments.map((filament) => (
+                      <option
+                        key={filament.id}
+                        value={filament.id}
+                      >
+                        {filament.manufacturer} ·{" "}
+                        {filament.material} ·{" "}
+                        {filament.color}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div
+                  className={styles.quickStockCurrent}
+                >
+                  <div>
+                    <span>Aktueller Bestand</span>
+                    <strong>
+                      {selectedQuickStock.stock}
+                    </strong>
+                    <small>
+                      Mindestbestand{" "}
+                      {
+                        selectedQuickStock.minimumStock
+                      }
+                    </small>
+                  </div>
+
+                  <div
+                    className={styles.quickStockButtons}
+                  >
+                    <button
+                      type="button"
+                      disabled={
+                        busy ||
+                        selectedQuickStock.stock <= 0
+                      }
+                      onClick={() =>
+                        void handleQuickStock("out")
+                      }
+                    >
+                      − Auslagern
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void handleQuickStock("in")
+                      }
+                    >
+                      + Einlagern
+                    </button>
+                  </div>
+                </div>
+
+                {(quickStockMessage ||
+                  quickStockError) && (
+                  <p
+                    className={
+                      quickStockError
+                        ? styles.widgetError
+                        : styles.widgetSuccess
+                    }
+                  >
+                    {quickStockError ||
+                      quickStockMessage}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className={styles.emptyState}>
+                Lege zuerst ein Filament an.
+              </div>
+            )}
+          </>
+        );
+
+      case "filament-search":
+        return (
+          <>
+            <WidgetHeading
+              eyebrow="Suche"
+              title="Filament schnell finden"
+              href="/filamente"
+              linkLabel="Alle Filamente"
+            />
+
+            <div className={styles.searchWidget}>
+              <input
+                type="search"
+                placeholder="Farbe, Material, Hersteller, Barcode …"
+                value={filamentSearch}
+                onChange={(event) =>
+                  setFilamentSearch(
+                    event.target.value,
+                  )
+                }
+              />
+
+              {!filamentSearch.trim() ? (
+                <div
+                  className={styles.searchPlaceholder}
+                >
+                  Suche starten, um passende
+                  Filamente direkt zu öffnen.
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div
+                  className={styles.searchPlaceholder}
+                >
+                  Kein Filament gefunden.
+                </div>
+              ) : (
+                <div className={styles.searchResults}>
+                  {searchResults.map((filament) => (
+                    <Link
+                      key={filament.id}
+                      href={`/filamente/${filament.id}`}
+                    >
+                      <span
+                        className={
+                          filament.stock <=
+                          filament.minimumStock
+                            ? styles.searchStockLow
+                            : styles.searchStockOk
+                        }
+                      >
+                        {filament.stock}
+                      </span>
+                      <div>
+                        <strong>
+                          {filament.material}{" "}
+                          {filament.color}
+                        </strong>
+                        <small>
+                          {filament.manufacturer}
+                          {filament.location
+                            ? ` · ${filament.location}`
+                            : ""}
+                        </small>
+                      </div>
+                      <b>→</b>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        );
+
+      case "today-balance":
+        return (
+          <>
+            <WidgetHeading
+              eyebrow="Heute"
+              title="Tagesbilanz"
+              href="/protokoll"
+              linkLabel="Details"
+            />
+
+            <div className={styles.balanceGrid}>
+              <div className={styles.balanceIn}>
+                <span>Einlagerungen</span>
+                <strong>+{todaysIn}</strong>
+              </div>
+
+              <div className={styles.balanceOut}>
+                <span>Auslagerungen</span>
+                <strong>−{todaysOut}</strong>
+              </div>
+
+              <div
+                className={
+                  todayNet >= 0
+                    ? styles.balanceNetPositive
+                    : styles.balanceNetNegative
+                }
+              >
+                <span>Netto</span>
+                <strong>
+                  {todayNet > 0 ? "+" : ""}
+                  {todayNet}
+                </strong>
+              </div>
+            </div>
+
+            <div className={styles.balanceBar}>
+              <div>
+                <span
+                  style={{
+                    width: `${
+                      todaysLogs.length === 0
+                        ? 50
+                        : Math.round(
+                            (todaysIn /
+                              todaysLogs.length) *
+                              100,
+                          )
+                    }%`,
+                  }}
+                />
+              </div>
+              <small>
+                {todaysLogs.length === 0
+                  ? "Heute noch keine Bewegungen"
+                  : `${todaysLogs.length} Bewegungen insgesamt`}
+              </small>
+            </div>
+
+            <Link
+              className={styles.balanceAction}
+              href="/ein-auslagern"
+            >
+              Neue Lagerbewegung →
+            </Link>
+          </>
+        );
+
+      case "storage-locations":
+        return (
+          <>
+            <WidgetHeading
+              eyebrow="Organisation"
+              title="Lagerplätze"
+              href="/filamente"
+              linkLabel="Filamente öffnen"
+            />
+
+            {storageLocations.length === 0 ? (
+              <div className={styles.emptyState}>
+                Noch keine Lagerplätze vorhanden.
+              </div>
+            ) : (
+              <div className={styles.locationList}>
+                {storageLocations.map(
+                  (location) => (
+                    <div
+                      key={location.location}
+                    >
+                      <span>▤</span>
+                      <div>
+                        <strong>
+                          {location.location}
+                        </strong>
+                        <small>
+                          {location.types}{" "}
+                          {location.types === 1
+                            ? "Typ"
+                            : "Typen"}
+                          {location.critical > 0
+                            ? ` · ${location.critical} kritisch`
+                            : ""}
+                        </small>
+                      </div>
+                      <b>
+                        {location.rolls}
+                        <small>Rollen</small>
+                      </b>
+                    </div>
+                  ),
+                )}
               </div>
             )}
           </>
@@ -742,13 +1293,14 @@ export default function DashboardPage() {
         <section className={styles.editor}>
           <div className={styles.editorHeader}>
             <div>
-              <span>Widget-Einstellungen</span>
+              <span>Dashboard-Konfiguration</span>
               <h2>
-                Dashboard selbst zusammenstellen
+                Aktive Widgets verwalten
               </h2>
               <p>
-                Widgets einblenden, ausblenden,
-                sortieren und in der Breite ändern.
+                Entfernte Widgets verschwinden
+                vollständig und können unten aus der
+                Bibliothek wieder hinzugefügt werden.
               </p>
             </div>
 
@@ -760,110 +1312,178 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          <div className={styles.editorList}>
-            {widgets.map((widget, index) => (
-              <div
-                className={styles.editorRow}
-                key={widget.id}
-              >
-                <button
-                  className={
-                    widget.visible
-                      ? styles.visibilityActive
-                      : styles.visibilityButton
-                  }
-                  type="button"
-                  aria-pressed={widget.visible}
-                  onClick={() =>
-                    updateWidget(widget.id, {
-                      visible: !widget.visible,
-                    })
-                  }
-                >
-                  {widget.visible
-                    ? "Sichtbar"
-                    : "Ausgeblendet"}
-                </button>
+          {activeWidgets.length === 0 ? (
+            <div className={styles.emptyEditor}>
+              Keine Widgets aktiv. Füge unten ein
+              Widget aus der Bibliothek hinzu.
+            </div>
+          ) : (
+            <div className={styles.editorList}>
+              {activeWidgets.map(
+                (widget, index) => {
+                  const definition =
+                    getWidgetDefinition(widget.id);
 
-                <strong>
-                  {WIDGET_LABELS[widget.id]}
-                </strong>
+                  return (
+                    <div
+                      className={styles.editorRow}
+                      key={widget.id}
+                    >
+                      <span
+                        className={
+                          styles.editorIcon
+                        }
+                      >
+                        {definition.icon}
+                      </span>
 
-                <label>
-                  <span>Breite</span>
-                  <select
-                    value={widget.size}
-                    onChange={(event) =>
-                      updateWidget(widget.id, {
-                        size:
-                          event.target.value ===
-                          "full"
-                            ? "full"
-                            : "half",
-                      })
-                    }
-                  >
-                    <option value="half">
-                      Halbe Breite
-                    </option>
-                    <option value="full">
-                      Volle Breite
-                    </option>
-                  </select>
-                </label>
+                      <div
+                        className={
+                          styles.editorWidgetText
+                        }
+                      >
+                        <strong>
+                          {definition.label}
+                        </strong>
+                        <small>
+                          {definition.description}
+                        </small>
+                      </div>
 
-                <div
-                  className={
-                    styles.orderButtons
-                  }
-                >
-                  <button
-                    type="button"
-                    aria-label={`${WIDGET_LABELS[widget.id]} nach oben verschieben`}
-                    disabled={index === 0}
-                    onClick={() =>
-                      moveWidget(widget.id, -1)
-                    }
-                  >
-                    ↑
-                  </button>
+                      <label>
+                        <span>Breite</span>
+                        <select
+                          value={widget.size}
+                          onChange={(event) =>
+                            updateWidgetSize(
+                              widget.id,
+                              event.target.value ===
+                                "full"
+                                ? "full"
+                                : "half",
+                            )
+                          }
+                        >
+                          <option value="half">
+                            Halbe Breite
+                          </option>
+                          <option value="full">
+                            Volle Breite
+                          </option>
+                        </select>
+                      </label>
 
-                  <button
-                    type="button"
-                    aria-label={`${WIDGET_LABELS[widget.id]} nach unten verschieben`}
-                    disabled={
-                      index === widgets.length - 1
-                    }
-                    onClick={() =>
-                      moveWidget(widget.id, 1)
-                    }
-                  >
-                    ↓
-                  </button>
-                </div>
-              </div>
-            ))}
+                      <div
+                        className={
+                          styles.editorActions
+                        }
+                      >
+                        <button
+                          type="button"
+                          aria-label={`${definition.label} nach oben verschieben`}
+                          disabled={index === 0}
+                          onClick={() =>
+                            moveWidget(
+                              widget.id,
+                              -1,
+                            )
+                          }
+                        >
+                          ↑
+                        </button>
+
+                        <button
+                          type="button"
+                          aria-label={`${definition.label} nach unten verschieben`}
+                          disabled={
+                            index ===
+                            activeWidgets.length - 1
+                          }
+                          onClick={() =>
+                            moveWidget(
+                              widget.id,
+                              1,
+                            )
+                          }
+                        >
+                          ↓
+                        </button>
+
+                        <button
+                          className={
+                            styles.removeButton
+                          }
+                          type="button"
+                          onClick={() =>
+                            removeWidget(widget.id)
+                          }
+                        >
+                          Entfernen
+                        </button>
+                      </div>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          )}
+
+          <div className={styles.libraryHeader}>
+            <span>Widget-Bibliothek</span>
+            <h2>Widgets hinzufügen</h2>
+            <p>
+              Neue und entfernte Widgets erscheinen
+              hier.
+            </p>
           </div>
 
+          {availableWidgets.length === 0 ? (
+            <div className={styles.emptyLibrary}>
+              Alle verfügbaren Widgets sind bereits
+              aktiv.
+            </div>
+          ) : (
+            <div className={styles.widgetLibrary}>
+              {availableWidgets.map((widget) => (
+                <article key={widget.id}>
+                  <span>{widget.icon}</span>
+                  <div>
+                    <strong>{widget.label}</strong>
+                    <p>{widget.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      addWidget(widget.id)
+                    }
+                  >
+                    + Hinzufügen
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+
           <p className={styles.storageNote}>
-            Die Anordnung wird automatisch in diesem
-            Browser gespeichert.
+            Die Auswahl und Reihenfolge werden
+            automatisch für diesen Benutzer in
+            diesem Browser gespeichert.
           </p>
         </section>
       )}
 
-      {visibleWidgets.length === 0 ? (
+      {activeWidgets.length === 0 ? (
         <section className={styles.noWidgets}>
           <span>▦</span>
-          <h2>Keine Widgets sichtbar</h2>
+          <h2>Dashboard ist leer</h2>
           <p>
-            Öffne „Dashboard bearbeiten“ und aktiviere
-            mindestens ein Widget.
+            Öffne „Dashboard bearbeiten“ und füge
+            Widgets aus der Bibliothek hinzu.
           </p>
         </section>
       ) : (
         <div className={styles.dashboardGrid}>
-          {visibleWidgets.map((widget) => (
+          {activeWidgets.map((widget) => (
             <section
               className={`${styles.widget} ${
                 widget.size === "full"
@@ -880,13 +1500,38 @@ export default function DashboardPage() {
                 <span
                   className={styles.editingBadge}
                 >
-                  Widget
+                  Aktiv
                 </span>
               )}
               {renderWidget(widget.id)}
             </section>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+function WidgetHeading({
+  eyebrow,
+  title,
+  href,
+  linkLabel,
+}: {
+  eyebrow: string;
+  title: string;
+  href?: string;
+  linkLabel?: string;
+}) {
+  return (
+    <div className={styles.widgetHeading}>
+      <div>
+        <span>{eyebrow}</span>
+        <h2>{title}</h2>
+      </div>
+
+      {href && linkLabel && (
+        <Link href={href}>{linkLabel}</Link>
       )}
     </div>
   );

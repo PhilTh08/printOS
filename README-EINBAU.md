@@ -160,3 +160,34 @@ Es sind keine Änderungen an Supabase erforderlich.
 - Einstellungen zeigen zusätzlich die Anzahl der Filamente und Protokolleinträge.
 - Die bisherige Sicherheitsabfrage beim Import bleibt erhalten.
 - Keine Supabase-Änderungen erforderlich.
+
+
+## Ergänzungen in V11 – Widget-Bibliothek
+
+- Widgets werden jetzt vollständig aus dem Dashboard entfernt.
+- Entfernte Widgets erscheinen nur noch in der Widget-Bibliothek.
+- Widgets können jederzeit wieder hinzugefügt werden.
+- Reihenfolge und Breite bleiben weiterhin anpassbar.
+- Bestehende V10-Einstellungen werden automatisch übernommen.
+- Ausgeblendete V10-Widgets bleiben in V11 entfernt.
+
+### Neue funktionale Widgets
+
+- Schnellbestand:
+  - Filament auswählen
+  - eine Rolle direkt einlagern
+  - eine Rolle direkt auslagern
+  - schreibt weiterhin persönliche Protokolleinträge
+- Filamentsuche:
+  - Suche nach Farbe, Material, Hersteller, Barcode, ID und Lagerplatz
+  - direkter Sprung zur Filament-Detailseite
+- Tagesbilanz:
+  - heutige Einlagerungen
+  - heutige Auslagerungen
+  - Nettoveränderung
+- Lagerplätze:
+  - Rollen je Lagerplatz
+  - Anzahl der Filamenttypen
+  - kritische Bestände je Lagerplatz
+
+Keine Supabase-Änderungen erforderlich.
