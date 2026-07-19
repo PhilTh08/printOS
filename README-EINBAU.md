@@ -300,3 +300,25 @@ Die Bilddaten werden jetzt vor dem Zugriff ausdrücklich auf `null`
 und `undefined` geprüft.
 
 Keine neue Supabase-Migration erforderlich.
+
+
+## V14.2 – Produktbilder vollständig anzeigen
+
+Behoben:
+
+- Filamentkarten verwendeten einen festen, zu flachen Bildbereich.
+- Kartenbilder verwenden jetzt ein responsives Seitenverhältnis.
+- Bilder werden mit `object-fit: contain` vollständig dargestellt.
+- Die Bildposition ist immer mittig.
+- Shopify-Parameter wie `crop`, `width`, `height` und `fit` werden aus
+  automatisch übernommenen Bild-URLs entfernt.
+- Alte Shopify-Größensuffixe im Dateinamen werden ebenfalls entfernt.
+
+Bereits gespeicherte, zugeschnittene URLs sollten einmal neu geladen werden:
+
+1. Filament öffnen
+2. „Produktbilder laden“
+3. gewünschtes Bild auswählen
+4. speichern
+
+Keine neue Supabase-Migration erforderlich.

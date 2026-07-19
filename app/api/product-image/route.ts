@@ -50,11 +50,30 @@ function absoluteUrl(
       .trim(),
   );
 
-  if (cleaned.startsWith("//")) {
-    return `https:${cleaned}`;
+  const resolved = new URL(
+    cleaned.startsWith("//")
+      ? `https:${cleaned}`
+      : cleaned,
+    sourceUrl,
+  );
+
+  for (const parameter of [
+    "width",
+    "height",
+    "crop",
+    "fit",
+    "format",
+    "quality",
+  ]) {
+    resolved.searchParams.delete(parameter);
   }
 
-  return new URL(cleaned, sourceUrl).toString();
+  resolved.pathname = resolved.pathname.replace(
+    /_(?:pico|icon|thumb|small|compact|medium|large|grande|master|\d+x\d*|\d*x\d+)(?:_crop_[a-z]+)?(?=\.[a-z0-9]+$)/i,
+    "",
+  );
+
+  return resolved.toString();
 }
 
 function isHttpUrl(value: string): boolean {

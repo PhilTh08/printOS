@@ -3992,7 +3992,9 @@ a.dashboard-link-button {
 .filament-card-image {
   display: grid;
   width: calc(100% + 34px);
-  height: 155px;
+  height: auto;
+  min-height: 170px;
+  aspect-ratio: 16 / 9;
   margin: -17px -17px 16px;
   overflow: hidden;
   place-items: center;
@@ -4008,9 +4010,13 @@ a.dashboard-link-button {
 }
 
 .filament-card-image img {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain !important;
+  object-position: center center;
   background: #f4f4f2;
   transition: transform 0.25s ease;
 }
@@ -4233,7 +4239,8 @@ a.dashboard-link-button {
   }
 
   .filament-card-image {
-    height: 185px;
+    min-height: 190px;
+    aspect-ratio: 4 / 3;
   }
 }
 
@@ -4350,4 +4357,13 @@ a.dashboard-link-button {
   .product-image-options img {
     height: 130px;
   }
+}
+
+
+/* V14.2: Produktbilder nie anschneiden */
+.detail-filament-image img,
+.filament-image-preview img,
+.product-image-options img {
+  object-fit: contain !important;
+  object-position: center center;
 }
