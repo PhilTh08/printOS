@@ -9,12 +9,10 @@ import {
 } from "react";
 
 import { supabase } from "@/lib/supabase";
-import {
-  FILAMENT_PRESETS,
-  findFilamentPresetByEan,
-  formatPresetPrice,
-  normalizeFilamentEan,
-} from "@/lib/filament-presets";
+
+function normalizeFilamentEan(value: string): string {
+  return value.replace(/[^0-9]/g, "");
+}
 
 type Mode = "in" | "out";
 type StatisticsRange = "7" | "30" | "90" | "all";
@@ -94,6 +92,16 @@ type FilamentRow = {
   minimum_stock: number;
   stock: number;
   order_link: string;
+};
+
+type FilamentCatalogRow = {
+  barcode: string;
+  manufacturer: string;
+  material: string;
+  color: string;
+  weight_per_roll: number;
+  price: number | null;
+  variant: string | null;
 };
 
 type LogRow = {
@@ -277,8 +285,6 @@ export default function Home() {
 
   const [search, setSearch] = useState("");
   const [unknownBarcode, setUnknownBarcode] = useState("");
-  const [selectedPresetEan, setSelectedPresetEan] =
-    useState("");
   const [selectedMaterial, setSelectedMaterial] =
     useState<string | null>(null);
 
@@ -989,42 +995,53 @@ export default function Home() {
     );
 
     if (!filament) {
-      const preset =
-        findFilamentPresetByEan(scannedBarcode);
-
-      if (!preset) {
-        setUnknownBarcode(scannedBarcode);
-        setMessage(
-          `Barcode ${scannedBarcode} ist nicht als Preset bekannt.`,
-        );
-        setBarcode("");
-        inputRef.current?.focus();
-        return;
-      }
-
-      if (mode === "out") {
-        setUnknownBarcode(scannedBarcode);
-        setMessage(
-          `${preset.manufacturer} ${preset.material} ${preset.color} ist noch nicht in deinem Lager angelegt. Wechsle zum Einlagerungsmodus und scanne erneut.`,
-        );
-        setBarcode("");
-        inputRef.current?.focus();
-        return;
-      }
-
       setIsSaving(true);
       setDatabaseError("");
       setUnknownBarcode("");
 
       try {
-        const presetForm: FilamentForm = {
-          barcode: preset.ean,
-          manufacturer: preset.manufacturer,
-          material: preset.variant
-            ? `${preset.material} ${preset.variant}`
-            : preset.material,
-          color: preset.color,
-          weightPerRoll: preset.weightPerRoll,
+        const { data: catalogData, error: catalogError } =
+          await supabase
+            .from("filament_catalog")
+            .select(
+              "barcode, manufacturer, material, color, weight_per_roll, price, variant",
+            )
+            .eq("barcode", scannedBarcode)
+            .maybeSingle();
+
+        if (catalogError) {
+          throw new Error(catalogError.message);
+        }
+
+        if (!catalogData) {
+          setUnknownBarcode(scannedBarcode);
+          setMessage(
+            `Barcode ${scannedBarcode} ist noch nicht in der Filament-Datenbank vorhanden.`,
+          );
+          return;
+        }
+
+        const catalog =
+          catalogData as FilamentCatalogRow;
+
+        if (mode === "out") {
+          setUnknownBarcode(scannedBarcode);
+          setMessage(
+            `${catalog.manufacturer} ${catalog.material} ${catalog.color} ist noch nicht in deinem Lager angelegt. Wechsle zum Einlagerungsmodus und scanne erneut.`,
+          );
+          return;
+        }
+
+        const materialName = catalog.variant
+          ? `${catalog.material} ${catalog.variant}`
+          : catalog.material;
+
+        const catalogForm: FilamentForm = {
+          barcode: catalog.barcode,
+          manufacturer: catalog.manufacturer,
+          material: materialName,
+          color: catalog.color,
+          weightPerRoll: catalog.weight_per_roll,
           location: "",
           minimumStock: 1,
           stock: 1,
@@ -1033,7 +1050,7 @@ export default function Home() {
 
         const { data, error } = await supabase
           .from("filaments")
-          .insert(filamentToInsert(presetForm))
+          .insert(filamentToInsert(catalogForm))
           .select("*")
           .single();
 
@@ -1058,7 +1075,7 @@ export default function Home() {
         ]);
 
         setMessage(
-          `${createdFilament.manufacturer} ${createdFilament.material} ${createdFilament.color} wurde automatisch angelegt und eingelagert. Bestand: 1 Rolle.`,
+          `${createdFilament.manufacturer} ${createdFilament.material} ${createdFilament.color} wurde aus der Datenbank angelegt und eingelagert. Bestand: 1 Rolle.`,
         );
       } catch (error) {
         const errorMessage =
@@ -1068,7 +1085,7 @@ export default function Home() {
 
         setDatabaseError(errorMessage);
         setMessage(
-          "Das Preset-Filament konnte nicht automatisch angelegt werden.",
+          "Das Filament konnte nicht aus der Datenbank angelegt werden.",
         );
       } finally {
         setIsSaving(false);
@@ -1158,27 +1175,7 @@ export default function Home() {
     }
   }
 
-  function applyFilamentPreset(ean: string) {
-    setSelectedPresetEan(ean);
-
-    const preset = findFilamentPresetByEan(ean);
-
-    if (!preset) {
-      return;
-    }
-
-    setForm((current) => ({
-      ...current,
-      barcode: preset.ean,
-      manufacturer: preset.manufacturer,
-      material: preset.material,
-      color: preset.color,
-      weightPerRoll: preset.weightPerRoll,
-    }));
-  }
-
   function openCreateForm(prefilledBarcode = "") {
-    setSelectedPresetEan("");
     setEditingId(null);
     setForm({
       ...emptyForm,
@@ -1188,7 +1185,6 @@ export default function Home() {
   }
 
   function openEditForm(filament: Filament) {
-    setSelectedPresetEan("");
     setEditingId(filament.id);
 
     setForm({
@@ -1207,7 +1203,6 @@ export default function Home() {
   }
 
   function closeForm() {
-    setSelectedPresetEan("");
     setIsFormOpen(false);
     setEditingId(null);
     setForm(emptyForm);
@@ -1228,7 +1223,7 @@ export default function Home() {
       return;
     }
 
-    const cleanedBarcode = form.barcode.trim();
+    const cleanedBarcode = normalizeFilamentEan(form.barcode);
 
     if (
       !cleanedBarcode ||
@@ -1319,6 +1314,29 @@ export default function Home() {
           ...current,
           rowToFilament(data as FilamentRow),
         ]);
+      }
+
+      const { error: catalogError } = await supabase
+        .from("filament_catalog")
+        .upsert(
+          {
+            barcode: cleanedForm.barcode,
+            manufacturer: cleanedForm.manufacturer,
+            material: cleanedForm.material,
+            color: cleanedForm.color,
+            weight_per_roll:
+              cleanedForm.weightPerRoll,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "barcode",
+          },
+        );
+
+      if (catalogError) {
+        throw new Error(
+          `Lagerbestand wurde gespeichert, aber die Filament-Datenbank konnte nicht aktualisiert werden: ${catalogError.message}`,
+        );
       }
 
       setUnknownBarcode("");
@@ -4766,8 +4784,8 @@ export default function Home() {
                 </h2>
 
                 <p>
-                  Barcode und Eigenschaften
-                  des Filaments
+                  Barcode und Eigenschaften – neue oder geänderte
+                  Einträge aktualisieren automatisch die zentrale Datenbank
                 </p>
               </div>
 
@@ -4782,100 +4800,6 @@ export default function Home() {
 
             <form onSubmit={saveFilament}>
               <div className="form-grid">
-                {editingId === null && (
-                  <label className="full-width preset-field">
-                    Bambu-Lab-Preset auswählen
-                    <select
-                      value={selectedPresetEan}
-                      onChange={(event) =>
-                        applyFilamentPreset(
-                          event.target.value,
-                        )
-                      }
-                    >
-                      <option value="">
-                        Manuell eingeben …
-                      </option>
-
-                      <optgroup label="PETG HF">
-                        {FILAMENT_PRESETS.filter(
-                          (preset) =>
-                            preset.material === "PETG HF",
-                        ).map((preset) => (
-                          <option
-                            key={preset.ean}
-                            value={preset.ean}
-                          >
-                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
-                          </option>
-                        ))}
-                      </optgroup>
-
-                      <optgroup label="PETG Translucent">
-                        {FILAMENT_PRESETS.filter(
-                          (preset) =>
-                            preset.material ===
-                            "PETG Translucent",
-                        ).map((preset) => (
-                          <option
-                            key={preset.ean}
-                            value={preset.ean}
-                          >
-                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
-                          </option>
-                        ))}
-                      </optgroup>
-
-                      <optgroup label="PETG-CF">
-                        {FILAMENT_PRESETS.filter(
-                          (preset) =>
-                            preset.material === "PETG-CF",
-                        ).map((preset) => (
-                          <option
-                            key={preset.ean}
-                            value={preset.ean}
-                          >
-                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
-                          </option>
-                        ))}
-                      </optgroup>
-
-                      <optgroup label="PLA Basic · Refill">
-                        {FILAMENT_PRESETS.filter(
-                          (preset) =>
-                            preset.material === "PLA Basic" &&
-                            preset.variant === "Refill",
-                        ).map((preset) => (
-                          <option
-                            key={preset.ean}
-                            value={preset.ean}
-                          >
-                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
-                          </option>
-                        ))}
-                      </optgroup>
-
-                      <optgroup label="PLA Basic · Rolle">
-                        {FILAMENT_PRESETS.filter(
-                          (preset) =>
-                            preset.material === "PLA Basic" &&
-                            preset.variant === "Rolle",
-                        ).map((preset) => (
-                          <option
-                            key={preset.ean}
-                            value={preset.ean}
-                          >
-                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-
-                    <small>
-                      Füllt EAN, Hersteller, Material, Farbe und Gewicht automatisch aus.
-                    </small>
-                  </label>
-                )}
 
                 <label>
                   Barcode *
