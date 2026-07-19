@@ -9,6 +9,12 @@ import {
 } from "react";
 
 import { supabase } from "@/lib/supabase";
+import {
+  FILAMENT_PRESETS,
+  findFilamentPresetByEan,
+  formatPresetPrice,
+  normalizeFilamentEan,
+} from "@/lib/filament-presets";
 
 type Mode = "in" | "out";
 type StatisticsRange = "7" | "30" | "90" | "all";
@@ -29,16 +35,6 @@ type Filament = {
 };
 
 type FilamentForm = Omit<Filament, "id">;
-
-type FilamentPreset = {
-  ean: string;
-  manufacturer: string;
-  material: string;
-  color: string;
-  weightPerRoll: number;
-  price: string;
-  variant?: string;
-};
 
 type LogEntry = {
   id: string;
@@ -71,56 +67,6 @@ const emptyForm: FilamentForm = {
   stock: 0,
   orderLink: "",
 };
-
-const FILAMENT_PRESETS: FilamentPreset[] = [
-  { ean: "6975337038207", manufacturer: "Bambu Lab", material: "PETG HF", color: "White", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337038221", manufacturer: "Bambu Lab", material: "PETG HF", color: "Black", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337038214", manufacturer: "Bambu Lab", material: "PETG HF", color: "Gray", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337038245", manufacturer: "Bambu Lab", material: "PETG HF", color: "Red", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337038269", manufacturer: "Bambu Lab", material: "PETG HF", color: "Blue", weightPerRoll: 1000, price: "25,99 €" },
-
-  { ean: "6975337038016", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Clear", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337036005", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Orange", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "921159956009", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Pink", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337036104", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Purple", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337035992", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Teal", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337035978", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Olive", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337035961", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Light Blue", weightPerRoll: 1000, price: "25,99 €" },
-  { ean: "6975337035985", manufacturer: "Bambu Lab", material: "PETG Translucent", color: "Brown", weightPerRoll: 1000, price: "25,99 €" },
-
-  { ean: "6975337032243", manufacturer: "Bambu Lab", material: "PETG-CF", color: "Black", weightPerRoll: 1000, price: "35,99 €" },
-  { ean: "6975337032502", manufacturer: "Bambu Lab", material: "PETG-CF", color: "Indigo Blue", weightPerRoll: 1000, price: "35,99 €" },
-  { ean: "6975337033707", manufacturer: "Bambu Lab", material: "PETG-CF", color: "Titan Gray", weightPerRoll: 1000, price: "35,99 €" },
-
-  { ean: "6975337030164", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Jade White", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337030201", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Beige", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6977252427197", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Sunflower Yellow", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337037354", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Gold", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6977252426954", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Pumpkin Orange", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6977252426978", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Hot Pink", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337037392", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Magenta", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6977252427203", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Maroon Red", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337037378", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Purple", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6977252427227", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Indigo Purple", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6977252426961", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Cobalt Blue", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6977252426992", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Bright Green", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337039082", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Light Gray", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337030195", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Gray", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337039075", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Dark Gray", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337030232", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Blue Gray", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337037361", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Bronze", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-  { ean: "6975337030263", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Brown", weightPerRoll: 1000, price: "22,90 €", variant: "Refill" },
-
-  { ean: "6975337031956", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Yellow", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-  { ean: "6975337032311", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Orange", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-  { ean: "6975337032359", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Pink", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-  { ean: "6975337031413", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Red", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-  { ean: "6975337032052", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Cyan", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-  { ean: "6975337032533", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Blue", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-  { ean: "6975337033684", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Bambu Green", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-  { ean: "6975337035046", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Mistletoe Green", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-  { ean: "6975337031390", manufacturer: "Bambu Lab", material: "PLA Basic", color: "Silver", weightPerRoll: 1000, price: "ca. 25,99 €", variant: "Rolle" },
-];
 
 const exampleFilaments: Filament[] = [
   {
@@ -1006,7 +952,7 @@ export default function Home() {
   }
 
   async function processBarcode() {
-    const scannedBarcode = barcode.trim();
+    const scannedBarcode = normalizeFilamentEan(barcode);
 
     if (!scannedBarcode || isSaving) {
       if (!scannedBarcode) {
@@ -1043,12 +989,93 @@ export default function Home() {
     );
 
     if (!filament) {
-      setUnknownBarcode(scannedBarcode);
-      setMessage(
-        `Barcode ${scannedBarcode} ist nicht bekannt.`,
-      );
-      setBarcode("");
-      inputRef.current?.focus();
+      const preset =
+        findFilamentPresetByEan(scannedBarcode);
+
+      if (!preset) {
+        setUnknownBarcode(scannedBarcode);
+        setMessage(
+          `Barcode ${scannedBarcode} ist nicht als Preset bekannt.`,
+        );
+        setBarcode("");
+        inputRef.current?.focus();
+        return;
+      }
+
+      if (mode === "out") {
+        setUnknownBarcode(scannedBarcode);
+        setMessage(
+          `${preset.manufacturer} ${preset.material} ${preset.color} ist noch nicht in deinem Lager angelegt. Wechsle zum Einlagerungsmodus und scanne erneut.`,
+        );
+        setBarcode("");
+        inputRef.current?.focus();
+        return;
+      }
+
+      setIsSaving(true);
+      setDatabaseError("");
+      setUnknownBarcode("");
+
+      try {
+        const presetForm: FilamentForm = {
+          barcode: preset.ean,
+          manufacturer: preset.manufacturer,
+          material: preset.variant
+            ? `${preset.material} ${preset.variant}`
+            : preset.material,
+          color: preset.color,
+          weightPerRoll: preset.weightPerRoll,
+          location: "",
+          minimumStock: 1,
+          stock: 1,
+          orderLink: "",
+        };
+
+        const { data, error } = await supabase
+          .from("filaments")
+          .insert(filamentToInsert(presetForm))
+          .select("*")
+          .single();
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        const createdFilament = rowToFilament(
+          data as FilamentRow,
+        );
+
+        await addLogEntry(
+          "in",
+          createdFilament,
+          1,
+          "scan",
+        );
+
+        setFilaments((current) => [
+          ...current,
+          createdFilament,
+        ]);
+
+        setMessage(
+          `${createdFilament.manufacturer} ${createdFilament.material} ${createdFilament.color} wurde automatisch angelegt und eingelagert. Bestand: 1 Rolle.`,
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Unbekannter Datenbankfehler";
+
+        setDatabaseError(errorMessage);
+        setMessage(
+          "Das Preset-Filament konnte nicht automatisch angelegt werden.",
+        );
+      } finally {
+        setIsSaving(false);
+        setBarcode("");
+        inputRef.current?.focus();
+      }
+
       return;
     }
 
@@ -1134,9 +1161,7 @@ export default function Home() {
   function applyFilamentPreset(ean: string) {
     setSelectedPresetEan(ean);
 
-    const preset = FILAMENT_PRESETS.find(
-      (item) => item.ean === ean,
-    );
+    const preset = findFilamentPresetByEan(ean);
 
     if (!preset) {
       return;
@@ -4781,7 +4806,7 @@ export default function Home() {
                             key={preset.ean}
                             value={preset.ean}
                           >
-                            {preset.color} · {preset.price} · EAN {preset.ean}
+                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
                           </option>
                         ))}
                       </optgroup>
@@ -4796,7 +4821,7 @@ export default function Home() {
                             key={preset.ean}
                             value={preset.ean}
                           >
-                            {preset.color} · {preset.price} · EAN {preset.ean}
+                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
                           </option>
                         ))}
                       </optgroup>
@@ -4810,7 +4835,7 @@ export default function Home() {
                             key={preset.ean}
                             value={preset.ean}
                           >
-                            {preset.color} · {preset.price} · EAN {preset.ean}
+                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
                           </option>
                         ))}
                       </optgroup>
@@ -4825,7 +4850,7 @@ export default function Home() {
                             key={preset.ean}
                             value={preset.ean}
                           >
-                            {preset.color} · {preset.price} · EAN {preset.ean}
+                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
                           </option>
                         ))}
                       </optgroup>
@@ -4840,7 +4865,7 @@ export default function Home() {
                             key={preset.ean}
                             value={preset.ean}
                           >
-                            {preset.color} · {preset.price} · EAN {preset.ean}
+                            {preset.color} · {formatPresetPrice(preset.price)} · EAN {preset.ean}
                           </option>
                         ))}
                       </optgroup>
