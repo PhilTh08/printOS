@@ -134,3 +134,29 @@ Es sind keine Änderungen an Supabase erforderlich.
 - Bestellmenge ist zwischen 1 und 99 Rollen einstellbar.
 - Die Kennzahl „Empfohlene Rollen“ reagiert direkt auf die gewählten Mengen.
 - Keine Supabase-Änderungen erforderlich.
+
+
+## Ergänzungen in V10
+
+### Anpassbares Widget-Dashboard
+
+- Dashboard ist standardmäßig deutlich ruhiger.
+- Widgets können ein- und ausgeblendet werden.
+- Reihenfolge kann mit Pfeiltasten geändert werden.
+- Jedes Widget kann halbe oder volle Breite erhalten.
+- Einstellungen werden pro Benutzer lokal im Browser gespeichert.
+- Standardansicht kann jederzeit wiederhergestellt werden.
+- Verfügbare Widgets:
+  - Schnellzugriffe
+  - Lagerübersicht
+  - Lagergesundheit
+  - Dringend nachbestellen
+  - Letzte Bewegungen
+
+### Backup-Bereich verschoben
+
+- Daten exportieren und importieren wurde vollständig aus der Sidebar entfernt.
+- Beide Funktionen befinden sich jetzt unter `/einstellungen`.
+- Einstellungen zeigen zusätzlich die Anzahl der Filamente und Protokolleinträge.
+- Die bisherige Sicherheitsabfrage beim Import bleibt erhalten.
+- Keine Supabase-Änderungen erforderlich.

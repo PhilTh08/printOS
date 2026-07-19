@@ -6,9 +6,7 @@ import {
   useRouter,
 } from "next/navigation";
 import {
-  ChangeEvent,
   useEffect,
-  useRef,
   useState,
 } from "react";
 
@@ -61,11 +59,8 @@ export function HubShell({
     displayName,
     filaments,
     signOut,
-    exportData,
-    importData,
   } = useHub();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const importInputRef = useRef<HTMLInputElement>(null);
   const reorderCount = filaments.filter(
     (filament) =>
       filament.stock <= filament.minimumStock,
@@ -106,28 +101,6 @@ export function HubShell({
   async function handleSignOut() {
     await signOut();
     router.replace("/");
-  }
-
-  async function handleImport(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    try {
-      await importData(file);
-      window.alert("Backup wurde erfolgreich importiert.");
-    } catch (caughtError) {
-      window.alert(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Backup konnte nicht importiert werden.",
-      );
-    }
   }
 
   if (!authReady || (loading && !user)) {
@@ -251,39 +224,6 @@ export function HubShell({
             </div>
           ))}
 
-          <p className="nav-title">Daten</p>
-
-          <button
-            className="nav-button"
-            type="button"
-            onClick={() => {
-              exportData();
-              setSidebarOpen(false);
-            }}
-          >
-            <span>⇩</span>
-            Daten exportieren
-          </button>
-
-          <button
-            className="nav-button"
-            type="button"
-            onClick={() => {
-              importInputRef.current?.click();
-              setSidebarOpen(false);
-            }}
-          >
-            <span>⇧</span>
-            Daten importieren
-          </button>
-
-          <input
-            ref={importInputRef}
-            className="hidden-file-input"
-            type="file"
-            accept="application/json,.json"
-            onChange={(event) => void handleImport(event)}
-          />
         </nav>
 
         <div className="sidebar-account">

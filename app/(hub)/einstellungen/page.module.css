@@ -1,3 +1,209 @@
 .page {
   min-width: 0;
 }
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.settingsCard {
+  min-width: 0;
+  padding: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.025),
+      transparent 55%
+    ),
+    rgba(16, 24, 28, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.backupCard {
+  border-color: rgba(245, 166, 35, 0.32);
+}
+
+.cardHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+
+.settingsIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  border-radius: 9px;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.eyebrow {
+  display: block;
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cardHeading h2 {
+  margin: 5px 0 0;
+  font-size: 17px;
+}
+
+.cardHeading p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.backupStats {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 17px;
+}
+
+.backupStats > div {
+  min-width: 0;
+  padding: 11px;
+  background: #0b1317;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 7px;
+}
+
+.backupStats span,
+.backupStats strong {
+  display: block;
+}
+
+.backupStats span {
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.backupStats strong {
+  margin-top: 7px;
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.infoBox {
+  margin-top: 14px;
+  padding: 11px;
+  color: #9eacb2;
+  background: rgba(85, 167, 255, 0.055);
+  border: 1px solid rgba(85, 167, 255, 0.17);
+  border-radius: 7px;
+}
+
+.warningBox {
+  color: #d9b9a6;
+  background: rgba(255, 100, 100, 0.055);
+  border-color: rgba(255, 100, 100, 0.2);
+}
+
+.infoBox strong {
+  display: block;
+  color: var(--text);
+  font-size: 9px;
+}
+
+.infoBox p {
+  margin: 5px 0 0;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.backupActions {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.exportButton,
+.importButton,
+.dangerButton {
+  min-height: 41px;
+  padding: 0 12px;
+  cursor: pointer;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.exportButton {
+  color: #171109;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.importButton {
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.07);
+  border: 1px solid rgba(245, 166, 35, 0.32);
+}
+
+.exportButton:disabled,
+.importButton:disabled,
+.dangerButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.resetActions {
+  display: flex;
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+
+.dangerButton {
+  color: #ffb2b2;
+  background: rgba(255, 100, 100, 0.09);
+  border: 1px solid rgba(255, 100, 100, 0.34);
+}
+
+@media (max-width: 900px) {
+  .settingsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .backupStats,
+  .backupActions {
+    grid-template-columns: 1fr;
+  }
+
+  .cardHeading {
+    flex-direction: column;
+  }
+
+  .resetActions,
+  .dangerButton {
+    width: 100%;
+  }
+}
