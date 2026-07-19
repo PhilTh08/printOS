@@ -307,13 +307,22 @@ export default function Home() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         if (!active) {
           return;
         }
 
+        if (event === "PASSWORD_RECOVERY") {
+          setIsPasswordRecovery(true);
+          setPasswordUpdateMessage("");
+          setLoginError("");
+        }
+
         setUserEmail(
           session?.user.email ?? null,
+        );
+        setUserName(
+          getDisplayName(session?.user),
         );
         setAuthReady(true);
 
@@ -1287,7 +1296,7 @@ export default function Home() {
     const date = new Date().toISOString().slice(0, 10);
 
     downloadLink.href = downloadUrl;
-    downloadLink.download = `printos-backup-${date}.json`;
+    downloadLink.download = `philamentix-hub-backup-${date}.json`;
 
     document.body.appendChild(downloadLink);
     downloadLink.click();
@@ -1987,7 +1996,7 @@ export default function Home() {
       <div className="hydration-screen">
         <div className="hydration-card">
           <div className="hydration-logo">
-            Print<span>OS</span>
+            Philamentix<span>Hub</span>
           </div>
 
           <div className="hydration-loader">
@@ -2010,7 +2019,7 @@ export default function Home() {
         <section className="login-card">
           <div className="login-brand">
             <div className="login-logo">
-              Print<span>OS</span>
+              Philamentix<span>Hub</span>
             </div>
 
             <p>PASSWORT ZURÜCKSETZEN</p>
@@ -2023,7 +2032,7 @@ export default function Home() {
               <h1>Neues Passwort</h1>
               <p>
                 Lege jetzt ein neues Passwort für
-                deinen PrintOS-Account fest.
+                deinen Philamentix-Hub-Account fest.
               </p>
             </div>
           </div>
@@ -2096,7 +2105,7 @@ export default function Home() {
                   setPasswordUpdateMessage("");
                 }}
               >
-                Weiter zu PrintOS
+                Weiter zu Philamentix Hub
               </button>
             )}
           </form>
@@ -2111,10 +2120,10 @@ export default function Home() {
         <section className="login-card">
           <div className="login-brand">
             <div className="login-logo">
-              Print<span>OS</span>
+              Philamentix<span>Hub</span>
             </div>
 
-            <p>FILAMENT STORAGE</p>
+            <p>FILAMENT MANAGEMENT</p>
           </div>
 
           {authMode !== "forgot" ? (
@@ -2351,7 +2360,7 @@ export default function Home() {
               {isLoggingIn
                 ? "Bitte warten …"
                 : authMode === "login"
-                  ? "Bei PrintOS anmelden"
+                  ? "Bei Philamentix Hub anmelden"
                   : authMode === "signup"
                     ? "Account erstellen"
                     : "Reset-Link senden"}
@@ -2388,7 +2397,7 @@ export default function Home() {
         </button>
 
         <div className="mobile-logo">
-          Print<span>OS</span>
+          Philamentix<span>Hub</span>
         </div>
 
         <span className="mobile-sync-status">
@@ -2416,11 +2425,11 @@ export default function Home() {
         <div className="sidebar-brand-row">
           <div>
             <div className="logo">
-              Print<span>OS</span>
+              Philamentix<span>Hub</span>
             </div>
 
             <p className="version">
-              FILAMENT STORAGE // V1.0
+              FILAMENT MANAGEMENT // V1.0
             </p>
           </div>
 

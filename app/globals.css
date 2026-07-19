@@ -3220,3 +3220,24 @@ body {
 .google-mark svg {
   display: block;
 }
+
+/* Philamentix Hub Rebrand */
+.logo,
+.login-logo,
+.mobile-logo,
+.hydration-logo {
+  letter-spacing: 0.015em;
+}
+
+.logo {
+  font-size: 23px;
+}
+
+.login-logo,
+.hydration-logo {
+  font-size: clamp(24px, 5vw, 31px);
+}
+
+.mobile-logo {
+  font-size: 18px;
+}
