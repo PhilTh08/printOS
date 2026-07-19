@@ -3,7 +3,6 @@
 import Link from "next/link";
 
 import { useHub } from "@/components/philamentix/hub-provider";
-import { buildMaterialSummary } from "@/components/philamentix/statistics";
 
 import styles from "./page.module.css";
 
@@ -16,13 +15,36 @@ export default function DashboardPage() {
   );
   const totalWeight = filaments.reduce(
     (sum, filament) =>
-      sum + filament.stock * filament.weightPerRoll,
+      sum +
+      filament.stock * filament.weightPerRoll,
     0,
   );
   const criticalFilaments = filaments.filter(
     (filament) =>
       filament.stock <= filament.minimumStock,
   );
+  const healthyFilaments = filaments.filter(
+    (filament) =>
+      filament.stock > filament.minimumStock,
+  );
+  const missingRolls = criticalFilaments.reduce(
+    (sum, filament) =>
+      sum +
+      Math.max(
+        1,
+        filament.minimumStock - filament.stock,
+      ),
+    0,
+  );
+  const stockHealth =
+    filaments.length === 0
+      ? 100
+      : Math.round(
+          (healthyFilaments.length /
+            filaments.length) *
+            100,
+        );
+
   const urgentReorders = [
     ...criticalFilaments,
   ]
@@ -53,9 +75,11 @@ export default function DashboardPage() {
       );
     })
     .slice(0, 3);
+
   const today = new Date();
   const todaysLogs = logs.filter((entry) => {
     const date = new Date(entry.timestamp);
+
     return (
       date.getFullYear() === today.getFullYear() &&
       date.getMonth() === today.getMonth() &&
@@ -68,15 +92,14 @@ export default function DashboardPage() {
   const todaysOut = todaysLogs.filter(
     (entry) => entry.action === "out",
   ).length;
-  const materialSummary = buildMaterialSummary(
-    filaments,
-    logs,
-  );
-  const largestMaterialStock = Math.max(
-    1,
-    ...materialSummary.map((item) => item.stock),
-  );
-  const recentLogs = logs.slice(0, 5);
+  const recentLogs = logs.slice(0, 6);
+
+  const healthLabel =
+    criticalFilaments.length === 0
+      ? "Lagerbestand stabil"
+      : stockHealth >= 70
+        ? "Einige Bestände benötigen Aufmerksamkeit"
+        : "Mehrere Bestände sind kritisch";
 
   return (
     <div className={styles.page}>
@@ -87,7 +110,7 @@ export default function DashboardPage() {
           </span>
           <h1>{displayName}</h1>
           <p>
-            Bestand, Bewegungen und Warnungen auf einen Blick
+            Dein Filamentlager auf einen Blick
           </p>
         </div>
 
@@ -97,112 +120,269 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <section className="dashboard-kpis">
-        <article className="dashboard-kpi">
+      <section
+        className={styles.quickActions}
+        aria-label="Schnellzugriffe"
+      >
+        <Link
+          className={styles.quickActionPrimary}
+          href="/ein-auslagern"
+        >
+          <span className={styles.quickActionIcon}>
+            ⌁
+          </span>
+          <div>
+            <strong>Ein- oder auslagern</strong>
+            <small>
+              Barcode scannen und Bestand ändern
+            </small>
+          </div>
+          <b>→</b>
+        </Link>
+
+        <Link
+          className={styles.quickAction}
+          href="/filamente/neu"
+        >
+          <span className={styles.quickActionIcon}>
+            +
+          </span>
+          <div>
+            <strong>Filament hinzufügen</strong>
+            <small>Neuen Datensatz anlegen</small>
+          </div>
+        </Link>
+
+        <Link
+          className={styles.quickAction}
+          href="/nachbestellen"
+        >
+          <span className={styles.quickActionIcon}>
+            !
+          </span>
+          <div>
+            <strong>Nachbestellen</strong>
+            <small>
+              {criticalFilaments.length} offene{" "}
+              {criticalFilaments.length === 1
+                ? "Position"
+                : "Positionen"}
+            </small>
+          </div>
+        </Link>
+
+        <Link
+          className={styles.quickAction}
+          href="/statistiken"
+        >
+          <span className={styles.quickActionIcon}>
+            ↗
+          </span>
+          <div>
+            <strong>Statistiken</strong>
+            <small>Verteilung und Bewegungen</small>
+          </div>
+        </Link>
+      </section>
+
+      <section className={styles.kpiGrid}>
+        <article className={styles.kpiCard}>
           <span>Rollen im Lager</span>
           <strong>{totalRolls}</strong>
-          <small>{filaments.length} Filamenttypen</small>
+          <small>
+            aus {filaments.length}{" "}
+            {filaments.length === 1
+              ? "Filamenttyp"
+              : "Filamenttypen"}
+          </small>
         </article>
 
-        <article className="dashboard-kpi">
+        <article className={styles.kpiCard}>
           <span>Gesamtgewicht</span>
-          <strong className="blue">
+          <strong className={styles.kpiBlue}>
             {(totalWeight / 1000).toLocaleString(
               "de-DE",
             )}{" "}
             kg
           </strong>
-          <small>Aktueller Lagerbestand</small>
+          <small>Aktuell verfügbar</small>
         </article>
 
-        <article className="dashboard-kpi">
-          <span>Kritische Bestände</span>
-          <strong className="red">
-            {criticalFilaments.length}
+        <article className={styles.kpiCard}>
+          <span>Lagergesundheit</span>
+          <strong
+            className={
+              criticalFilaments.length === 0
+                ? styles.kpiGreen
+                : styles.kpiOrange
+            }
+          >
+            {stockHealth} %
           </strong>
-          <small>Bestand ≤ Mindestbestand</small>
+          <small>{healthLabel}</small>
         </article>
 
-        <article className="dashboard-kpi">
+        <article className={styles.kpiCard}>
           <span>Bewegungen heute</span>
           <strong>{todaysLogs.length}</strong>
           <small>
-            <span className="dashboard-in">+{todaysIn}</span>{" "}
-            /{" "}
-            <span className="dashboard-out">−{todaysOut}</span>
+            <span className={styles.incoming}>
+              +{todaysIn}
+            </span>{" "}
+            Einlagerungen ·{" "}
+            <span className={styles.outgoing}>
+              −{todaysOut}
+            </span>{" "}
+            Auslagerungen
           </small>
         </article>
       </section>
 
-      <section className="dashboard-grid">
-        <article className="panel dashboard-panel">
-          <div className="dashboard-panel-header">
+      <section className={styles.mainGrid}>
+        <article
+          className={`${styles.panel} ${styles.healthPanel}`}
+        >
+          <div className={styles.panelHeader}>
             <div>
-              <h2>Materialverteilung</h2>
-              <p>Rollenbestand nach Material</p>
-            </div>
-          </div>
-
-          {materialSummary.length === 0 ? (
-            <p className="empty-message">
-              Noch keine Filamente vorhanden.
-            </p>
-          ) : (
-            <div className="material-summary">
-              {materialSummary.map((item) => {
-                const percentage =
-                  (item.stock / largestMaterialStock) * 100;
-
-                return (
-                  <div
-                    className="material-summary-row"
-                    key={item.material}
-                  >
-                    <div className="material-summary-label">
-                      <span>{item.material}</span>
-                      <strong>{item.stock} Rollen</strong>
-                    </div>
-                    <div className="material-summary-bar">
-                      <div
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </article>
-
-        <article className="panel dashboard-panel">
-          <div className="dashboard-panel-header">
-            <div>
-              <h2>Dringend nachbestellen</h2>
+              <span className={styles.panelEyebrow}>
+                Lagerstatus
+              </span>
+              <h2>Bestandslage</h2>
               <p>
-                Die drei wichtigsten Nachbestellungen
+                Verhältnis zwischen stabilen und
+                kritischen Filamenttypen
               </p>
             </div>
 
             <Link
-              className="dashboard-link-button"
+              className={styles.panelLink}
+              href="/filamente"
+            >
+              Bestand verwalten
+            </Link>
+          </div>
+
+          <div className={styles.healthContent}>
+            <div
+              className={styles.healthRing}
+              style={{
+                background: `conic-gradient(
+                  ${
+                    criticalFilaments.length === 0
+                      ? "var(--green)"
+                      : "var(--accent)"
+                  } ${stockHealth}%,
+                  #253137 ${stockHealth}% 100%
+                )`,
+              }}
+            >
+              <div>
+                <strong>{stockHealth}%</strong>
+                <span>stabil</span>
+              </div>
+            </div>
+
+            <div className={styles.healthFacts}>
+              <div>
+                <span
+                  className={styles.factDotGreen}
+                />
+                <p>
+                  <strong>
+                    {healthyFilaments.length}
+                  </strong>
+                  <span>
+                    über dem Mindestbestand
+                  </span>
+                </p>
+              </div>
+
+              <div>
+                <span className={styles.factDotRed} />
+                <p>
+                  <strong>
+                    {criticalFilaments.length}
+                  </strong>
+                  <span>
+                    kritisch oder knapp
+                  </span>
+                </p>
+              </div>
+
+              <div>
+                <span
+                  className={styles.factDotOrange}
+                />
+                <p>
+                  <strong>{missingRolls}</strong>
+                  <span>
+                    Rollen als Bestellempfehlung
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.healthFooter}>
+            <span
+              className={
+                criticalFilaments.length === 0
+                  ? styles.healthGood
+                  : styles.healthAttention
+              }
+            >
+              {criticalFilaments.length === 0
+                ? "✓ Keine offenen Bestandswarnungen"
+                : `! ${criticalFilaments.length} ${
+                    criticalFilaments.length === 1
+                      ? "Bestandswarnung"
+                      : "Bestandswarnungen"
+                  } offen`}
+            </span>
+
+            <Link href="/nachbestellen">
+              Nachbestellliste öffnen →
+            </Link>
+          </div>
+        </article>
+
+        <article
+          className={`${styles.panel} ${styles.reorderPanel}`}
+        >
+          <div className={styles.panelHeader}>
+            <div>
+              <span className={styles.panelEyebrow}>
+                Priorität
+              </span>
+              <h2>Dringend nachbestellen</h2>
+              <p>
+                Die drei wichtigsten Positionen
+              </p>
+            </div>
+
+            <Link
+              className={styles.panelLink}
               href="/nachbestellen"
             >
               Alle anzeigen
             </Link>
           </div>
 
-          {criticalFilaments.length === 0 ? (
-            <div className="dashboard-all-good">
+          {urgentReorders.length === 0 ? (
+            <div className={styles.allGood}>
               <span>✓</span>
               <div>
-                <strong>Alles im grünen Bereich</strong>
+                <strong>
+                  Alles im grünen Bereich
+                </strong>
                 <p>
-                  Kein Filament liegt unter dem Mindestbestand.
+                  Momentan muss nichts nachbestellt
+                  werden.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="dashboard-warning-list">
+            <div className={styles.reorderList}>
               {urgentReorders.map(
                 (filament, index) => {
                   const recommendedAmount =
@@ -214,14 +394,30 @@ export default function DashboardPage() {
 
                   return (
                     <Link
-                      className={`dashboard-warning-row ${styles.urgentReorderRow}`}
+                      className={
+                        styles.reorderRow
+                      }
                       key={filament.id}
                       href={`/filamente/${filament.id}`}
                       style={{
                         animationDelay: `${index * 70}ms`,
                       }}
                     >
-                      <div>
+                      <span
+                        className={
+                          filament.stock === 0
+                            ? styles.stockEmpty
+                            : styles.stockCritical
+                        }
+                      >
+                        {filament.stock}
+                      </span>
+
+                      <div
+                        className={
+                          styles.reorderMain
+                        }
+                      >
                         <strong>
                           {filament.material}{" "}
                           {filament.color}
@@ -234,23 +430,19 @@ export default function DashboardPage() {
                         </span>
                       </div>
 
-                      <div className="dashboard-warning-stock">
-                        <strong>{filament.stock}</strong>
+                      <div
+                        className={
+                          styles.reorderAmount
+                        }
+                      >
+                        <strong>
+                          +{recommendedAmount}
+                        </strong>
                         <span>
-                          Minimum{" "}
-                          {filament.minimumStock}
-                        </span>
-                        <em
-                          className={
-                            styles.orderRecommendation
-                          }
-                        >
-                          +{recommendedAmount}{" "}
                           {recommendedAmount === 1
                             ? "Rolle"
-                            : "Rollen"}{" "}
-                          bestellen
-                        </em>
+                            : "Rollen"}
+                        </span>
                       </div>
                     </Link>
                   );
@@ -260,44 +452,59 @@ export default function DashboardPage() {
           )}
         </article>
 
-        <article className="panel dashboard-panel dashboard-recent">
-          <div className="dashboard-panel-header">
+        <article
+          className={`${styles.panel} ${styles.activityPanel}`}
+        >
+          <div className={styles.panelHeader}>
             <div>
+              <span className={styles.panelEyebrow}>
+                Aktivität
+              </span>
               <h2>Letzte Bewegungen</h2>
-              <p>Die fünf neuesten Lageraktionen</p>
+              <p>
+                Die sechs neuesten Lageraktionen
+              </p>
             </div>
 
             <Link
-              className="dashboard-link-button"
+              className={styles.panelLink}
               href="/protokoll"
             >
-              Alle anzeigen
+              Protokoll öffnen
             </Link>
           </div>
 
           {recentLogs.length === 0 ? (
-            <p className="empty-message">
+            <div className={styles.emptyActivity}>
               Noch keine Lagerbewegungen vorhanden.
-            </p>
+            </div>
           ) : (
-            <div className="recent-movements">
+            <div className={styles.activityList}>
               {recentLogs.map((entry) => (
                 <div
-                  className="recent-movement-row"
+                  className={styles.activityRow}
                   key={entry.id}
                 >
                   <span
-                    className={`recent-movement-symbol ${
+                    className={
                       entry.action === "in"
-                        ? "recent-movement-in"
-                        : "recent-movement-out"
-                    }`}
+                        ? styles.activityIn
+                        : styles.activityOut
+                    }
                   >
-                    {entry.action === "in" ? "+" : "−"}
+                    {entry.action === "in"
+                      ? "+"
+                      : "−"}
                   </span>
 
-                  <div className="recent-movement-main">
-                    <strong>{entry.filamentName}</strong>
+                  <div
+                    className={
+                      styles.activityMain
+                    }
+                  >
+                    <strong>
+                      {entry.filamentName}
+                    </strong>
                     <span>
                       {entry.source === "scan"
                         ? "Barcode-Scanner"
@@ -305,18 +512,26 @@ export default function DashboardPage() {
                     </span>
                   </div>
 
-                  <div className="recent-movement-meta">
-                    <strong>{entry.stockAfter} Rollen</strong>
+                  <div
+                    className={
+                      styles.activityMeta
+                    }
+                  >
+                    <strong>
+                      {entry.stockAfter}{" "}
+                      {entry.stockAfter === 1
+                        ? "Rolle"
+                        : "Rollen"}
+                    </strong>
                     <time>
-                      {new Date(entry.timestamp).toLocaleString(
-                        "de-DE",
-                        {
-                          day: "2-digit",
-                          month: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
+                      {new Date(
+                        entry.timestamp,
+                      ).toLocaleString("de-DE", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </time>
                   </div>
                 </div>

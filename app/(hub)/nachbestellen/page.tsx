@@ -53,6 +53,8 @@ export default function ReorderPage() {
     useState<ReorderFilter>("all");
   const [openedOrderId, setOpenedOrderId] =
     useState<number | null>(null);
+  const [orderQuantities, setOrderQuantities] =
+    useState<Record<number, number>>({});
 
   const reorderFilaments = useMemo(
     () =>
@@ -134,9 +136,38 @@ export default function ReorderPage() {
         filament.stock ===
         filament.minimumStock,
     ).length;
+  function selectedOrderAmount(
+    filament: Filament,
+  ): number {
+    return (
+      orderQuantities[filament.id] ??
+      recommendedOrderAmount(filament)
+    );
+  }
+
+  function changeOrderAmount(
+    filament: Filament,
+    change: number,
+  ) {
+    setOrderQuantities((current) => {
+      const currentAmount =
+        current[filament.id] ??
+        recommendedOrderAmount(filament);
+      const nextAmount = Math.min(
+        99,
+        Math.max(1, currentAmount + change),
+      );
+
+      return {
+        ...current,
+        [filament.id]: nextAmount,
+      };
+    });
+  }
+
   const suggestedRolls = reorderFilaments.reduce(
     (sum, filament) =>
-      sum + recommendedOrderAmount(filament),
+      sum + selectedOrderAmount(filament),
     0,
   );
   const withOrderLink = reorderFilaments.filter(
@@ -292,9 +323,7 @@ export default function ReorderPage() {
                 const stockState =
                   getStockState(filament);
                 const orderAmount =
-                  recommendedOrderAmount(
-                    filament,
-                  );
+                  selectedOrderAmount(filament);
 
                 return (
                   <article
@@ -385,6 +414,56 @@ export default function ReorderPage() {
                     <div
                       className={styles.actions}
                     >
+                      <div
+                        className={
+                          styles.quantitySection
+                        }
+                      >
+                        <span>Bestellmenge</span>
+
+                        <div
+                          className={
+                            styles.quantityControl
+                          }
+                        >
+                          <button
+                            type="button"
+                            aria-label={`Bestellmenge für ${filament.material} ${filament.color} verringern`}
+                            disabled={
+                              orderAmount <= 1
+                            }
+                            onClick={() =>
+                              changeOrderAmount(
+                                filament,
+                                -1,
+                              )
+                            }
+                          >
+                            −
+                          </button>
+
+                          <strong>
+                            {orderAmount}
+                          </strong>
+
+                          <button
+                            type="button"
+                            aria-label={`Bestellmenge für ${filament.material} ${filament.color} erhöhen`}
+                            disabled={
+                              orderAmount >= 99
+                            }
+                            onClick={() =>
+                              changeOrderAmount(
+                                filament,
+                                1,
+                              )
+                            }
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
                       {filament.orderLink ? (
                         <button
                           className={

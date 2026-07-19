@@ -121,3 +121,16 @@ Es sind keine Änderungen an Supabase erforderlich.
 - Empfohlene Bestellmenge wird direkt angezeigt.
 - Alle grünen Seiten-Statuspunkte pulsieren jetzt dezent sichtbar.
 - Keine Supabase-Änderungen erforderlich.
+
+
+## Ergänzungen in V9
+
+- Materialverteilung vollständig aus dem Dashboard entfernt.
+- Dashboard komplett neu strukturiert.
+- Neue Schnellzugriffe für Scanner, Filamente, Nachbestellen und Statistiken.
+- Neue Lagergesundheitsanzeige mit Prozentwert und Bestandsstatus.
+- Dringende Nachbestellungen und letzte Bewegungen neu gestaltet.
+- Nachbestellseite besitzt pro Filament eine Bestellmengenwahl mit Minus- und Plus-Button.
+- Bestellmenge ist zwischen 1 und 99 Rollen einstellbar.
+- Die Kennzahl „Empfohlene Rollen“ reagiert direkt auf die gewählten Mengen.
+- Keine Supabase-Änderungen erforderlich.

@@ -2,37 +2,698 @@
   min-width: 0;
 }
 
+.quickActions {
+  display: grid;
+  grid-template-columns:
+    minmax(280px, 1.45fr)
+    repeat(3, minmax(170px, 0.7fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
 
-@keyframes urgentReorderEnter {
+.quickAction,
+.quickActionPrimary {
+  display: flex;
+  min-width: 0;
+  min-height: 74px;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  color: var(--text);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.025),
+      transparent
+    ),
+    #10181c;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.quickActionPrimary {
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(245, 166, 35, 0.18),
+      transparent 62%
+    ),
+    #151a1b;
+  border-color: rgba(245, 166, 35, 0.42);
+}
+
+.quickAction:hover,
+.quickActionPrimary:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 166, 35, 0.55);
+}
+
+.quickActionIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.25);
+  border-radius: 9px;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.quickAction div,
+.quickActionPrimary div {
+  min-width: 0;
+  flex: 1;
+}
+
+.quickAction strong,
+.quickActionPrimary strong {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quickAction small,
+.quickActionPrimary small {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quickActionPrimary b {
+  color: var(--accent);
+  font-size: 20px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.kpiCard {
+  position: relative;
+  min-width: 0;
+  min-height: 124px;
+  overflow: hidden;
+  padding: 17px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.03),
+      transparent 58%
+    ),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.kpiCard::after {
+  position: absolute;
+  right: -28px;
+  bottom: -45px;
+  width: 100px;
+  height: 100px;
+  content: "";
+  background: rgba(245, 166, 35, 0.035);
+  border-radius: 50%;
+}
+
+.kpiCard > span {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.kpiCard > strong {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 12px;
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1;
+}
+
+.kpiCard > small {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 10px;
+  color: #75848b;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.kpiBlue {
+  color: #66b8ff;
+}
+
+.kpiGreen {
+  color: var(--green);
+}
+
+.kpiOrange {
+  color: var(--accent);
+}
+
+.incoming {
+  color: var(--green);
+  font-weight: 900;
+}
+
+.outgoing {
+  color: var(--red);
+  font-weight: 900;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  gap: 12px;
+}
+
+.panel {
+  min-width: 0;
+  padding: 17px;
+  background: rgba(16, 24, 28, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.healthPanel,
+.reorderPanel {
+  min-height: 350px;
+}
+
+.activityPanel {
+  grid-column: 1 / -1;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.panelEyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.panelHeader p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.panelLink {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.panelLink:hover {
+  text-decoration: underline;
+}
+
+.healthContent {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 0.75fr) minmax(220px, 1.25fr);
+  gap: 22px;
+  align-items: center;
+  padding: 10px 4px 20px;
+}
+
+.healthRing {
+  display: grid;
+  width: 150px;
+  max-width: 100%;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  padding: 13px;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow:
+    0 0 35px rgba(245, 166, 35, 0.06),
+    inset 0 0 16px rgba(0, 0, 0, 0.28);
+}
+
+.healthRing > div {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-content: center;
+  background: #0c1317;
+  border: 1px solid #303c42;
+  border-radius: 50%;
+  text-align: center;
+}
+
+.healthRing strong {
+  display: block;
+  font-size: 29px;
+}
+
+.healthRing span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.healthFacts {
+  display: grid;
+  gap: 9px;
+}
+
+.healthFacts > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+  padding: 11px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 8px;
+}
+
+.factDotGreen,
+.factDotRed,
+.factDotOrange {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.factDotGreen {
+  background: var(--green);
+  box-shadow: 0 0 10px rgba(57, 217, 138, 0.35);
+}
+
+.factDotRed {
+  background: var(--red);
+  box-shadow: 0 0 10px rgba(255, 100, 100, 0.35);
+}
+
+.factDotOrange {
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(245, 166, 35, 0.35);
+}
+
+.healthFacts p {
+  min-width: 0;
+  margin: 0;
+}
+
+.healthFacts strong {
+  display: block;
+  font-size: 16px;
+}
+
+.healthFacts span:not(
+  .factDotGreen,
+  .factDotRed,
+  .factDotOrange
+) {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.healthFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+}
+
+.healthFooter > span {
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.healthFooter a {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.healthGood {
+  color: var(--green);
+}
+
+.healthAttention {
+  color: var(--red);
+}
+
+.reorderList {
+  display: grid;
+  gap: 8px;
+}
+
+@keyframes reorderEnter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateX(8px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
 
-.urgentReorderRow {
-  animation: urgentReorderEnter 0.42s
+.reorderRow {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  min-height: 70px;
+  padding: 10px;
+  color: var(--text);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 100, 100, 0.045),
+      transparent
+    ),
+    #0c1317;
+  border: 1px solid #2d393f;
+  border-left: 3px solid var(--red);
+  border-radius: 8px;
+  text-decoration: none;
+  animation: reorderEnter 0.4s
     cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease;
 }
 
-.orderRecommendation {
+.reorderRow:hover {
+  transform: translateX(2px);
+  border-color: rgba(245, 166, 35, 0.42);
+  border-left-color: var(--accent);
+}
+
+.stockEmpty,
+.stockCritical {
+  display: grid;
+  min-width: 37px;
+  height: 37px;
+  padding: 0 8px;
+  place-items: center;
+  color: #130d0d;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.stockEmpty {
+  background: var(--red);
+}
+
+.stockCritical {
+  background: var(--accent);
+}
+
+.reorderMain {
+  min-width: 0;
+}
+
+.reorderMain strong,
+.reorderMain span {
   display: block;
-  margin-top: 2px;
-  color: var(--accent);
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 900;
-  letter-spacing: 0.025em;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.reorderMain strong {
+  font-size: 11px;
+}
+
+.reorderMain span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.reorderAmount {
+  text-align: right;
+}
+
+.reorderAmount strong,
+.reorderAmount span {
+  display: block;
+}
+
+.reorderAmount strong {
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.reorderAmount span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.allGood {
+  display: flex;
+  min-height: 235px;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  color: var(--muted);
+}
+
+.allGood > span {
+  display: grid;
+  width: 45px;
+  height: 45px;
+  place-items: center;
+  color: #07120c;
+  background: var(--green);
+  border-radius: 50%;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.allGood strong {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.allGood p {
+  margin: 4px 0 0;
+  font-size: 9px;
+}
+
+.activityList {
+  display: grid;
+}
+
+.activityRow {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 58px;
+  padding: 9px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.activityRow:last-child {
+  border-bottom: 0;
+}
+
+.activityIn,
+.activityOut {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 7px;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.activityIn {
+  color: #07120c;
+  background: var(--green);
+}
+
+.activityOut {
+  color: #160b0b;
+  background: var(--red);
+}
+
+.activityMain,
+.activityMeta {
+  min-width: 0;
+}
+
+.activityMain strong,
+.activityMain span,
+.activityMeta strong,
+.activityMeta time {
+  display: block;
+}
+
+.activityMain strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activityMain span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.activityMeta {
+  text-align: right;
+}
+
+.activityMeta strong {
+  font-size: 10px;
+}
+
+.activityMeta time {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.emptyActivity {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+@media (max-width: 1180px) {
+  .quickActions {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .kpiGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .activityPanel {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .quickActions {
+    grid-template-columns: 1fr;
+  }
+
+  .kpiGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .healthContent {
+    grid-template-columns: 1fr;
+  }
+
+  .healthRing {
+    width: 138px;
+  }
+
+  .healthFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 460px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .panelHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .activityRow {
+    grid-template-columns:
+      auto minmax(0, 1fr);
+  }
+
+  .activityMeta {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .urgentReorderRow {
+  .quickAction,
+  .quickActionPrimary,
+  .reorderRow {
     animation: none;
+    transition: none;
   }
 }
