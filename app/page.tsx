@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 type Mode = "in" | "out";
 type StatisticsRange = "7" | "30" | "90" | "all";
 type AuthMode = "login" | "signup" | "forgot";
-type Page = "dashboard" | "statistics" | "storage" | "filaments" | "log";
+type Page = "dashboard" | "statistics" | "storage" | "filaments" | "log" | "profile";
 
 type Filament = {
   id: number;
@@ -251,6 +251,15 @@ export default function Home() {
   const [passwordUpdateMessage, setPasswordUpdateMessage] =
     useState("");
 
+  const [profileName, setProfileName] = useState("");
+  const [profilePassword, setProfilePassword] = useState("");
+  const [profilePasswordConfirm, setProfilePasswordConfirm] =
+    useState("");
+  const [profileMessage, setProfileMessage] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [isProfileSaving, setIsProfileSaving] =
+    useState(false);
+
   const [isFormOpen, setIsFormOpen] =
     useState(false);
 
@@ -293,12 +302,14 @@ export default function Home() {
         setLoginError(error.message);
       }
 
+      const sessionName =
+        getDisplayName(data.session?.user);
+
       setUserEmail(
         data.session?.user.email ?? null,
       );
-      setUserName(
-        getDisplayName(data.session?.user),
-      );
+      setUserName(sessionName);
+      setProfileName(sessionName);
       setAuthReady(true);
     }
 
@@ -318,16 +329,19 @@ export default function Home() {
           setLoginError("");
         }
 
+        const sessionName =
+          getDisplayName(session?.user);
+
         setUserEmail(
           session?.user.email ?? null,
         );
-        setUserName(
-          getDisplayName(session?.user),
-        );
+        setUserName(sessionName);
+        setProfileName(sessionName);
         setAuthReady(true);
 
         if (!session) {
           setUserName("");
+          setProfileName("");
           setFilaments([]);
           setLogs([]);
           setIsLoading(false);
@@ -774,6 +788,88 @@ export default function Home() {
     }
 
     setIsLoggingIn(false);
+  }
+
+  async function handleProfileNameUpdate(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    const name = profileName.trim();
+
+    if (!name) {
+      setProfileError("Bitte gib einen Namen ein.");
+      setProfileMessage("");
+      return;
+    }
+
+    setIsProfileSaving(true);
+    setProfileError("");
+    setProfileMessage("");
+
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        full_name: name,
+        name,
+      },
+    });
+
+    if (error) {
+      setProfileError(error.message);
+    } else {
+      const updatedName =
+        getDisplayName(data.user) || name;
+
+      setUserName(updatedName);
+      setProfileName(updatedName);
+      setProfileMessage(
+        "Dein Name wurde erfolgreich gespeichert.",
+      );
+    }
+
+    setIsProfileSaving(false);
+  }
+
+  async function handleProfilePasswordUpdate(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (profilePassword.length < 8) {
+      setProfileError(
+        "Das neue Passwort muss mindestens 8 Zeichen lang sein.",
+      );
+      setProfileMessage("");
+      return;
+    }
+
+    if (profilePassword !== profilePasswordConfirm) {
+      setProfileError(
+        "Die beiden Passwörter stimmen nicht überein.",
+      );
+      setProfileMessage("");
+      return;
+    }
+
+    setIsProfileSaving(true);
+    setProfileError("");
+    setProfileMessage("");
+
+    const { error } = await supabase.auth.updateUser({
+      password: profilePassword,
+    });
+
+    if (error) {
+      setProfileError(error.message);
+    } else {
+      setProfilePassword("");
+      setProfilePasswordConfirm("");
+      setProfileMessage(
+        "Dein Passwort wurde erfolgreich geändert.",
+      );
+    }
+
+    setIsProfileSaving(false);
   }
 
   async function handleLogout() {
@@ -2520,6 +2616,22 @@ export default function Home() {
             Protokoll
           </button>
 
+          <p className="nav-title">Konto</p>
+
+          <button
+            className={`nav-button ${
+              activePage === "profile"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              changePage("profile")
+            }
+          >
+            <span>●</span>
+            Profil & Sicherheit
+          </button>
+
           <p className="nav-title">Daten</p>
 
           <button
@@ -2554,11 +2666,15 @@ export default function Home() {
         </nav>
 
         <div className="sidebar-account">
-          <div className="sidebar-account-info">
+          <button
+            className="sidebar-account-info sidebar-account-link"
+            type="button"
+            onClick={() => changePage("profile")}
+          >
             <span>Angemeldet als</span>
             <strong>{userName}</strong>
             <small>{userEmail}</small>
-          </div>
+          </button>
 
           <button
             className="sidebar-logout-button"
@@ -4140,6 +4256,204 @@ export default function Home() {
                   ),
                 )
               )}
+            </section>
+          </>
+        )}
+
+        {activePage === "profile" && (
+          <>
+            <header className="topbar">
+              <div>
+                <span className="welcome-label">
+                  Konto
+                </span>
+                <h1>Profil & Sicherheit</h1>
+                <p>
+                  Persönliche Daten und Zugangsdaten verwalten
+                </p>
+              </div>
+
+              <div className="system-status">
+                <span className="status-dot" />
+                Konto geschützt
+              </div>
+            </header>
+
+            {(profileMessage || profileError) && (
+              <div
+                className={`profile-feedback ${
+                  profileError
+                    ? "profile-feedback-error"
+                    : "profile-feedback-success"
+                }`}
+              >
+                {profileError || profileMessage}
+              </div>
+            )}
+
+            <section className="profile-grid">
+              <article className="panel profile-card profile-overview-card">
+                <div className="profile-avatar">
+                  {(userName || userEmail || "P")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+
+                <div>
+                  <span className="profile-eyebrow">
+                    Philamentix Hub Account
+                  </span>
+                  <h2>{userName}</h2>
+                  <p>{userEmail}</p>
+                </div>
+
+                <div className="profile-status-row">
+                  <span className="profile-status-dot" />
+                  Angemeldet und synchronisiert
+                </div>
+              </article>
+
+              <article className="panel profile-card">
+                <div className="profile-card-heading">
+                  <div>
+                    <span className="profile-section-number">
+                      01
+                    </span>
+                    <h2>Persönliche Daten</h2>
+                  </div>
+                  <p>
+                    Dieser Name wird im Dashboard und in deinem Konto angezeigt.
+                  </p>
+                </div>
+
+                <form
+                  className="profile-form"
+                  onSubmit={handleProfileNameUpdate}
+                >
+                  <label>
+                    Anzeigename
+                    <input
+                      type="text"
+                      autoComplete="name"
+                      value={profileName}
+                      onChange={(event) =>
+                        setProfileName(event.target.value)
+                      }
+                      placeholder="Dein Name"
+                    />
+                  </label>
+
+                  <label>
+                    E-Mail-Adresse
+                    <input
+                      type="email"
+                      value={userEmail}
+                      disabled
+                    />
+                    <small>
+                      Die E-Mail-Adresse ist mit deinem Supabase-Konto verknüpft.
+                    </small>
+                  </label>
+
+                  <div className="profile-form-actions">
+                    <button
+                      className="primary-button"
+                      type="submit"
+                      disabled={isProfileSaving}
+                    >
+                      {isProfileSaving
+                        ? "Wird gespeichert …"
+                        : "Name speichern"}
+                    </button>
+                  </div>
+                </form>
+              </article>
+
+              <article className="panel profile-card">
+                <div className="profile-card-heading">
+                  <div>
+                    <span className="profile-section-number">
+                      02
+                    </span>
+                    <h2>Passwort ändern</h2>
+                  </div>
+                  <p>
+                    Verwende mindestens acht Zeichen und ein einzigartiges Passwort.
+                  </p>
+                </div>
+
+                <form
+                  className="profile-form"
+                  onSubmit={handleProfilePasswordUpdate}
+                >
+                  <label>
+                    Neues Passwort
+                    <input
+                      type="password"
+                      minLength={8}
+                      autoComplete="new-password"
+                      value={profilePassword}
+                      onChange={(event) =>
+                        setProfilePassword(
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Mindestens 8 Zeichen"
+                    />
+                  </label>
+
+                  <label>
+                    Passwort wiederholen
+                    <input
+                      type="password"
+                      minLength={8}
+                      autoComplete="new-password"
+                      value={profilePasswordConfirm}
+                      onChange={(event) =>
+                        setProfilePasswordConfirm(
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Passwort erneut eingeben"
+                    />
+                  </label>
+
+                  <div className="profile-form-actions">
+                    <button
+                      className="primary-button"
+                      type="submit"
+                      disabled={isProfileSaving}
+                    >
+                      {isProfileSaving
+                        ? "Wird gespeichert …"
+                        : "Passwort aktualisieren"}
+                    </button>
+                  </div>
+                </form>
+              </article>
+
+              <article className="panel profile-card profile-session-card">
+                <div className="profile-card-heading">
+                  <div>
+                    <span className="profile-section-number">
+                      03
+                    </span>
+                    <h2>Sitzung</h2>
+                  </div>
+                  <p>
+                    Beende deine aktuelle Sitzung auf diesem Gerät.
+                  </p>
+                </div>
+
+                <button
+                  className="delete-button profile-logout-action"
+                  type="button"
+                  onClick={() => void handleLogout()}
+                >
+                  Von Philamentix Hub abmelden
+                </button>
+              </article>
             </section>
           </>
         )}
