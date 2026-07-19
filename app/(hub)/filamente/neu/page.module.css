@@ -1,3 +1,105 @@
 .page {
   min-width: 0;
 }
+
+
+.successOverlay {
+  position: fixed;
+  z-index: 3000;
+  inset: 0;
+  display: grid;
+  padding: 22px;
+  place-items: center;
+  background: rgba(3, 8, 10, 0.76);
+  animation: filamentSuccessBackdrop 0.22s ease-out both;
+}
+
+.successCard {
+  position: relative;
+  width: min(390px, 100%);
+  padding: 30px 24px 26px;
+  overflow: hidden;
+  color: var(--text);
+  text-align: center;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(57, 217, 138, 0.16),
+      transparent 58%
+    ),
+    linear-gradient(180deg, #182126, #10171b);
+  border: 1px solid rgba(57, 217, 138, 0.42);
+  border-radius: 14px;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.55),
+    0 0 38px rgba(57, 217, 138, 0.09);
+  animation: filamentSuccessCard 0.52s
+    cubic-bezier(0.2, 0.85, 0.25, 1.15) both;
+}
+
+.successCard::before {
+  position: absolute;
+  top: 0;
+  right: 14%;
+  left: 14%;
+  height: 2px;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--green),
+    transparent
+  );
+}
+
+.successIcon {
+  position: relative;
+  display: grid;
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 18px;
+  place-items: center;
+  color: #07110c;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 28px rgba(57, 217, 138, 0.32);
+  animation: filamentSuccessIcon 0.58s
+    cubic-bezier(0.2, 0.9, 0.25, 1.3) both;
+}
+
+.successIcon::after {
+  position: absolute;
+  inset: -8px;
+  content: "";
+  border: 2px solid rgba(57, 217, 138, 0.65);
+  border-radius: inherit;
+  animation: filamentSuccessRing 0.85s ease-out
+    0.12s both;
+}
+
+.successIcon span {
+  font-size: 34px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.successCard strong {
+  display: block;
+  font-size: 20px;
+}
+
+.successCard p {
+  margin: 8px 0 0;
+  color: #cbd7dc;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.successCard small {
+  display: block;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}

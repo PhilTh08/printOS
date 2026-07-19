@@ -51,3 +51,13 @@ Erst nach einem erfolgreichen Build committen und pushen.
 In der Filamentübersicht gibt es wieder einen direkten Löschen-Button.
 Der Button löscht nur das Filament des angemeldeten Benutzers und zeigt
 vorher eine Sicherheitsabfrage an.
+
+
+## Ergänzungen in V4
+
+- Die Sidebar bleibt auf Desktop dauerhaft im sichtbaren Bereich.
+- Bei sehr vielen Navigationseinträgen scrollt nur die Sidebar selbst.
+- Nach dem Anlegen eines Filaments erscheint eine Erfolgsanimation.
+- Danach wird automatisch die individuelle Filamentseite geöffnet.
+- Das Bewegungsdiagramm baut sich beim Öffnen der Statistik von unten nach oben auf.
+- Beim Wechsel des Statistikzeitraums wird die Diagrammanimation erneut abgespielt.

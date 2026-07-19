@@ -3795,3 +3795,122 @@ a.dashboard-link-button {
   background: linear-gradient(90deg, var(--accent), #ffc04a);
   border-radius: inherit;
 }
+
+
+/* =========================
+   DAUERHAFT SICHTBARE SIDEBAR
+   ========================= */
+
+@media (min-width: 721px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    height: 100vh;
+    height: 100dvh;
+    align-self: start;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: #3c484f transparent;
+  }
+
+  .sidebar > nav {
+    flex: 0 0 auto;
+  }
+
+  .sidebar-account {
+    margin-top: auto;
+  }
+}
+
+/* =========================
+   FILAMENT-ERFOLGSANIMATION
+   ========================= */
+
+@keyframes filamentSuccessBackdrop {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes filamentSuccessCard {
+  0% {
+    opacity: 0;
+    transform: translateY(26px) scale(0.9);
+  }
+
+  65% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.025);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes filamentSuccessIcon {
+  0% {
+    opacity: 0;
+    transform: rotate(-28deg) scale(0.35);
+  }
+
+  58% {
+    opacity: 1;
+    transform: rotate(8deg) scale(1.12);
+  }
+
+  100% {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+@keyframes filamentSuccessRing {
+  0% {
+    opacity: 0.75;
+    transform: scale(0.55);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.65);
+  }
+}
+
+/* =========================
+   STATISTIK-DIAGRAMM
+   ========================= */
+
+@keyframes movementBarGrowUp {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+.movement-chart-bar {
+  transform-origin: bottom center;
+  animation: movementBarGrowUp 0.78s
+    cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: transform, opacity;
+}

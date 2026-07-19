@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FilamentFormFields } from "@/components/philamentix/filament-form-fields";
+import styles from "./page.module.css";
 import { useHub } from "@/components/philamentix/hub-provider";
 import {
   emptyFilamentForm,
@@ -31,6 +32,8 @@ export function NewFilamentClient({
     stock: initialStock,
   });
   const [error, setError] = useState("");
+  const [createdFilamentName, setCreatedFilamentName] =
+    useState("");
 
   async function save(
     event: FormEvent<HTMLFormElement>,
@@ -43,7 +46,18 @@ export function NewFilamentClient({
         form,
         fromScanner ? "scan" : "manual",
       );
-      router.replace(`/filamente/${created.id}`);
+
+      setCreatedFilamentName(
+        `${created.manufacturer} ${created.material} ${created.color}`,
+      );
+
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 900);
+      });
+
+      router.replace(
+        `/filamente/${created.id}?created=1`,
+      );
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -55,6 +69,24 @@ export function NewFilamentClient({
 
   return (
     <>
+      {createdFilamentName && (
+        <div
+          className={styles.successOverlay}
+          role="status"
+          aria-live="polite"
+        >
+          <div className={styles.successCard}>
+            <div className={styles.successIcon}>
+              <span>✓</span>
+            </div>
+            <strong>Filament hinzugefügt</strong>
+            <p>{createdFilamentName}</p>
+            <small>
+              Der persönliche Datensatz wird geöffnet …
+            </small>
+          </div>
+        </div>
+      )}
       <header className="topbar">
         <div>
           <span className="welcome-label">

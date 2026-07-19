@@ -15,8 +15,10 @@ import { emptyFilamentForm } from "@/components/philamentix/types";
 
 export function FilamentDetailClient({
   filamentId,
+  wasCreated = false,
 }: {
   filamentId: number;
+  wasCreated?: boolean;
 }) {
   const router = useRouter();
   const {
@@ -35,7 +37,11 @@ export function FilamentDetailClient({
       ? filamentToForm(filament)
       : emptyFilamentForm,
   );
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    wasCreated
+      ? "Filament wurde erfolgreich hinzugefügt."
+      : "",
+  );
   const [error, setError] = useState("");
 
   useEffect(() => {

@@ -322,7 +322,7 @@ export default function StatisticsPage() {
                 {movementChart.map((item, index) => (
                   <div
                     className="movement-chart-column"
-                    key={`${item.label}-${index}`}
+                    key={`${statisticsRange}-${filteredLogs.length}-${item.label}-${index}`}
                   >
                     <div className="movement-chart-bars">
                       <div
@@ -335,6 +335,10 @@ export default function StatisticsPage() {
                               100,
                             item.incoming > 0 ? 8 : 0,
                           )}%`,
+                          animationDelay: `${Math.min(
+                            index * 34,
+                            420,
+                          )}ms`,
                         }}
                       />
                       <div
@@ -347,6 +351,10 @@ export default function StatisticsPage() {
                               100,
                             item.outgoing > 0 ? 8 : 0,
                           )}%`,
+                          animationDelay: `${Math.min(
+                            index * 34 + 85,
+                            505,
+                          )}ms`,
                         }}
                       />
                     </div>
