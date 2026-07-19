@@ -3934,3 +3934,55 @@ a.dashboard-link-button {
   font-weight: 950;
   box-shadow: 0 0 12px rgba(255, 100, 100, 0.28);
 }
+
+
+/* V8: dezenter, gut sichtbarer Status-Puls */
+@keyframes philamentixStatusDotPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 7px rgba(57, 217, 138, 0.48),
+      0 0 0 0 rgba(57, 217, 138, 0.22);
+  }
+
+  50% {
+    transform: scale(1.14);
+    box-shadow:
+      0 0 15px rgba(57, 217, 138, 0.9),
+      0 0 0 5px rgba(57, 217, 138, 0.08);
+  }
+}
+
+@keyframes philamentixStatusDotRing {
+  0% {
+    opacity: 0.42;
+    transform: scale(0.75);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.15);
+  }
+}
+
+.status-dot {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  animation: philamentixStatusDotPulse 1.8s
+    ease-in-out infinite;
+  will-change: transform, box-shadow;
+}
+
+.status-dot::after {
+  position: absolute;
+  inset: -1px;
+  content: "";
+  border: 1px solid rgba(57, 217, 138, 0.65);
+  border-radius: 50%;
+  animation: philamentixStatusDotRing 1.8s
+    ease-out infinite;
+  pointer-events: none;
+}

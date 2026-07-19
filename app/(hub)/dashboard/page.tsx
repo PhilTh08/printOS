@@ -23,6 +23,36 @@ export default function DashboardPage() {
     (filament) =>
       filament.stock <= filament.minimumStock,
   );
+  const urgentReorders = [
+    ...criticalFilaments,
+  ]
+    .sort((first, second) => {
+      const firstIsEmpty = first.stock === 0;
+      const secondIsEmpty = second.stock === 0;
+
+      if (firstIsEmpty !== secondIsEmpty) {
+        return firstIsEmpty ? -1 : 1;
+      }
+
+      const firstDeficit =
+        first.minimumStock - first.stock;
+      const secondDeficit =
+        second.minimumStock - second.stock;
+
+      if (firstDeficit !== secondDeficit) {
+        return secondDeficit - firstDeficit;
+      }
+
+      if (first.stock !== second.stock) {
+        return first.stock - second.stock;
+      }
+
+      return `${first.manufacturer} ${first.material} ${first.color}`.localeCompare(
+        `${second.manufacturer} ${second.material} ${second.color}`,
+        "de",
+      );
+    })
+    .slice(0, 3);
   const today = new Date();
   const todaysLogs = logs.filter((entry) => {
     const date = new Date(entry.timestamp);
@@ -147,15 +177,17 @@ export default function DashboardPage() {
         <article className="panel dashboard-panel">
           <div className="dashboard-panel-header">
             <div>
-              <h2>Kritische Bestände</h2>
-              <p>Filamente mit Handlungsbedarf</p>
+              <h2>Dringend nachbestellen</h2>
+              <p>
+                Die drei wichtigsten Nachbestellungen
+              </p>
             </div>
 
             <Link
               className="dashboard-link-button"
               href="/nachbestellen"
             >
-              Nachbestellen
+              Alle anzeigen
             </Link>
           </div>
 
@@ -171,28 +203,59 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="dashboard-warning-list">
-              {criticalFilaments
-                .slice(0, 4)
-                .map((filament) => (
-                  <Link
-                    className="dashboard-warning-row"
-                    key={filament.id}
-                    href={`/filamente/${filament.id}`}
-                  >
-                    <div>
-                      <strong>
-                        {filament.material} {filament.color}
-                      </strong>
-                      <span>{filament.manufacturer}</span>
-                    </div>
-                    <div className="dashboard-warning-stock">
-                      <strong>{filament.stock}</strong>
-                      <span>
-                        Minimum {filament.minimumStock}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
+              {urgentReorders.map(
+                (filament, index) => {
+                  const recommendedAmount =
+                    Math.max(
+                      1,
+                      filament.minimumStock -
+                        filament.stock,
+                    );
+
+                  return (
+                    <Link
+                      className={`dashboard-warning-row ${styles.urgentReorderRow}`}
+                      key={filament.id}
+                      href={`/filamente/${filament.id}`}
+                      style={{
+                        animationDelay: `${index * 70}ms`,
+                      }}
+                    >
+                      <div>
+                        <strong>
+                          {filament.material}{" "}
+                          {filament.color}
+                        </strong>
+                        <span>
+                          {filament.manufacturer}
+                          {filament.location
+                            ? ` · ${filament.location}`
+                            : ""}
+                        </span>
+                      </div>
+
+                      <div className="dashboard-warning-stock">
+                        <strong>{filament.stock}</strong>
+                        <span>
+                          Minimum{" "}
+                          {filament.minimumStock}
+                        </span>
+                        <em
+                          className={
+                            styles.orderRecommendation
+                          }
+                        >
+                          +{recommendedAmount}{" "}
+                          {recommendedAmount === 1
+                            ? "Rolle"
+                            : "Rollen"}{" "}
+                          bestellen
+                        </em>
+                      </div>
+                    </Link>
+                  );
+                },
+              )}
             </div>
           )}
         </article>

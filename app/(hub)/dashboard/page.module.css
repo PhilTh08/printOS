@@ -1,3 +1,38 @@
 .page {
   min-width: 0;
 }
+
+
+@keyframes urgentReorderEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.urgentReorderRow {
+  animation: urgentReorderEnter 0.42s
+    cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.orderRecommendation {
+  display: block;
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urgentReorderRow {
+    animation: none;
+  }
+}

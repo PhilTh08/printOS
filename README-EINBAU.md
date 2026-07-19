@@ -111,3 +111,13 @@ Enthalten:
 - responsive Darstellung für Smartphone und Desktop
 
 Es sind keine Änderungen an Supabase erforderlich.
+
+
+## Ergänzungen in V8
+
+- Dashboard zeigt die drei dringendsten Nachbestellungen.
+- Leere Filamente werden zuerst priorisiert.
+- Danach wird nach größter Fehlmenge und niedrigstem Bestand sortiert.
+- Empfohlene Bestellmenge wird direkt angezeigt.
+- Alle grünen Seiten-Statuspunkte pulsieren jetzt dezent sichtbar.
+- Keine Supabase-Änderungen erforderlich.
