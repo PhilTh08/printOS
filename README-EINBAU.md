@@ -191,3 +191,39 @@ Es sind keine Änderungen an Supabase erforderlich.
   - kritische Bestände je Lagerplatz
 
 Keine Supabase-Änderungen erforderlich.
+
+
+## Ergänzungen in V12 – Widget-Cloud-Synchronisierung
+
+Die Widget-Auswahl, Reihenfolge und Breite werden jetzt pro Benutzer
+in Supabase gespeichert. Dadurch ist dasselbe Dashboard auf Desktop,
+iPhone und weiteren Geräten verfügbar.
+
+### Vor dem Deployment einmal ausführen
+
+Öffne in Supabase den SQL Editor und führe diese Datei vollständig aus:
+
+`supabase/dashboard_widget_sync.sql`
+
+Die neue Tabelle heißt:
+
+`dashboard_preferences`
+
+Sie besitzt Row Level Security. Jeder Benutzer kann ausschließlich
+seine eigene Dashboard-Konfiguration lesen und ändern.
+
+### Verhalten beim ersten Start
+
+- Eine bestehende lokale V11-Widget-Anordnung wird automatisch übernommen.
+- Existiert bereits eine Cloud-Konfiguration, wird diese geladen.
+- Nach jeder Änderung wird nach kurzer Verzögerung automatisch gespeichert.
+- Im Dashboard zeigt ein Badge den Zustand:
+  - Cloud-Sync aktiv
+  - Cloud wird gespeichert
+  - Nur lokal
+  - Sync-Fehler
+- Im Bearbeitungsmodus gibt es zusätzlich „Cloud neu laden“.
+- Fehlt die Tabelle noch, funktioniert das Dashboard weiterhin lokal.
+
+Es sind keine Änderungen an den Tabellen `filaments` oder
+`filament_logs` erforderlich.

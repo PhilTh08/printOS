@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import { useHub } from "@/components/philamentix/hub-provider";
+import { supabase } from "@/lib/supabase";
 import type {
   Filament,
   LogEntry,
@@ -28,6 +31,18 @@ type WidgetId =
   | "storage-locations";
 
 type WidgetSize = "half" | "full";
+
+type DashboardSyncState =
+  | "loading"
+  | "saving"
+  | "synced"
+  | "local"
+  | "error";
+
+type DashboardPreferenceRow = {
+  widgets: unknown;
+  updated_at: string;
+};
 
 type ActiveWidget = {
   id: WidgetId;
@@ -203,6 +218,59 @@ function normalizeActiveWidgets(
   return normalized;
 }
 
+function readLocalWidgetSettings(
+  storageKey: string,
+): ActiveWidget[] {
+  try {
+    const savedValue =
+      window.localStorage.getItem(storageKey);
+
+    if (!savedValue) {
+      return DEFAULT_ACTIVE_WIDGETS;
+    }
+
+    return normalizeActiveWidgets(
+      JSON.parse(savedValue),
+    );
+  } catch {
+    return DEFAULT_ACTIVE_WIDGETS;
+  }
+}
+
+function isMissingPreferenceTable(
+  error: unknown,
+): boolean {
+  if (
+    typeof error !== "object" ||
+    error === null
+  ) {
+    return false;
+  }
+
+  const code =
+    "code" in error &&
+    typeof error.code === "string"
+      ? error.code
+      : "";
+
+  return (
+    code === "42P01" ||
+    code === "PGRST205"
+  );
+}
+
+function formatSyncTime(value: string): string {
+  return new Date(value).toLocaleString(
+    "de-DE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
+}
+
 function recommendedOrderAmount(
   filament: Filament,
 ): number {
@@ -272,6 +340,11 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [settingsLoaded, setSettingsLoaded] =
     useState(false);
+  const [syncState, setSyncState] =
+    useState<DashboardSyncState>("loading");
+  const [syncMessage, setSyncMessage] = useState(
+    "Widget-Einstellungen werden geladen.",
+  );
   const [activeWidgets, setActiveWidgets] =
     useState<ActiveWidget[]>(
       DEFAULT_ACTIVE_WIDGETS,
@@ -291,34 +364,148 @@ export default function DashboardPage() {
   const [filamentSearch, setFilamentSearch] =
     useState("");
 
+  const saveTimerRef = useRef<number | null>(
+    null,
+  );
+  const saveRevisionRef = useRef(0);
+
   const storageKey = `philamentix-dashboard-widgets-${
     user?.id ?? "guest"
   }`;
 
-  useEffect(() => {
-    setSettingsLoaded(false);
-
-    try {
-      const savedValue =
-        window.localStorage.getItem(storageKey);
-
-      if (!savedValue) {
+  const loadWidgetSettings = useCallback(
+    async (manualReload = false) => {
+      if (!user) {
         setActiveWidgets(
-          DEFAULT_ACTIVE_WIDGETS,
+          readLocalWidgetSettings(storageKey),
         );
-      } else {
-        setActiveWidgets(
-          normalizeActiveWidgets(
-            JSON.parse(savedValue),
-          ),
+        setSettingsLoaded(true);
+        setSyncState("local");
+        setSyncMessage(
+          "Widget-Einstellungen werden nur lokal gespeichert.",
         );
+        return;
       }
-    } catch {
-      setActiveWidgets(DEFAULT_ACTIVE_WIDGETS);
-    }
 
-    setSettingsLoaded(true);
-  }, [storageKey]);
+      setSettingsLoaded(false);
+      setSyncState("loading");
+      setSyncMessage(
+        manualReload
+          ? "Widget-Einstellungen werden aus der Cloud neu geladen."
+          : "Widget-Einstellungen werden synchronisiert.",
+      );
+
+      const localWidgets =
+        readLocalWidgetSettings(storageKey);
+
+      const {
+        data,
+        error: loadError,
+      } = await supabase
+        .from("dashboard_preferences")
+        .select("widgets, updated_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (loadError) {
+        setActiveWidgets(localWidgets);
+        setSettingsLoaded(true);
+
+        if (
+          isMissingPreferenceTable(loadError)
+        ) {
+          setSyncState("local");
+          setSyncMessage(
+            "Cloud-Sync ist noch nicht eingerichtet. Führe dashboard_widget_sync.sql in Supabase aus.",
+          );
+          return;
+        }
+
+        setSyncState("error");
+        setSyncMessage(
+          `Cloud-Einstellungen konnten nicht geladen werden: ${loadError.message}`,
+        );
+        return;
+      }
+
+      if (data) {
+        const row =
+          data as DashboardPreferenceRow;
+        const cloudWidgets =
+          normalizeActiveWidgets(row.widgets);
+
+        setActiveWidgets(cloudWidgets);
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify(cloudWidgets),
+        );
+        setSettingsLoaded(true);
+        setSyncState("synced");
+        setSyncMessage(
+          `Zuletzt aus der Cloud geladen: ${formatSyncTime(
+            row.updated_at,
+          )}`,
+        );
+        return;
+      }
+
+      setActiveWidgets(localWidgets);
+
+      const {
+        data: createdPreference,
+        error: createError,
+      } = await supabase
+        .from("dashboard_preferences")
+        .upsert(
+          {
+            user_id: user.id,
+            widgets: localWidgets,
+            updated_at:
+              new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id",
+          },
+        )
+        .select("widgets, updated_at")
+        .single();
+
+      setSettingsLoaded(true);
+
+      if (createError) {
+        if (
+          isMissingPreferenceTable(createError)
+        ) {
+          setSyncState("local");
+          setSyncMessage(
+            "Cloud-Sync ist noch nicht eingerichtet. Führe dashboard_widget_sync.sql in Supabase aus.",
+          );
+          return;
+        }
+
+        setSyncState("error");
+        setSyncMessage(
+          `Lokale Widget-Einstellungen konnten nicht in die Cloud übernommen werden: ${createError.message}`,
+        );
+        return;
+      }
+
+      const createdRow =
+        createdPreference as DashboardPreferenceRow;
+
+      setSyncState("synced");
+      setSyncMessage(
+        `Lokale V11-Einstellungen wurden in die Cloud übernommen: ${formatSyncTime(
+          createdRow.updated_at,
+        )}`,
+      );
+    },
+    [storageKey, user],
+  );
+
+  useEffect(() => {
+    void loadWidgetSettings();
+  }, [loadWidgetSettings]);
 
   useEffect(() => {
     if (!settingsLoaded) {
@@ -329,10 +516,103 @@ export default function DashboardPage() {
       storageKey,
       JSON.stringify(activeWidgets),
     );
+
+    if (!user) {
+      setSyncState("local");
+      setSyncMessage(
+        "Widget-Einstellungen werden nur lokal gespeichert.",
+      );
+      return;
+    }
+
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(
+        saveTimerRef.current,
+      );
+    }
+
+    const revision =
+      saveRevisionRef.current + 1;
+    saveRevisionRef.current = revision;
+
+    setSyncState("saving");
+    setSyncMessage(
+      "Widget-Einstellungen werden in der Cloud gespeichert.",
+    );
+
+    saveTimerRef.current =
+      window.setTimeout(() => {
+        void (async () => {
+          const {
+            data,
+            error: saveError,
+          } = await supabase
+            .from("dashboard_preferences")
+            .upsert(
+              {
+                user_id: user.id,
+                widgets: activeWidgets,
+                updated_at:
+                  new Date().toISOString(),
+              },
+              {
+                onConflict: "user_id",
+              },
+            )
+            .select("widgets, updated_at")
+            .single();
+
+          if (
+            revision !==
+            saveRevisionRef.current
+          ) {
+            return;
+          }
+
+          if (saveError) {
+            if (
+              isMissingPreferenceTable(
+                saveError,
+              )
+            ) {
+              setSyncState("local");
+              setSyncMessage(
+                "Cloud-Sync ist noch nicht eingerichtet. Änderungen bleiben in diesem Browser gespeichert.",
+              );
+              return;
+            }
+
+            setSyncState("error");
+            setSyncMessage(
+              `Cloud-Sync fehlgeschlagen: ${saveError.message}`,
+            );
+            return;
+          }
+
+          const savedRow =
+            data as DashboardPreferenceRow;
+
+          setSyncState("synced");
+          setSyncMessage(
+            `Cloud-Sync abgeschlossen: ${formatSyncTime(
+              savedRow.updated_at,
+            )}`,
+          );
+        })();
+      }, 650);
+
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(
+          saveTimerRef.current,
+        );
+      }
+    };
   }, [
     activeWidgets,
     settingsLoaded,
     storageKey,
+    user,
   ]);
 
   useEffect(() => {
@@ -1252,6 +1532,27 @@ export default function DashboardPage() {
     }
   }
 
+  const syncLabel =
+    syncState === "loading"
+      ? "Cloud wird geladen"
+      : syncState === "saving"
+        ? "Cloud wird gespeichert"
+        : syncState === "synced"
+          ? "Cloud-Sync aktiv"
+          : syncState === "local"
+            ? "Nur lokal"
+            : "Sync-Fehler";
+
+  const syncClassName =
+    syncState === "synced"
+      ? styles.syncSynced
+      : syncState === "saving" ||
+          syncState === "loading"
+        ? styles.syncWorking
+        : syncState === "local"
+          ? styles.syncLocal
+          : styles.syncError;
+
   return (
     <div className={styles.page}>
       <header className="topbar">
@@ -1266,6 +1567,14 @@ export default function DashboardPage() {
         </div>
 
         <div className={styles.headerActions}>
+          <div
+            className={`${styles.syncBadge} ${syncClassName}`}
+            title={syncMessage}
+          >
+            <span />
+            {syncLabel}
+          </div>
+
           <div className="system-status">
             <span className="status-dot" />
             System aktuell
@@ -1304,12 +1613,31 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={resetWidgets}
+            <div
+              className={
+                styles.editorHeaderActions
+              }
             >
-              Standard wiederherstellen
-            </button>
+              <button
+                type="button"
+                disabled={
+                  syncState === "loading" ||
+                  syncState === "saving"
+                }
+                onClick={() =>
+                  void loadWidgetSettings(true)
+                }
+              >
+                Cloud neu laden
+              </button>
+
+              <button
+                type="button"
+                onClick={resetWidgets}
+              >
+                Standard wiederherstellen
+              </button>
+            </div>
           </div>
 
           {activeWidgets.length === 0 ? (
@@ -1464,11 +1792,10 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <p className={styles.storageNote}>
-            Die Auswahl und Reihenfolge werden
-            automatisch für diesen Benutzer in
-            diesem Browser gespeichert.
-          </p>
+          <div className={styles.storageNote}>
+            <strong>{syncLabel}</strong>
+            <span>{syncMessage}</span>
+          </div>
         </section>
       )}
 
