@@ -127,7 +127,11 @@ function imageValue(
     };
   }
 
-  const url = image?.src ?? image?.url;
+  if (!image) {
+    return null;
+  }
+
+  const url = image.src ?? image.url;
 
   if (!url) {
     return null;

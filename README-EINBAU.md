@@ -288,3 +288,15 @@ Bei einem Filament mit dem falschen Bild:
 
 Für V14 ist keine neue Supabase-Migration erforderlich.
 Die V13-Spalte `image_url` wird weiterverwendet.
+
+
+## V14.1 – TypeScript-Buildfix
+
+Behoben wurde der Vercel-Fehler:
+
+`app/api/product-image/route.ts: image is possibly null or undefined`
+
+Die Bilddaten werden jetzt vor dem Zugriff ausdrücklich auf `null`
+und `undefined` geprüft.
+
+Keine neue Supabase-Migration erforderlich.
