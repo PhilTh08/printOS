@@ -13,9 +13,6 @@ import {
   emptyFilamentForm,
   normalizeBarcode,
 } from "@/components/philamentix/types";
-import { PageHeader } from "@/components/philamentix/page-header";
-
-import styles from "./page.module.css";
 
 export function NewFilamentClient({
   initialBarcode,
@@ -35,7 +32,7 @@ export function NewFilamentClient({
   });
   const [error, setError] = useState("");
 
-  async function handleSubmit(
+  async function save(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -58,38 +55,54 @@ export function NewFilamentClient({
 
   return (
     <>
-      <PageHeader
-        eyebrow="Neuer Datensatz"
-        title="Filament hinzufügen"
-        description={
-          fromScanner
-            ? "Die gescannte EAN ist bereits eingetragen. Ergänze nur noch die Filamentdaten."
-            : "Dieses Filament wird ausschließlich deinem Account zugeordnet."
-        }
-      />
-
-      <form
-        className={styles.panel}
-        onSubmit={handleSubmit}
-      >
-        {error && (
-          <div className={styles.error}>{error}</div>
-        )}
-
-        <FilamentFormFields
-          value={form}
-          onChange={setForm}
-        />
-
-        <div className={styles.actions}>
-          <Link href="/filamente">Abbrechen</Link>
-          <button type="submit" disabled={busy}>
-            {busy
-              ? "Wird gespeichert …"
-              : "Filament speichern"}
-          </button>
+      <header className="topbar">
+        <div>
+          <span className="welcome-label">
+            Persönlicher Datensatz
+          </span>
+          <h1>Filament hinzufügen</h1>
+          <p>
+            {fromScanner
+              ? "Die gescannte EAN ist bereits eingetragen. Ergänze die Filamentdaten."
+              : "Dieses Filament wird ausschließlich deinem Account zugeordnet."}
+          </p>
         </div>
-      </form>
+
+        <Link className="secondary-button" href="/filamente">
+          ← Abbrechen
+        </Link>
+      </header>
+
+      {error && (
+        <div className="page-feedback error">{error}</div>
+      )}
+
+      <article className="panel detail-form-panel">
+        <form onSubmit={save}>
+          <FilamentFormFields
+            value={form}
+            onChange={setForm}
+          />
+
+          <div className="detail-form-actions">
+            <Link
+              className="secondary-button"
+              href="/filamente"
+            >
+              Abbrechen
+            </Link>
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={busy}
+            >
+              {busy
+                ? "Wird gespeichert …"
+                : "Filament speichern"}
+            </button>
+          </div>
+        </form>
+      </article>
     </>
   );
 }

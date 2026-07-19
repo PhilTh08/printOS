@@ -14,9 +14,7 @@ export default async function NewFilamentPage({
   return (
     <NewFilamentClient
       initialBarcode={params.barcode ?? ""}
-      initialStock={
-        params.stock === "1" ? 1 : 0
-      }
+      initialStock={params.stock === "1" ? 1 : 0}
       fromScanner={params.source === "scanner"}
     />
   );

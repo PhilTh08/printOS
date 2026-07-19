@@ -4,15 +4,23 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useHub } from "@/components/philamentix/hub-provider";
-import { PageHeader } from "@/components/philamentix/page-header";
 
 import styles from "./page.module.css";
 
 export default function FilamentsPage() {
-  const { filaments, loading } = useHub();
+  const {
+    filaments,
+    adjustStock,
+    deleteFilament,
+    busy,
+  } = useHub();
   const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState<
+    number | null
+  >(null);
+  const [deleteError, setDeleteError] = useState("");
 
-  const filtered = useMemo(() => {
+  const filteredFilaments = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     if (!query) {
@@ -34,93 +42,193 @@ export default function FilamentsPage() {
     );
   }, [filaments, search]);
 
-  return (
-    <>
-      <PageHeader
-        eyebrow="Persönlicher Bestand"
-        title="Filamente"
-        description="Jedes Filament hat eine eigene URL und kann unabhängig bearbeitet werden."
-        actions={
-          <Link
-            className={styles.primaryLink}
-            href="/filamente/neu"
-          >
-            Filament hinzufügen
-          </Link>
-        }
-      />
+  async function handleDelete(
+    filamentId: number,
+    filamentName: string,
+  ) {
+    const confirmed = window.confirm(
+      `${filamentName} wirklich löschen? Der persönliche Lagerbestand dieses Filaments wird entfernt.`,
+    );
 
-      <section className={styles.toolbar}>
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingId(filamentId);
+    setDeleteError("");
+
+    try {
+      await deleteFilament(filamentId);
+    } catch (caughtError) {
+      setDeleteError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Filament konnte nicht gelöscht werden.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <div className={styles.page}>
+      <header className="topbar">
+        <div>
+          <h1>Filamenttypen</h1>
+          <p>
+            Barcodes und zugehörige Filamente verwalten
+          </p>
+        </div>
+
+        <Link
+          className="primary-button"
+          href="/filamente/neu"
+        >
+          + Filament hinzufügen
+        </Link>
+      </header>
+
+      <div className="filament-toolbar">
         <input
+          className="search-input"
+          type="search"
+          placeholder="Filament, Barcode oder ID suchen …"
           value={search}
           onChange={(event) =>
             setSearch(event.target.value)
           }
-          placeholder="EAN, Hersteller, Material, Farbe, Lagerplatz oder ID suchen"
         />
-        <span>
-          {loading ? "Lädt …" : `${filtered.length} Einträge`}
-        </span>
-      </section>
+      </div>
 
-      <section className={styles.grid}>
-        {filtered.map((filament) => {
-          const critical =
-            filament.stock <= filament.minimumStock;
+      {deleteError && (
+        <div className="error-message">
+          {deleteError}
+        </div>
+      )}
 
-          return (
-            <Link
+      <section className="filament-grid">
+        {filteredFilaments.length === 0 ? (
+          <div className="empty-state">
+            Keine Filamente gefunden.
+          </div>
+        ) : (
+          filteredFilaments.map((filament) => (
+            <article
+              className={`filament-card ${
+                filament.stock <= filament.minimumStock
+                  ? "low-stock"
+                  : ""
+              }`}
               key={filament.id}
-              href={`/filamente/${filament.id}`}
-              className={styles.card}
             >
-              <div className={styles.cardHead}>
-                <span>ID {filament.id}</span>
-                <b
-                  className={
-                    critical
-                      ? styles.critical
-                      : styles.ok
-                  }
-                >
-                  {critical ? "Kritisch" : "OK"}
-                </b>
+              <div className="filament-card-header">
+                <div>
+                  <span className="filament-id-badge">
+                    ID {filament.id}
+                  </span>
+                  <h2>
+                    {filament.material} {filament.color}
+                  </h2>
+                  <p>{filament.manufacturer}</p>
+                </div>
+                <strong>{filament.stock}</strong>
               </div>
 
-              <h2>
-                {filament.material} · {filament.color}
-              </h2>
-              <p>{filament.manufacturer}</p>
-
-              <dl>
+              <dl className="filament-details">
                 <div>
-                  <dt>Bestand</dt>
-                  <dd>{filament.stock}</dd>
+                  <dt>Barcode</dt>
+                  <dd>{filament.barcode}</dd>
+                </div>
+                <div>
+                  <dt>Gewicht</dt>
+                  <dd>{filament.weightPerRoll} g</dd>
+                </div>
+                <div>
+                  <dt>Lagerort</dt>
+                  <dd>{filament.location || "–"}</dd>
                 </div>
                 <div>
                   <dt>Mindestbestand</dt>
-                  <dd>{filament.minimumStock}</dd>
-                </div>
-                <div>
-                  <dt>Lagerplatz</dt>
-                  <dd>{filament.location || "—"}</dd>
+                  <dd>{filament.minimumStock} Rollen</dd>
                 </div>
               </dl>
 
-              <footer>
-                <span>{filament.barcode}</span>
-                <strong>Öffnen →</strong>
-              </footer>
-            </Link>
-          );
-        })}
-      </section>
+              <div className="filament-actions">
+                <button
+                  className="stock-button add"
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void adjustStock(
+                      filament.id,
+                      "in",
+                      "manual",
+                    )
+                  }
+                >
+                  + Rolle
+                </button>
 
-      {!loading && filtered.length === 0 && (
-        <div className={styles.empty}>
-          Keine passenden Filamente gefunden.
-        </div>
-      )}
-    </>
+                <button
+                  className="stock-button remove"
+                  type="button"
+                  disabled={busy || filament.stock === 0}
+                  onClick={() =>
+                    void adjustStock(
+                      filament.id,
+                      "out",
+                      "manual",
+                    )
+                  }
+                >
+                  − Rolle
+                </button>
+
+                {filament.orderLink && (
+                  <button
+                    className="order-button"
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        filament.orderLink,
+                        "_blank",
+                        "noopener,noreferrer",
+                      )
+                    }
+                  >
+                    Nachbestellen
+                  </button>
+                )}
+
+                <Link
+                  className="secondary-button"
+                  href={`/filamente/${filament.id}`}
+                >
+                  Details & Bearbeiten
+                </Link>
+
+                <button
+                  className="delete-button"
+                  type="button"
+                  disabled={
+                    busy || deletingId === filament.id
+                  }
+                  onClick={() =>
+                    void handleDelete(
+                      filament.id,
+                      `${filament.manufacturer} ${filament.material} ${filament.color}`,
+                    )
+                  }
+                >
+                  {deletingId === filament.id
+                    ? "Wird gelöscht …"
+                    : "Löschen"}
+                </button>
+              </div>
+            </article>
+          ))
+        )}
+      </section>
+    </div>
   );
 }

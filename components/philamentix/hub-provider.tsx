@@ -20,6 +20,7 @@ import {
 import {
   filamentLabel,
   normalizeBarcode,
+  type BackupData,
   type Filament,
   type FilamentForm,
   type FilamentRow,
@@ -57,6 +58,8 @@ type HubContextValue = {
   updateProfileName: (name: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  exportData: () => void;
+  importData: (file: File) => Promise<void>;
 };
 
 const HubContext = createContext<HubContextValue | null>(
@@ -71,10 +74,7 @@ function getDisplayName(user: User | null): string {
   const fullName = user.user_metadata?.full_name;
   const name = user.user_metadata?.name;
 
-  if (
-    typeof fullName === "string" &&
-    fullName.trim()
-  ) {
+  if (typeof fullName === "string" && fullName.trim()) {
     return fullName.trim();
   }
 
@@ -83,6 +83,27 @@ function getDisplayName(user: User | null): string {
   }
 
   return user.email?.split("@")[0] ?? "Benutzer";
+}
+
+function cleanForm(form: FilamentForm): FilamentForm {
+  return {
+    ...form,
+    barcode: normalizeBarcode(form.barcode),
+    manufacturer: form.manufacturer.trim(),
+    material: form.material.trim(),
+    color: form.color.trim(),
+    location: form.location.trim(),
+    orderLink: form.orderLink.trim(),
+    weightPerRoll: Math.max(
+      1,
+      Number(form.weightPerRoll) || 1000,
+    ),
+    minimumStock: Math.max(
+      0,
+      Number(form.minimumStock) || 0,
+    ),
+    stock: Math.max(0, Number(form.stock) || 0),
+  };
 }
 
 export function HubProvider({
@@ -263,24 +284,7 @@ export function HubProvider({
         throw new Error("Nicht angemeldet.");
       }
 
-      const cleaned: FilamentForm = {
-        ...form,
-        barcode: normalizeBarcode(form.barcode),
-        manufacturer: form.manufacturer.trim(),
-        material: form.material.trim(),
-        color: form.color.trim(),
-        location: form.location.trim(),
-        orderLink: form.orderLink.trim(),
-        weightPerRoll: Math.max(
-          1,
-          Number(form.weightPerRoll) || 1000,
-        ),
-        minimumStock: Math.max(
-          0,
-          Number(form.minimumStock) || 0,
-        ),
-        stock: Math.max(0, Number(form.stock) || 0),
-      };
+      const cleaned = cleanForm(form);
 
       if (
         !cleaned.barcode ||
@@ -290,6 +294,16 @@ export function HubProvider({
       ) {
         throw new Error(
           "EAN, Hersteller, Material und Farbe sind Pflichtfelder.",
+        );
+      }
+
+      const duplicate = filaments.some(
+        (item) => item.barcode === cleaned.barcode,
+      );
+
+      if (duplicate) {
+        throw new Error(
+          "Dieser Barcode ist in deinem Account bereits vorhanden.",
         );
       }
 
@@ -337,7 +351,7 @@ export function HubProvider({
         setBusy(false);
       }
     },
-    [user, writeLog],
+    [filaments, user, writeLog],
   );
 
   const updateFilament = useCallback(
@@ -346,24 +360,18 @@ export function HubProvider({
         throw new Error("Nicht angemeldet.");
       }
 
-      const cleaned: FilamentForm = {
-        ...form,
-        barcode: normalizeBarcode(form.barcode),
-        manufacturer: form.manufacturer.trim(),
-        material: form.material.trim(),
-        color: form.color.trim(),
-        location: form.location.trim(),
-        orderLink: form.orderLink.trim(),
-        weightPerRoll: Math.max(
-          1,
-          Number(form.weightPerRoll) || 1000,
-        ),
-        minimumStock: Math.max(
-          0,
-          Number(form.minimumStock) || 0,
-        ),
-        stock: Math.max(0, Number(form.stock) || 0),
-      };
+      const cleaned = cleanForm(form);
+      const duplicate = filaments.some(
+        (item) =>
+          item.id !== id &&
+          item.barcode === cleaned.barcode,
+      );
+
+      if (duplicate) {
+        throw new Error(
+          "Dieser Barcode ist in deinem Account bereits vorhanden.",
+        );
+      }
 
       setBusy(true);
       setError("");
@@ -399,7 +407,7 @@ export function HubProvider({
         setBusy(false);
       }
     },
-    [user],
+    [filaments, user],
   );
 
   const deleteFilament = useCallback(
@@ -581,6 +589,160 @@ export function HubProvider({
     }
   }, []);
 
+  const exportData = useCallback(() => {
+    const backup: BackupData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      filaments: filaments.map(
+        ({ id: _id, userId: _userId, ...rest }) =>
+          rest,
+      ),
+      logs: logs.map(
+        ({
+          id: _id,
+          userId: _userId,
+          filamentId: _filamentId,
+          ...rest
+        }) => rest,
+      ),
+    };
+
+    const blob = new Blob(
+      [JSON.stringify(backup, null, 2)],
+      { type: "application/json" },
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `philamentix-backup-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [filaments, logs]);
+
+  const importData = useCallback(
+    async (file: File) => {
+      if (!user) {
+        throw new Error("Nicht angemeldet.");
+      }
+
+      const confirmed = window.confirm(
+        "Das Backup ersetzt deine aktuellen Filamente und Protokolle. Fortfahren?",
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      const parsed = JSON.parse(
+        await file.text(),
+      ) as Partial<BackupData>;
+
+      if (
+        parsed.version !== 1 ||
+        !Array.isArray(parsed.filaments) ||
+        !Array.isArray(parsed.logs)
+      ) {
+        throw new Error("Ungültiges Backup-Format.");
+      }
+
+      setBusy(true);
+      setError("");
+
+      try {
+        const { error: deleteLogsError } =
+          await supabase
+            .from("filament_logs")
+            .delete()
+            .eq("user_id", user.id);
+
+        if (deleteLogsError) {
+          throw new Error(deleteLogsError.message);
+        }
+
+        const { error: deleteFilamentsError } =
+          await supabase
+            .from("filaments")
+            .delete()
+            .eq("user_id", user.id);
+
+        if (deleteFilamentsError) {
+          throw new Error(deleteFilamentsError.message);
+        }
+
+        const cleanFilaments = parsed.filaments.map(
+          (item) =>
+            filamentFormToRow(
+              cleanForm({
+                barcode: item.barcode ?? "",
+                manufacturer: item.manufacturer ?? "",
+                material: item.material ?? "",
+                color: item.color ?? "",
+                weightPerRoll:
+                  item.weightPerRoll ?? 1000,
+                location: item.location ?? "",
+                minimumStock:
+                  item.minimumStock ?? 1,
+                stock: item.stock ?? 0,
+                orderLink: item.orderLink ?? "",
+              }),
+              user.id,
+            ),
+        );
+
+        const { data: insertedRows, error: insertError } =
+          cleanFilaments.length > 0
+            ? await supabase
+                .from("filaments")
+                .insert(cleanFilaments)
+                .select("*")
+            : { data: [], error: null };
+
+        if (insertError) {
+          throw new Error(insertError.message);
+        }
+
+        const inserted = (insertedRows ?? []).map(
+          (row) => rowToFilament(row as FilamentRow),
+        );
+        const idByBarcode = new Map(
+          inserted.map((item) => [item.barcode, item.id]),
+        );
+
+        const logRows = parsed.logs.map((entry) => ({
+          id: crypto.randomUUID(),
+          user_id: user.id,
+          created_at:
+            entry.timestamp ?? new Date().toISOString(),
+          action: entry.action ?? "in",
+          source: entry.source ?? "manual",
+          filament_id:
+            idByBarcode.get(entry.barcode ?? "") ?? null,
+          filament_name:
+            entry.filamentName ?? "Unbekanntes Filament",
+          barcode: entry.barcode ?? "",
+          stock_after: entry.stockAfter ?? 0,
+        }));
+
+        if (logRows.length > 0) {
+          const { error: logInsertError } = await supabase
+            .from("filament_logs")
+            .insert(logRows);
+
+          if (logInsertError) {
+            throw new Error(logInsertError.message);
+          }
+        }
+
+        await loadDataForUser(user.id);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [loadDataForUser, user],
+  );
+
   const value = useMemo<HubContextValue>(
     () => ({
       user,
@@ -600,6 +762,8 @@ export function HubProvider({
       updateProfileName,
       updatePassword,
       signOut,
+      exportData,
+      importData,
     }),
     [
       user,
@@ -618,6 +782,8 @@ export function HubProvider({
       updateProfileName,
       updatePassword,
       signOut,
+      exportData,
+      importData,
     ],
   );
 

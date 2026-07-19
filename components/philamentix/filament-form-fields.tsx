@@ -1,7 +1,6 @@
 "use client";
 
 import type { FilamentForm } from "./types";
-import styles from "./filament-form-fields.module.css";
 
 export function FilamentFormFields({
   value,
@@ -21,9 +20,9 @@ export function FilamentFormFields({
   }
 
   return (
-    <div className={styles.grid}>
+    <div className="detail-form-grid">
       <label>
-        EAN / Barcode *
+        Barcode *
         <input
           value={value.barcode}
           inputMode="numeric"
@@ -86,7 +85,7 @@ export function FilamentFormFields({
       </label>
 
       <label>
-        Lagerplatz
+        Lagerort
         <input
           value={value.location}
           onChange={(event) =>
@@ -126,7 +125,7 @@ export function FilamentFormFields({
         />
       </label>
 
-      <label className={styles.full}>
+      <label className="full-width">
         Bestelllink
         <input
           type="url"

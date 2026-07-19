@@ -1,5 +1,6 @@
 export type StockMode = "in" | "out";
 export type LogSource = "scan" | "manual";
+export type StatisticsRange = "7" | "30" | "90" | "all";
 
 export type Filament = {
   id: number;
@@ -15,17 +16,7 @@ export type Filament = {
   orderLink: string;
 };
 
-export type FilamentForm = {
-  barcode: string;
-  manufacturer: string;
-  material: string;
-  color: string;
-  weightPerRoll: number;
-  location: string;
-  minimumStock: number;
-  stock: number;
-  orderLink: string;
-};
+export type FilamentForm = Omit<Filament, "id" | "userId">;
 
 export type LogEntry = {
   id: string;
@@ -63,6 +54,26 @@ export type LogRow = {
   filament_name: string;
   barcode: string;
   stock_after: number;
+};
+
+export type BackupData = {
+  version: 1;
+  exportedAt: string;
+  filaments: Array<Omit<Filament, "id" | "userId">>;
+  logs: Array<Omit<LogEntry, "id" | "userId" | "filamentId">>;
+};
+
+export type MaterialSummary = {
+  material: string;
+  stock: number;
+  weight: number;
+  typeCount: number;
+  criticalCount: number;
+  incoming: number;
+  outgoing: number;
+  activity: number;
+  lastIn: string | null;
+  lastOut: string | null;
 };
 
 export const emptyFilamentForm: FilamentForm = {

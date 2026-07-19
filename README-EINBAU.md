@@ -1,44 +1,53 @@
-# Philamentix Hub – modulare Seiten
+# Philamentix Hub – Industrial Modular V2
 
-## Neue Routen
+Diese Version stellt das bisherige Industrial-Design wieder her und behält trotzdem getrennte Next.js-Routen.
 
-- `/` – Anmeldung
+## Enthaltene Routen
+
+- `/` Anmeldung, Registrierung und Passwort-Reset
 - `/dashboard`
-- `/statistiken`
+- `/statistiken` inklusive Bewegungsdiagramm, Herstellerverteilung, Ranglisten und Materialdetails
 - `/ein-auslagern`
 - `/filamente`
 - `/filamente/neu`
-- `/filamente/[id]`
+- `/filamente/[id]` für jeden einzelnen Filament-Datensatz
 - `/protokoll`
 - `/profil`
 - `/einstellungen`
 
-Jede Kategorie besitzt eine eigene `page.tsx` und eine eigene
-`page.module.css`. Änderungen an einer Kategorie erfolgen deshalb
-direkt im jeweiligen Ordner.
+## Behobener Fehler
 
-## Wichtig
+Es gibt keine Beispieldaten, keine Presets und keine LocalStorage-Migration mehr. Beim Aktualisieren einer Seite werden ausschließlich die Supabase-Daten des angemeldeten Benutzers geladen. Dadurch werden beim Neuladen des Profils keine Filamente mehr automatisch hinzugefügt.
 
-Die bisherige große `app/page.tsx` wird durch die neue Login-Seite
-ersetzt. Die eigentliche App liegt anschließend im Route-Group-Ordner:
+## Dateien kopieren
 
-`app/(hub)/...`
+Den Inhalt der ZIP direkt nach folgendem Ordner entpacken:
 
-Der Ordnername `(hub)` erscheint nicht in der URL.
+`C:\Projekte\printos-filamentlager`
 
-Die bisherigen Beispieldaten und die LocalStorage-Übernahme wurden
-vollständig entfernt. Beim Aktualisieren werden daher keine
-Beispielfilamente mehr angelegt.
+Vorhandene Dateien ersetzen. Das vorhandene `app/layout.tsx`, die PWA-Dateien, `lib/supabase.ts`, Manifest, Icons und Service Worker bleiben bestehen.
 
-Die Datei `lib/supabase.ts`, dein PWA-Layout, Manifest, Service Worker
-und Icons bleiben unverändert bestehen.
+Eine alte Datei `lib/filament-presets.ts` kann gelöscht werden.
 
-## Einbau
+## Design und spätere Anpassungen
 
-Kopiere den Inhalt dieses Pakets in den Projektordner und ersetze die
-vorhandenen Dateien. Lösche anschließend eine eventuell vorhandene
-Datei `lib/filament-presets.ts`.
+Das gemeinsame Industrial-Grunddesign liegt in `app/globals.css`.
 
-Führe danach zuerst lokal aus:
+Jede Kategorie hat zusätzlich eine eigene:
+
+- `page.tsx`
+- `page.module.css`
+
+Funktion und Inhalt einer Kategorie werden nur in ihrem Ordner geändert. Gemeinsame Navigation und Datenzugriff liegen unter `components/philamentix`.
+
+## Test
 
 `npm.cmd run build`
+
+Erst nach einem erfolgreichen Build committen und pushen.
+
+## Änderung in V3
+
+In der Filamentübersicht gibt es wieder einen direkten Löschen-Button.
+Der Button löscht nur das Filament des angemeldeten Benutzers und zeigt
+vorher eine Sicherheitsabfrage an.

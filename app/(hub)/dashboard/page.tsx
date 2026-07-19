@@ -3,18 +3,12 @@
 import Link from "next/link";
 
 import { useHub } from "@/components/philamentix/hub-provider";
-import { PageHeader } from "@/components/philamentix/page-header";
+import { buildMaterialSummary } from "@/components/philamentix/statistics";
 
 import styles from "./page.module.css";
 
 export default function DashboardPage() {
-  const {
-    filaments,
-    logs,
-    displayName,
-    loading,
-    error,
-  } = useHub();
+  const { filaments, logs, displayName } = useHub();
 
   const totalRolls = filaments.reduce(
     (sum, filament) => sum + filament.stock,
@@ -25,146 +19,249 @@ export default function DashboardPage() {
       sum + filament.stock * filament.weightPerRoll,
     0,
   );
-  const critical = filaments.filter(
+  const criticalFilaments = filaments.filter(
     (filament) =>
       filament.stock <= filament.minimumStock,
   );
+  const today = new Date();
+  const todaysLogs = logs.filter((entry) => {
+    const date = new Date(entry.timestamp);
+    return (
+      date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate()
+    );
+  });
+  const todaysIn = todaysLogs.filter(
+    (entry) => entry.action === "in",
+  ).length;
+  const todaysOut = todaysLogs.filter(
+    (entry) => entry.action === "out",
+  ).length;
+  const materialSummary = buildMaterialSummary(
+    filaments,
+    logs,
+  );
+  const largestMaterialStock = Math.max(
+    1,
+    ...materialSummary.map((item) => item.stock),
+  );
+  const recentLogs = logs.slice(0, 5);
 
   return (
-    <>
-      <PageHeader
-        eyebrow={`Hallo ${displayName}`}
-        title="Dashboard"
-        description="Dein persönliches Filamentlager. Andere Accounts sehen diese Daten nicht."
-        actions={
-          <Link
-            className={styles.primaryLink}
-            href="/ein-auslagern"
-          >
-            Scanner öffnen
-          </Link>
-        }
-      />
+    <div className={styles.page}>
+      <header className="topbar">
+        <div>
+          <span className="welcome-label">
+            Willkommen zurück,
+          </span>
+          <h1>{displayName}</h1>
+          <p>
+            Bestand, Bewegungen und Warnungen auf einen Blick
+          </p>
+        </div>
 
-      {error && (
-        <div className={styles.error}>{error}</div>
-      )}
+        <div className="system-status">
+          <span className="status-dot" />
+          System aktuell
+        </div>
+      </header>
 
-      <section className={styles.metrics}>
-        <article>
-          <span>Filamenttypen</span>
-          <strong>
-            {loading ? "…" : filaments.length}
-          </strong>
+      <section className="dashboard-kpis">
+        <article className="dashboard-kpi">
+          <span>Rollen im Lager</span>
+          <strong>{totalRolls}</strong>
+          <small>{filaments.length} Filamenttypen</small>
         </article>
-        <article>
-          <span>Rollen gesamt</span>
-          <strong>
-            {loading ? "…" : totalRolls}
-          </strong>
-        </article>
-        <article>
+
+        <article className="dashboard-kpi">
           <span>Gesamtgewicht</span>
-          <strong>
-            {loading
-              ? "…"
-              : `${(totalWeight / 1000).toLocaleString(
-                  "de-DE",
-                  { maximumFractionDigits: 1 },
-                )} kg`}
+          <strong className="blue">
+            {(totalWeight / 1000).toLocaleString(
+              "de-DE",
+            )}{" "}
+            kg
           </strong>
+          <small>Aktueller Lagerbestand</small>
         </article>
-        <article>
+
+        <article className="dashboard-kpi">
           <span>Kritische Bestände</span>
-          <strong>{loading ? "…" : critical.length}</strong>
+          <strong className="red">
+            {criticalFilaments.length}
+          </strong>
+          <small>Bestand ≤ Mindestbestand</small>
+        </article>
+
+        <article className="dashboard-kpi">
+          <span>Bewegungen heute</span>
+          <strong>{todaysLogs.length}</strong>
+          <small>
+            <span className="dashboard-in">+{todaysIn}</span>{" "}
+            /{" "}
+            <span className="dashboard-out">−{todaysOut}</span>
+          </small>
         </article>
       </section>
 
-      <section className={styles.grid}>
-        <article className={styles.panel}>
-          <div className={styles.panelHead}>
+      <section className="dashboard-grid">
+        <article className="panel dashboard-panel">
+          <div className="dashboard-panel-header">
             <div>
-              <span>Aufmerksamkeit</span>
-              <h2>Niedrige Bestände</h2>
+              <h2>Materialverteilung</h2>
+              <p>Rollenbestand nach Material</p>
             </div>
-            <Link href="/filamente">
-              Alle Filamente
-            </Link>
           </div>
 
-          <div className={styles.list}>
-            {critical.length === 0 ? (
-              <p className={styles.empty}>
-                Alle Bestände liegen über dem Mindestbestand.
-              </p>
-            ) : (
-              critical.slice(0, 6).map((filament) => (
-                <Link
-                  key={filament.id}
-                  href={`/filamente/${filament.id}`}
-                  className={styles.listItem}
-                >
-                  <div>
-                    <strong>
-                      {filament.material} · {filament.color}
-                    </strong>
-                    <span>
-                      {filament.manufacturer} ·{" "}
-                      {filament.location || "Kein Lagerplatz"}
-                    </span>
+          {materialSummary.length === 0 ? (
+            <p className="empty-message">
+              Noch keine Filamente vorhanden.
+            </p>
+          ) : (
+            <div className="material-summary">
+              {materialSummary.map((item) => {
+                const percentage =
+                  (item.stock / largestMaterialStock) * 100;
+
+                return (
+                  <div
+                    className="material-summary-row"
+                    key={item.material}
+                  >
+                    <div className="material-summary-label">
+                      <span>{item.material}</span>
+                      <strong>{item.stock} Rollen</strong>
+                    </div>
+                    <div className="material-summary-bar">
+                      <div
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <b>{filament.stock}</b>
-                </Link>
-              ))
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </article>
 
-        <article className={styles.panel}>
-          <div className={styles.panelHead}>
+        <article className="panel dashboard-panel">
+          <div className="dashboard-panel-header">
             <div>
-              <span>Aktivität</span>
-              <h2>Letzte Bewegungen</h2>
+              <h2>Kritische Bestände</h2>
+              <p>Filamente mit Handlungsbedarf</p>
             </div>
-            <Link href="/protokoll">
-              Protokoll
+
+            <Link
+              className="dashboard-link-button"
+              href="/filamente"
+            >
+              Verwalten
             </Link>
           </div>
 
-          <div className={styles.list}>
-            {logs.length === 0 ? (
-              <p className={styles.empty}>
-                Noch keine Lagerbewegungen.
-              </p>
-            ) : (
-              logs.slice(0, 6).map((entry) => (
+          {criticalFilaments.length === 0 ? (
+            <div className="dashboard-all-good">
+              <span>✓</span>
+              <div>
+                <strong>Alles im grünen Bereich</strong>
+                <p>
+                  Kein Filament liegt unter dem Mindestbestand.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="dashboard-warning-list">
+              {criticalFilaments
+                .slice(0, 4)
+                .map((filament) => (
+                  <Link
+                    className="dashboard-warning-row"
+                    key={filament.id}
+                    href={`/filamente/${filament.id}`}
+                  >
+                    <div>
+                      <strong>
+                        {filament.material} {filament.color}
+                      </strong>
+                      <span>{filament.manufacturer}</span>
+                    </div>
+                    <div className="dashboard-warning-stock">
+                      <strong>{filament.stock}</strong>
+                      <span>
+                        Minimum {filament.minimumStock}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+            </div>
+          )}
+        </article>
+
+        <article className="panel dashboard-panel dashboard-recent">
+          <div className="dashboard-panel-header">
+            <div>
+              <h2>Letzte Bewegungen</h2>
+              <p>Die fünf neuesten Lageraktionen</p>
+            </div>
+
+            <Link
+              className="dashboard-link-button"
+              href="/protokoll"
+            >
+              Alle anzeigen
+            </Link>
+          </div>
+
+          {recentLogs.length === 0 ? (
+            <p className="empty-message">
+              Noch keine Lagerbewegungen vorhanden.
+            </p>
+          ) : (
+            <div className="recent-movements">
+              {recentLogs.map((entry) => (
                 <div
+                  className="recent-movement-row"
                   key={entry.id}
-                  className={styles.listItem}
                 >
-                  <div>
+                  <span
+                    className={`recent-movement-symbol ${
+                      entry.action === "in"
+                        ? "recent-movement-in"
+                        : "recent-movement-out"
+                    }`}
+                  >
+                    {entry.action === "in" ? "+" : "−"}
+                  </span>
+
+                  <div className="recent-movement-main">
                     <strong>{entry.filamentName}</strong>
                     <span>
-                      {new Date(
-                        entry.timestamp,
-                      ).toLocaleString("de-DE")}
+                      {entry.source === "scan"
+                        ? "Barcode-Scanner"
+                        : "Manuelle Änderung"}
                     </span>
                   </div>
-                  <b
-                    className={
-                      entry.action === "in"
-                        ? styles.in
-                        : styles.out
-                    }
-                  >
-                    {entry.action === "in" ? "+1" : "-1"}
-                  </b>
+
+                  <div className="recent-movement-meta">
+                    <strong>{entry.stockAfter} Rollen</strong>
+                    <time>
+                      {new Date(entry.timestamp).toLocaleString(
+                        "de-DE",
+                        {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )}
+                    </time>
+                  </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </article>
       </section>
-    </>
+    </div>
   );
 }

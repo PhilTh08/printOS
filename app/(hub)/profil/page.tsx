@@ -5,46 +5,55 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 
 import { useHub } from "@/components/philamentix/hub-provider";
-import { PageHeader } from "@/components/philamentix/page-header";
 
 import styles from "./page.module.css";
 
 export default function ProfilePage() {
+  const router = useRouter();
   const {
     user,
     displayName,
     updateProfileName,
     updatePassword,
+    signOut,
   } = useHub();
-  const [name, setName] = useState(displayName);
-  const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] =
+  const [profileName, setProfileName] =
+    useState(displayName);
+  const [profilePassword, setProfilePassword] =
     useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [profilePasswordConfirm, setProfilePasswordConfirm] =
+    useState("");
+  const [profileMessage, setProfileMessage] =
+    useState("");
+  const [profileError, setProfileError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setName(displayName);
+    setProfileName(displayName);
   }, [displayName]);
 
   async function saveName(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
-    setError("");
-    setMessage("");
+    setSaving(true);
+    setProfileMessage("");
+    setProfileError("");
 
     try {
-      await updateProfileName(name);
-      setMessage("Name wurde gespeichert.");
+      await updateProfileName(profileName);
+      setProfileMessage("Der Anzeigename wurde gespeichert.");
     } catch (caughtError) {
-      setError(
+      setProfileError(
         caughtError instanceof Error
           ? caughtError.message
           : "Name konnte nicht gespeichert werden.",
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -52,113 +61,221 @@ export default function ProfilePage() {
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
-    setError("");
-    setMessage("");
+    setProfileMessage("");
+    setProfileError("");
 
-    if (password !== confirmation) {
-      setError(
+    if (profilePassword !== profilePasswordConfirm) {
+      setProfileError(
         "Die beiden Passwörter stimmen nicht überein.",
       );
       return;
     }
 
+    setSaving(true);
+
     try {
-      await updatePassword(password);
-      setPassword("");
-      setConfirmation("");
-      setMessage("Passwort wurde geändert.");
+      await updatePassword(profilePassword);
+      setProfilePassword("");
+      setProfilePasswordConfirm("");
+      setProfileMessage("Das Passwort wurde aktualisiert.");
     } catch (caughtError) {
-      setError(
+      setProfileError(
         caughtError instanceof Error
           ? caughtError.message
           : "Passwort konnte nicht geändert werden.",
       );
+    } finally {
+      setSaving(false);
     }
   }
 
-  return (
-    <>
-      <PageHeader
-        eyebrow="Account"
-        title="Profil"
-        description="Profildaten und Sicherheit deines Accounts."
-      />
+  async function logout() {
+    await signOut();
+    router.replace("/");
+  }
 
-      {(message || error) && (
+  return (
+    <div className={styles.page}>
+      <header className="topbar">
+        <div>
+          <span className="welcome-label">Konto</span>
+          <h1>Profil & Sicherheit</h1>
+          <p>
+            Persönliche Daten und Zugangsdaten verwalten
+          </p>
+        </div>
+
+        <div className="system-status">
+          <span className="status-dot" />
+          Konto geschützt
+        </div>
+      </header>
+
+      {(profileMessage || profileError) && (
         <div
-          className={`${styles.feedback} ${
-            error ? styles.error : styles.success
+          className={`profile-feedback ${
+            profileError
+              ? "profile-feedback-error"
+              : "profile-feedback-success"
           }`}
         >
-          {error || message}
+          {profileError || profileMessage}
         </div>
       )}
 
-      <section className={styles.grid}>
-        <form
-          className={styles.panel}
-          onSubmit={saveName}
-        >
-          <h2>Profildaten</h2>
+      <section className="profile-grid">
+        <article className="panel profile-card profile-overview-card">
+          <div className="profile-avatar">
+            {(displayName || user?.email || "P")
+              .trim()
+              .charAt(0)
+              .toUpperCase()}
+          </div>
 
-          <label>
-            Name
-            <input
-              value={name}
-              onChange={(event) =>
-                setName(event.target.value)
-              }
-            />
-          </label>
+          <div>
+            <span className="profile-eyebrow">
+              Philamentix Hub Account
+            </span>
+            <h2>{displayName}</h2>
+            <p>{user?.email}</p>
+          </div>
 
-          <label>
-            E-Mail
-            <input
-              value={user?.email ?? ""}
-              disabled
-            />
-          </label>
+          <div className="profile-status-row">
+            <span className="profile-status-dot" />
+            Angemeldet und synchronisiert
+          </div>
+        </article>
 
-          <button type="submit">
-            Namen speichern
+        <article className="panel profile-card">
+          <div className="profile-card-heading">
+            <div>
+              <span className="profile-section-number">01</span>
+              <h2>Persönliche Daten</h2>
+            </div>
+            <p>
+              Dieser Name wird im Dashboard und in deinem Konto angezeigt.
+            </p>
+          </div>
+
+          <form className="profile-form" onSubmit={saveName}>
+            <label>
+              Anzeigename
+              <input
+                type="text"
+                autoComplete="name"
+                value={profileName}
+                onChange={(event) =>
+                  setProfileName(event.target.value)
+                }
+                placeholder="Dein Name"
+              />
+            </label>
+
+            <label>
+              E-Mail-Adresse
+              <input
+                type="email"
+                value={user?.email ?? ""}
+                disabled
+              />
+              <small>
+                Die E-Mail-Adresse ist mit deinem Supabase-Konto verknüpft.
+              </small>
+            </label>
+
+            <div className="profile-form-actions">
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={saving}
+              >
+                {saving
+                  ? "Wird gespeichert …"
+                  : "Name speichern"}
+              </button>
+            </div>
+          </form>
+        </article>
+
+        <article className="panel profile-card">
+          <div className="profile-card-heading">
+            <div>
+              <span className="profile-section-number">02</span>
+              <h2>Passwort ändern</h2>
+            </div>
+            <p>
+              Verwende mindestens acht Zeichen und ein einzigartiges Passwort.
+            </p>
+          </div>
+
+          <form
+            className="profile-form"
+            onSubmit={savePassword}
+          >
+            <label>
+              Neues Passwort
+              <input
+                type="password"
+                minLength={8}
+                autoComplete="new-password"
+                value={profilePassword}
+                onChange={(event) =>
+                  setProfilePassword(event.target.value)
+                }
+                placeholder="Mindestens 8 Zeichen"
+              />
+            </label>
+
+            <label>
+              Passwort wiederholen
+              <input
+                type="password"
+                minLength={8}
+                autoComplete="new-password"
+                value={profilePasswordConfirm}
+                onChange={(event) =>
+                  setProfilePasswordConfirm(
+                    event.target.value,
+                  )
+                }
+                placeholder="Passwort erneut eingeben"
+              />
+            </label>
+
+            <div className="profile-form-actions">
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={saving}
+              >
+                {saving
+                  ? "Wird gespeichert …"
+                  : "Passwort aktualisieren"}
+              </button>
+            </div>
+          </form>
+        </article>
+
+        <article className="panel profile-card profile-session-card">
+          <div className="profile-card-heading">
+            <div>
+              <span className="profile-section-number">03</span>
+              <h2>Sitzung</h2>
+            </div>
+            <p>
+              Beende deine aktuelle Sitzung auf diesem Gerät.
+            </p>
+          </div>
+
+          <button
+            className="delete-button profile-logout-action"
+            type="button"
+            onClick={() => void logout()}
+          >
+            Von Philamentix Hub abmelden
           </button>
-        </form>
-
-        <form
-          className={styles.panel}
-          onSubmit={savePassword}
-        >
-          <h2>Passwort ändern</h2>
-
-          <label>
-            Neues Passwort
-            <input
-              type="password"
-              value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
-              minLength={8}
-            />
-          </label>
-
-          <label>
-            Passwort bestätigen
-            <input
-              type="password"
-              value={confirmation}
-              onChange={(event) =>
-                setConfirmation(event.target.value)
-              }
-              minLength={8}
-            />
-          </label>
-
-          <button type="submit">
-            Passwort ändern
-          </button>
-        </form>
+        </article>
       </section>
-    </>
+    </div>
   );
 }
