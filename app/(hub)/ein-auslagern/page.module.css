@@ -1,0 +1,171 @@
+.scanner,
+.recent {
+  padding: 20px;
+  background: rgba(14, 25, 29, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 5px;
+  background: #071115;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.modeSwitch button {
+  min-height: 43px;
+  cursor: pointer;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-weight: 820;
+}
+
+.modeSwitch .activeIn {
+  color: var(--success);
+  background: rgba(105, 211, 145, 0.1);
+  border-color: rgba(105, 211, 145, 0.25);
+}
+
+.modeSwitch .activeOut {
+  color: var(--danger);
+  background: rgba(255, 119, 119, 0.1);
+  border-color: rgba(255, 119, 119, 0.25);
+}
+
+.scanForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 18px;
+  align-items: end;
+}
+
+.scanForm label {
+  display: grid;
+  gap: 7px;
+  color: #aab7bc;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.scanForm input {
+  min-height: 52px;
+  padding: 0 15px;
+  color: var(--text);
+  background: #071115;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.scanForm button {
+  min-height: 52px;
+  padding: 0 18px;
+  cursor: pointer;
+  color: #111;
+  background: var(--accent);
+  border: 0;
+  border-radius: 9px;
+  font-weight: 900;
+}
+
+.scanForm button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.message {
+  margin-top: 14px;
+  padding: 12px;
+  color: #b5ddc3;
+  background: rgba(105, 211, 145, 0.07);
+  border: 1px solid rgba(105, 211, 145, 0.16);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.messageError {
+  color: #ffb5b5;
+  background: rgba(255, 119, 119, 0.07);
+  border-color: rgba(255, 119, 119, 0.18);
+}
+
+.recent {
+  margin-top: 14px;
+}
+
+.recentHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.recentHead h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.recentHead span {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.list {
+  display: grid;
+  gap: 7px;
+  margin-top: 15px;
+}
+
+.row {
+  display: flex;
+  min-height: 58px;
+  padding: 10px 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 8px;
+}
+
+.row strong,
+.row small,
+.row b {
+  display: block;
+}
+
+.row small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.row > div:last-child {
+  text-align: right;
+}
+
+.row b {
+  font-size: 11px;
+}
+
+.in {
+  color: var(--success);
+}
+
+.out {
+  color: var(--danger);
+}
+
+@media (max-width: 600px) {
+  .scanForm {
+    grid-template-columns: 1fr;
+  }
+}

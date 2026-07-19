@@ -1,0 +1,174 @@
+.backLink {
+  display: inline-grid;
+  min-height: 40px;
+  padding: 0 13px;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.stockPanel,
+.formPanel {
+  max-width: 960px;
+  padding: 20px;
+  background: rgba(14, 25, 29, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.stockPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.stockPanel span,
+.stockPanel strong,
+.stockPanel small {
+  display: block;
+}
+
+.stockPanel span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stockPanel strong {
+  margin-top: 6px;
+  font-size: 34px;
+}
+
+.stockPanel small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.stockActions {
+  display: flex;
+  gap: 8px;
+}
+
+.stockActions button,
+.formActions button {
+  min-height: 42px;
+  padding: 0 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.inButton {
+  color: var(--success);
+  background: rgba(105, 211, 145, 0.09);
+  border: 1px solid rgba(105, 211, 145, 0.25);
+}
+
+.outButton {
+  color: var(--danger);
+  background: rgba(255, 119, 119, 0.08);
+  border: 1px solid rgba(255, 119, 119, 0.23);
+}
+
+.stockActions button:disabled,
+.formActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.formPanel {
+  margin-top: 13px;
+}
+
+.formPanel h2 {
+  margin: 0 0 18px;
+  font-size: 17px;
+}
+
+.formActions {
+  display: flex;
+  margin-top: 20px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.deleteButton {
+  color: var(--danger);
+  background: transparent;
+  border: 1px solid rgba(255, 119, 119, 0.3);
+}
+
+.saveButton {
+  color: #111;
+  background: var(--accent);
+  border: 0;
+}
+
+.feedback {
+  max-width: 960px;
+  margin-bottom: 13px;
+  padding: 11px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.success {
+  color: #a8edc0;
+  background: rgba(105, 211, 145, 0.08);
+  border: 1px solid rgba(105, 211, 145, 0.2);
+}
+
+.error {
+  color: #ffb5b5;
+  background: rgba(255, 119, 119, 0.08);
+  border: 1px solid rgba(255, 119, 119, 0.2);
+}
+
+.state {
+  padding: 28px;
+  color: var(--muted);
+  text-align: center;
+  background: rgba(14, 25, 29, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.state h1 {
+  margin: 0;
+  color: var(--text);
+}
+
+.state p {
+  margin: 10px 0 18px;
+}
+
+.state a {
+  color: var(--accent);
+}
+
+@media (max-width: 650px) {
+  .stockPanel,
+  .formActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .stockActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .formActions button {
+    width: 100%;
+  }
+}

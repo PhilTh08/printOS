@@ -1,0 +1,66 @@
+.panel {
+  max-width: 900px;
+  padding: 20px;
+  background: rgba(14, 25, 29, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.actions {
+  display: flex;
+  margin-top: 20px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.actions a,
+.actions button {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.actions a {
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.actions button {
+  cursor: pointer;
+  color: #111;
+  background: var(--accent);
+  border: 0;
+}
+
+.actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.error {
+  margin-bottom: 16px;
+  padding: 11px 12px;
+  color: #ffb5b5;
+  background: rgba(255, 119, 119, 0.08);
+  border: 1px solid rgba(255, 119, 119, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .actions a,
+  .actions button {
+    width: 100%;
+  }
+}
