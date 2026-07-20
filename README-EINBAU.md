@@ -596,3 +596,19 @@ automatisch mit.
 
 Noch nicht enthalten sind Filamentzuordnung, Grammverbrauch, automatische
 Bestandsabbuchung, Rechnungen und Drucker-Automation.
+
+
+## V16.1 – Kontolöschung, Passwortanzeige und CSV
+
+Neu:
+
+- eigenes Konto unter Profil & Sicherheit dauerhaft löschen
+- E-Mail-Adresse und „KONTO LÖSCHEN“ als Sicherheitsbestätigung
+- Passwort beim Login, Reset und Ändern anzeigen/ausblenden
+- Backup und Wiederherstellung vollständig als CSV
+- Aufträge sind im Gesamtbackup enthalten
+- separater Auftrags-CSV-Export auf `/auftraege`
+
+Keine neue SQL-Migration erforderlich. Die Servervariable
+`SUPABASE_SECRET_KEY` aus dem Adminsystem wird auch für die Kontolöschung
+verwendet.

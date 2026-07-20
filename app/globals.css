@@ -4763,3 +4763,35 @@ small,
     font-size: 26px;
   }
 }
+
+
+/* V16.1 – Passwort anzeigen */
+.password-field {
+  position: relative;
+  display: block;
+}
+
+.password-field input {
+  padding-right: 104px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  min-height: 34px;
+  padding: 0 9px;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #d9e0e4;
+  background: #182126;
+  border: 1px solid #3b4850;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.password-toggle:hover {
+  color: var(--accent);
+  border-color: rgba(245, 166, 35, 0.45);
+}

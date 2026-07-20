@@ -15,6 +15,8 @@ import {
   type FilamentImageMode,
 } from "@/components/philamentix/types";
 
+import { supabase } from "@/lib/supabase";
+
 import styles from "./page.module.css";
 
 const IMAGE_MODES: Array<{
@@ -44,6 +46,7 @@ const IMAGE_MODES: Array<{
 
 export default function SettingsPage() {
   const {
+    user,
     filaments,
     logs,
     clearLogs,
@@ -65,10 +68,45 @@ export default function SettingsPage() {
     );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [orderCount, setOrderCount] =
+    useState(0);
 
   useEffect(() => {
     setDefaultsForm(filamentDefaults);
   }, [filamentDefaults]);
+
+  useEffect(() => {
+    if (!user) {
+      setOrderCount(0);
+      return;
+    }
+
+    let active = true;
+
+    void supabase
+      .from("orders")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("user_id", user.id)
+      .then(({ count, error: countError }) => {
+        if (!active) {
+          return;
+        }
+
+        if (countError) {
+          setOrderCount(0);
+          return;
+        }
+
+        setOrderCount(count ?? 0);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   function clearFeedback() {
     setMessage("");
@@ -152,13 +190,13 @@ export default function SettingsPage() {
     }
   }
 
-  function handleExport() {
+  async function handleExport() {
     clearFeedback();
 
     try {
-      exportData();
+      await exportData();
       setMessage(
-        "Dein persönliches Backup wurde exportiert.",
+        "Dein persönliches CSV-Backup inklusive Aufträgen wurde exportiert.",
       );
     } catch (caughtError) {
       setError(
@@ -183,8 +221,26 @@ export default function SettingsPage() {
 
     try {
       await importData(file);
+
+      if (user) {
+        const {
+          count,
+          error: countError,
+        } = await supabase
+          .from("orders")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("user_id", user.id);
+
+        if (!countError) {
+          setOrderCount(count ?? 0);
+        }
+      }
+
       setMessage(
-        "Backup wurde erfolgreich importiert.",
+        "CSV-Backup wurde erfolgreich wiederhergestellt.",
       );
     } catch (caughtError) {
       setError(
@@ -532,10 +588,10 @@ export default function SettingsPage() {
               </span>
               <h2>Backup & Wiederherstellung</h2>
               <p>
-                Exportiere deinen Lagerbestand und
-                dein Protokoll als JSON-Datei oder
-                stelle ein vorhandenes Backup wieder
-                her.
+                Exportiere Filamente, Protokolle und
+                Aufträge gemeinsam als CSV-Datei oder
+                stelle ein vorhandenes Philamentix-Backup
+                wieder her.
               </p>
             </div>
           </div>
@@ -550,8 +606,12 @@ export default function SettingsPage() {
               <strong>{logs.length}</strong>
             </div>
             <div>
+              <span>Aufträge</span>
+              <strong>{orderCount}</strong>
+            </div>
+            <div>
               <span>Format</span>
-              <strong>JSON</strong>
+              <strong>CSV</strong>
             </div>
           </div>
 
@@ -570,7 +630,9 @@ export default function SettingsPage() {
               className={styles.exportButton}
               type="button"
               disabled={busy}
-              onClick={handleExport}
+              onClick={() =>
+                void handleExport()
+              }
             >
               ⇩ Daten exportieren
             </button>
@@ -590,7 +652,7 @@ export default function SettingsPage() {
               ref={importInputRef}
               className={styles.hiddenInput}
               type="file"
-              accept="application/json,.json"
+              accept="text/csv,.csv"
               onChange={(event) =>
                 void handleImport(event)
               }

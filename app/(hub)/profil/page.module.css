@@ -1,3 +1,96 @@
 .page {
   min-width: 0;
 }
+
+
+.accountDeleteCard {
+  grid-column: 1 / -1;
+  border-color: rgba(255, 100, 100, 0.34);
+}
+
+.accountDeleteForm {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.accountDeleteForm label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.accountDeleteForm input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  color: var(--text);
+  background: #0d1316;
+  border: 1px solid #5a3b3f;
+  border-radius: 8px;
+  outline: none;
+}
+
+.accountDeleteForm input:focus {
+  border-color: #ff7777;
+  box-shadow:
+    0 0 0 3px
+    rgba(255, 100, 100, 0.09);
+}
+
+.accountDeleteWarning {
+  grid-column: 1 / -1;
+  padding: 13px;
+  color: #e1b2b2;
+  background: rgba(255, 100, 100, 0.055);
+  border: 1px solid rgba(255, 100, 100, 0.2);
+  border-radius: 8px;
+}
+
+.accountDeleteWarning strong {
+  display: block;
+  color: #ffb0b0;
+  font-size: 14px;
+}
+
+.accountDeleteWarning p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.accountDeleteButton {
+  grid-column: 1 / -1;
+  min-height: 46px;
+  cursor: pointer;
+  color: #fff0f0;
+  background: #5b252a;
+  border: 1px solid #9a424a;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.accountDeleteButton:hover:not(:disabled) {
+  background: #713038;
+}
+
+.accountDeleteButton:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+@media (max-width: 700px) {
+  .accountDeleteForm {
+    grid-template-columns: 1fr;
+  }
+
+  .accountDeleteWarning,
+  .accountDeleteButton {
+    grid-column: 1;
+  }
+}

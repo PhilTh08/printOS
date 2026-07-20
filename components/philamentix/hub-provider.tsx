@@ -16,12 +16,17 @@ import {
   filamentFormToRow,
   rowToFilament,
   rowToLog,
+  rowToOrder,
 } from "./mappers";
+import {
+  createFullBackupData,
+  downloadBackupCsv,
+  parseBackupCsv,
+} from "./csv-backup";
 import {
   defaultFilamentDefaults,
   filamentLabel,
   normalizeBarcode,
-  type BackupData,
   type Filament,
   type FilamentDefaults,
   type FilamentForm,
@@ -30,6 +35,7 @@ import {
   type LogEntry,
   type LogRow,
   type LogSource,
+  type OrderRow,
   type StockMode,
 } from "./types";
 
@@ -80,7 +86,7 @@ type HubContextValue = {
   updateProfileName: (name: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  exportData: () => void;
+  exportData: () => Promise<void>;
   importData: (file: File) => Promise<void>;
 };
 
@@ -1234,154 +1240,328 @@ export function HubProvider({
     }
   }, []);
 
-  const exportData = useCallback(() => {
-    const backup: BackupData = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      filaments: filaments.map(
-        ({ id: _id, userId: _userId, ...rest }) =>
-          rest,
-      ),
-      logs: logs.map(
-        ({
-          id: _id,
-          userId: _userId,
-          filamentId: _filamentId,
-          ...rest
-        }) => rest,
-      ),
-    };
+  const exportData = useCallback(
+    async () => {
+      if (!user) {
+        throw new Error(
+          "Nicht angemeldet.",
+        );
+      }
 
-    const blob = new Blob(
-      [JSON.stringify(backup, null, 2)],
-      { type: "application/json" },
-    );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `philamentix-backup-${new Date()
-      .toISOString()
-      .slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }, [filaments, logs]);
+      const {
+        data: orderRows,
+        error: orderError,
+      } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", {
+          ascending: false,
+        });
+
+      if (orderError) {
+        throw new Error(
+          orderError.message,
+        );
+      }
+
+      const orders = (
+        orderRows ?? []
+      ).map((row) =>
+        rowToOrder(
+          row as OrderRow,
+        ),
+      );
+
+      downloadBackupCsv(
+        createFullBackupData({
+          filaments,
+          logs,
+          orders,
+        }),
+        "philamentix-backup",
+      );
+    },
+    [filaments, logs, user],
+  );
 
   const importData = useCallback(
     async (file: File) => {
       if (!user) {
-        throw new Error("Nicht angemeldet.");
+        throw new Error(
+          "Nicht angemeldet.",
+        );
       }
-
-      const confirmed = window.confirm(
-        "Das Backup ersetzt deine aktuellen Filamente und Protokolle. Fortfahren?",
-      );
-
-      if (!confirmed) {
-        return;
-      }
-
-      const parsed = JSON.parse(
-        await file.text(),
-      ) as Partial<BackupData>;
 
       if (
-        parsed.version !== 1 ||
-        !Array.isArray(parsed.filaments) ||
-        !Array.isArray(parsed.logs)
+        !file.name
+          .toLowerCase()
+          .endsWith(".csv")
       ) {
-        throw new Error("Ungültiges Backup-Format.");
+        throw new Error(
+          "Bitte eine CSV-Datei auswählen.",
+        );
+      }
+
+      const parsed =
+        parseBackupCsv(
+          await file.text(),
+        );
+
+      const {
+        error: ordersAvailabilityError,
+      } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      if (
+        ordersAvailabilityError
+      ) {
+        throw new Error(
+          `Aufträge konnten nicht geprüft werden: ${ordersAvailabilityError.message}`,
+        );
+      }
+
+      const confirmationMessage =
+        parsed.scope === "orders"
+          ? `Der Auftrags-Export ersetzt deine aktuellen Aufträge durch ${parsed.orders.length} Einträge. Fortfahren?`
+          : `Das CSV-Backup ersetzt deine aktuellen Filamente, Protokolle und Aufträge. Enthalten: ${parsed.filaments.length} Filamente, ${parsed.logs.length} Protokolle und ${parsed.orders.length} Aufträge. Fortfahren?`;
+
+      if (
+        !window.confirm(
+          confirmationMessage,
+        )
+      ) {
+        return;
       }
 
       setBusy(true);
       setError("");
 
       try {
-        const { error: deleteLogsError } =
-          await supabase
+        const {
+          error: deleteOrdersError,
+        } = await supabase
+          .from("orders")
+          .delete()
+          .eq("user_id", user.id);
+
+        if (deleteOrdersError) {
+          throw new Error(
+            deleteOrdersError.message,
+          );
+        }
+
+        if (
+          parsed.scope === "full"
+        ) {
+          const {
+            error: deleteLogsError,
+          } = await supabase
             .from("filament_logs")
             .delete()
             .eq("user_id", user.id);
 
-        if (deleteLogsError) {
-          throw new Error(deleteLogsError.message);
-        }
+          if (deleteLogsError) {
+            throw new Error(
+              deleteLogsError.message,
+            );
+          }
 
-        const { error: deleteFilamentsError } =
-          await supabase
+          const {
+            error:
+              deleteFilamentsError,
+          } = await supabase
             .from("filaments")
             .delete()
             .eq("user_id", user.id);
 
-        if (deleteFilamentsError) {
-          throw new Error(deleteFilamentsError.message);
-        }
+          if (
+            deleteFilamentsError
+          ) {
+            throw new Error(
+              deleteFilamentsError.message,
+            );
+          }
 
-        const cleanFilaments = parsed.filaments.map(
-          (item) =>
-            filamentFormToRow(
-              cleanForm({
-                barcode: item.barcode ?? "",
-                manufacturer: item.manufacturer ?? "",
-                material: item.material ?? "",
-                color: item.color ?? "",
-                weightPerRoll:
-                  item.weightPerRoll ?? 1000,
-                location: item.location ?? "",
-                minimumStock:
-                  item.minimumStock ?? 1,
-                stock: item.stock ?? 0,
-                orderLink: item.orderLink ?? "",
-                imageUrl: item.imageUrl ?? "",
-              }),
-              user.id,
+          const cleanFilaments =
+            parsed.filaments.map(
+              (item) =>
+                filamentFormToRow(
+                  cleanForm({
+                    barcode:
+                      item.barcode ??
+                      "",
+                    manufacturer:
+                      item.manufacturer ??
+                      "",
+                    material:
+                      item.material ??
+                      "",
+                    color:
+                      item.color ?? "",
+                    weightPerRoll:
+                      item.weightPerRoll ??
+                      1000,
+                    location:
+                      item.location ??
+                      "",
+                    minimumStock:
+                      item.minimumStock ??
+                      1,
+                    stock:
+                      item.stock ?? 0,
+                    orderLink:
+                      item.orderLink ??
+                      "",
+                    imageUrl:
+                      item.imageUrl ??
+                      "",
+                  }),
+                  user.id,
+                ),
+            );
+
+          const {
+            data: insertedRows,
+            error: insertError,
+          } =
+            cleanFilaments.length >
+            0
+              ? await supabase
+                  .from("filaments")
+                  .insert(
+                    cleanFilaments,
+                  )
+                  .select("*")
+              : {
+                  data: [],
+                  error: null,
+                };
+
+          if (insertError) {
+            throw new Error(
+              insertError.message,
+            );
+          }
+
+          const inserted = (
+            insertedRows ?? []
+          ).map((row) =>
+            rowToFilament(
+              row as FilamentRow,
             ),
-        );
+          );
+          const idByBarcode =
+            new Map(
+              inserted.map(
+                (item) => [
+                  item.barcode,
+                  item.id,
+                ],
+              ),
+            );
 
-        const { data: insertedRows, error: insertError } =
-          cleanFilaments.length > 0
-            ? await supabase
-                .from("filaments")
-                .insert(cleanFilaments)
-                .select("*")
-            : { data: [], error: null };
+          const logRows =
+            parsed.logs.map(
+              (entry) => ({
+                id:
+                  crypto.randomUUID(),
+                user_id: user.id,
+                created_at:
+                  entry.timestamp ??
+                  new Date().toISOString(),
+                action:
+                  entry.action ?? "in",
+                source:
+                  entry.source ??
+                  "manual",
+                filament_id:
+                  idByBarcode.get(
+                    entry.barcode ??
+                      "",
+                  ) ?? null,
+                filament_name:
+                  entry.filamentName ??
+                  "Unbekanntes Filament",
+                barcode:
+                  entry.barcode ??
+                  "",
+                stock_after:
+                  entry.stockAfter ??
+                  0,
+              }),
+            );
 
-        if (insertError) {
-          throw new Error(insertError.message);
-        }
+          if (
+            logRows.length > 0
+          ) {
+            const {
+              error:
+                logInsertError,
+            } = await supabase
+              .from("filament_logs")
+              .insert(logRows);
 
-        const inserted = (insertedRows ?? []).map(
-          (row) => rowToFilament(row as FilamentRow),
-        );
-        const idByBarcode = new Map(
-          inserted.map((item) => [item.barcode, item.id]),
-        );
-
-        const logRows = parsed.logs.map((entry) => ({
-          id: crypto.randomUUID(),
-          user_id: user.id,
-          created_at:
-            entry.timestamp ?? new Date().toISOString(),
-          action: entry.action ?? "in",
-          source: entry.source ?? "manual",
-          filament_id:
-            idByBarcode.get(entry.barcode ?? "") ?? null,
-          filament_name:
-            entry.filamentName ?? "Unbekanntes Filament",
-          barcode: entry.barcode ?? "",
-          stock_after: entry.stockAfter ?? 0,
-        }));
-
-        if (logRows.length > 0) {
-          const { error: logInsertError } = await supabase
-            .from("filament_logs")
-            .insert(logRows);
-
-          if (logInsertError) {
-            throw new Error(logInsertError.message);
+            if (
+              logInsertError
+            ) {
+              throw new Error(
+                logInsertError.message,
+              );
+            }
           }
         }
 
-        await loadDataForUser(user.id);
+        const orderRows =
+          parsed.orders.map(
+            (order) => ({
+              user_id: user.id,
+              title:
+                order.title.trim(),
+              customer_name:
+                order.customerName.trim(),
+              status:
+                order.status,
+              due_date:
+                order.dueDate,
+              notes:
+                order.notes.trim(),
+              created_at:
+                order.createdAt,
+              updated_at:
+                order.updatedAt,
+            }),
+          );
+
+        if (
+          orderRows.length > 0
+        ) {
+          const {
+            error:
+              orderInsertError,
+          } = await supabase
+            .from("orders")
+            .insert(orderRows);
+
+          if (
+            orderInsertError
+          ) {
+            throw new Error(
+              orderInsertError.message,
+            );
+          }
+        }
+
+        if (
+          parsed.scope === "full"
+        ) {
+          await loadDataForUser(
+            user.id,
+          );
+        }
       } finally {
         setBusy(false);
       }

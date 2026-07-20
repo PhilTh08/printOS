@@ -21,6 +21,10 @@ import {
   type OrderRow,
   type OrderStatus,
 } from "@/components/philamentix/types";
+import {
+  createOrdersBackupData,
+  downloadBackupCsv,
+} from "@/components/philamentix/csv-backup";
 import { supabase } from "@/lib/supabase";
 
 import styles from "./page.module.css";
@@ -644,6 +648,25 @@ export default function OrdersPage() {
             styles.headerActions
           }
         >
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={
+              loading ||
+              saving ||
+              orders.length === 0
+            }
+            onClick={() =>
+              downloadBackupCsv(
+                createOrdersBackupData(
+                  orders,
+                ),
+                "philamentix-auftraege",
+              )
+            }
+          >
+            CSV exportieren
+          </button>
           <button
             className="secondary-button"
             type="button"

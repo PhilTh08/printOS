@@ -108,11 +108,26 @@ export type LogRow = {
   stock_after: number;
 };
 
+export type BackupScope =
+  | "full"
+  | "orders";
+
 export type BackupData = {
-  version: 1;
+  version: 2;
+  scope: BackupScope;
   exportedAt: string;
-  filaments: Array<Omit<Filament, "id" | "userId">>;
-  logs: Array<Omit<LogEntry, "id" | "userId" | "filamentId">>;
+  filaments: Array<
+    Omit<Filament, "id" | "userId">
+  >;
+  logs: Array<
+    Omit<
+      LogEntry,
+      "id" | "userId" | "filamentId"
+    >
+  >;
+  orders: Array<
+    Omit<Order, "id" | "userId">
+  >;
 };
 
 export type MaterialSummary = {

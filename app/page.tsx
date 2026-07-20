@@ -20,6 +20,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] =
     useState("");
+  const [showPassword, setShowPassword] =
+    useState(false);
+  const [
+    showConfirmPassword,
+    setShowConfirmPassword,
+  ] = useState(false);
   const [isPasswordRecovery, setIsPasswordRecovery] =
     useState(false);
   const [isLoggingIn, setIsLoggingIn] =
@@ -288,28 +294,76 @@ export default function LoginPage() {
           >
             <label>
               Neues Passwort
-              <input
-                type="password"
-                minLength={8}
-                value={password}
-                onChange={(event) =>
-                  setPassword(event.target.value)
-                }
-                placeholder="Mindestens 8 Zeichen"
-              />
+              <div className="password-field">
+                <input
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
+                  minLength={8}
+                  value={password}
+                  onChange={(event) =>
+                    setPassword(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Mindestens 8 Zeichen"
+                />
+                <button
+                  className="password-toggle"
+                  type="button"
+                  aria-pressed={showPassword}
+                  onClick={() =>
+                    setShowPassword(
+                      (current) =>
+                        !current,
+                    )
+                  }
+                >
+                  {showPassword
+                    ? "Ausblenden"
+                    : "Anzeigen"}
+                </button>
+              </div>
             </label>
 
             <label>
               Passwort wiederholen
-              <input
-                type="password"
-                minLength={8}
-                value={confirmPassword}
-                onChange={(event) =>
-                  setConfirmPassword(event.target.value)
-                }
-                placeholder="Passwort erneut eingeben"
-              />
+              <div className="password-field">
+                <input
+                  type={
+                    showConfirmPassword
+                      ? "text"
+                      : "password"
+                  }
+                  minLength={8}
+                  value={confirmPassword}
+                  onChange={(event) =>
+                    setConfirmPassword(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Passwort erneut eingeben"
+                />
+                <button
+                  className="password-toggle"
+                  type="button"
+                  aria-pressed={
+                    showConfirmPassword
+                  }
+                  onClick={() =>
+                    setShowConfirmPassword(
+                      (current) =>
+                        !current,
+                    )
+                  }
+                >
+                  {showConfirmPassword
+                    ? "Ausblenden"
+                    : "Anzeigen"}
+                </button>
+              </div>
             </label>
 
             {loginError && (
@@ -486,19 +540,47 @@ export default function LoginPage() {
           {authMode !== "forgot" && (
             <label>
               Passwort
-              <input
-                type="password"
-                autoComplete={
-                  authMode === "signup"
-                    ? "new-password"
-                    : "current-password"
-                }
-                value={password}
-                onChange={(event) =>
-                  setPassword(event.target.value)
-                }
-                placeholder="Mindestens 8 Zeichen"
-              />
+              <div className="password-field">
+                <input
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
+                  autoComplete={
+                    authMode === "signup"
+                      ? "new-password"
+                      : "current-password"
+                  }
+                  value={password}
+                  onChange={(event) =>
+                    setPassword(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Mindestens 8 Zeichen"
+                />
+                <button
+                  className="password-toggle"
+                  type="button"
+                  aria-label={
+                    showPassword
+                      ? "Passwort ausblenden"
+                      : "Passwort anzeigen"
+                  }
+                  aria-pressed={showPassword}
+                  onClick={() =>
+                    setShowPassword(
+                      (current) =>
+                        !current,
+                    )
+                  }
+                >
+                  {showPassword
+                    ? "Ausblenden"
+                    : "Anzeigen"}
+                </button>
+              </div>
             </label>
           )}
 
