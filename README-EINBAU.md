@@ -554,3 +554,16 @@ Die Datei kann direkt im Browser geöffnet werden und zeigt einen
 alternativen, lesbareren Entwurf für Dashboard und Adminbereich.
 
 Keine neue Supabase-Migration erforderlich.
+
+
+## V15.2.1 – CSS-Module-Buildfix
+
+Der V15.2-Buildfehler mit der Meldung
+
+`Selector "button" is not pure`
+
+wurde behoben. Globale Elementselektoren wurden aus sämtlichen
+`*.module.css`-Dateien entfernt. Die größeren Schrift- und
+Bedienelementregeln bleiben gültig in `app/globals.css`.
+
+Keine neue Supabase-Migration erforderlich.
