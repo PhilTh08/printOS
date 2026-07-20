@@ -30,6 +30,16 @@ const navigation = [
     ],
   },
   {
+    title: "Aufträge",
+    items: [
+      {
+        href: "/auftraege",
+        icon: "▧",
+        label: "Aufträge",
+      },
+    ],
+  },
+  {
     title: "Konto",
     items: [
       { href: "/profil", icon: "●", label: "Profil & Sicherheit" },

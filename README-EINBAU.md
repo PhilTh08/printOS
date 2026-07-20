@@ -567,3 +567,32 @@ wurde behoben. Globale Elementselektoren wurden aus sämtlichen
 Bedienelementregeln bleiben gültig in `app/globals.css`.
 
 Keine neue Supabase-Migration erforderlich.
+
+
+## V15.2.2 – abgeschnittener Sidebar-Schriftzug
+
+Der Schriftzug `PhilamentixHub` passt sich jetzt an die verfügbare
+Sidebarbreite an. Besonders beim 1120-px-Breakpoint wird die Schriftgröße
+reduziert, damit `Hub` nicht mehr am rechten Rand abgeschnitten wird.
+
+Es wurden keine Funktionen, Farben oder weiteren Layoutbereiche verändert.
+Keine neue Supabase-Migration erforderlich.
+
+
+## V16 – Minimales Auftragssystem
+
+Neue Route:
+
+`/auftraege`
+
+Vor der ersten Nutzung einmal ausführen:
+
+`supabase/orders.sql`
+
+Enthalten sind Anlegen, Bearbeiten, Statuspflege, Suche, Termin,
+Überfälligkeitsanzeige und Löschen. Jeder Nutzer sieht durch RLS nur seine
+eigenen Aufträge. Der vorhandene Adminbereich liest die neue Tabelle
+automatisch mit.
+
+Noch nicht enthalten sind Filamentzuordnung, Grammverbrauch, automatische
+Bestandsabbuchung, Rechnungen und Drucker-Automation.

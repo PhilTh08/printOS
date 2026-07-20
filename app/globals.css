@@ -4733,3 +4733,33 @@ small,
     font-size: 13px;
   }
 }
+
+
+/* ===============================================================
+   V15.2.2 – Sidebar-Schriftzug vollständig anzeigen
+   =============================================================== */
+
+.sidebar-brand-row > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.logo {
+  max-width: 100%;
+  font-size: clamp(24px, 2.15vw, 28px);
+  line-height: 1.08;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 1120px) {
+  .logo {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 900px) {
+  .logo {
+    font-size: 26px;
+  }
+}

@@ -6,6 +6,44 @@ export type FilamentImageMode =
   | "small"
   | "large";
 
+export type OrderStatus =
+  | "open"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+
+export type Order = {
+  id: string;
+  userId: string;
+  title: string;
+  customerName: string;
+  status: OrderStatus;
+  dueDate: string | null;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OrderForm = {
+  title: string;
+  customerName: string;
+  status: OrderStatus;
+  dueDate: string;
+  notes: string;
+};
+
+export type OrderRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  customer_name: string;
+  status: OrderStatus;
+  due_date: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type FilamentDefaults = {
   manufacturer: string;
   material: string;
@@ -96,6 +134,14 @@ export const defaultFilamentDefaults: FilamentDefaults = {
   weightPerRoll: 1000,
   location: "",
   minimumStock: 1,
+};
+
+export const emptyOrderForm: OrderForm = {
+  title: "",
+  customerName: "",
+  status: "open",
+  dueDate: "",
+  notes: "",
 };
 
 export const emptyFilamentForm: FilamentForm = {
