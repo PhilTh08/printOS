@@ -403,3 +403,93 @@ ist erneut ausführbar und behält die persönliche RLS-Isolation bei.
 
 Ohne die aktualisierte Migration funktionieren die Standardwerte weiterhin
 lokal im jeweiligen Browser.
+
+
+## V15 – Admin- und Supportsystem
+
+Der Adminzugriff wird ausschließlich über die Supabase-Tabelle
+`public.user_roles` vergeben. Ein normaler Benutzer kann seine Rolle
+nicht selbst ändern.
+
+### Enthalten
+
+- Adminnavigation nur für eingetragene Administratoren
+- Nutzerliste aus Supabase Auth
+- Konten sperren und entsperren
+- Filamente eines Nutzers ansehen und korrigieren
+- Protokolle eines Nutzers ansehen
+- fehlerhafte Protokolleinträge mit Supportgrund entfernen
+- vorbereitete Auftragsansicht
+- vollständiges Admin-Aktionsprotokoll mit:
+  - Administrator
+  - Zielbenutzer
+  - Aktion
+  - Supportgrund
+  - Vorher-/Nachher-Daten
+  - Erfolg oder Fehler
+  - Zeitstempel
+- Schutz gegen das Sperren des eigenen Adminaccounts
+- Adminaccounts können erst gesperrt werden, nachdem ihre Adminrolle in
+  Supabase entfernt wurde
+
+### 1. Supabase-Migration
+
+Einmal vollständig ausführen:
+
+`supabase/admin_system.sql`
+
+### 2. Deinen Account zum Admin machen
+
+Im Supabase SQL Editor die E-Mail ersetzen und separat ausführen:
+
+```sql
+insert into public.user_roles (
+  user_id,
+  role
+)
+select
+  id,
+  'admin'
+from auth.users
+where lower(email) = lower('DEINE-EMAIL@BEISPIEL.DE')
+on conflict (user_id)
+do update set role = excluded.role;
+```
+
+Anschließend die App neu laden. Ein erneutes Login ist für die Anzeige der
+Navigation normalerweise nicht erforderlich, weil die Rolle direkt aus
+`user_roles` gelesen wird.
+
+### 3. Geheime Servervariable in Vercel
+
+In Vercel unter `Project → Settings → Environment Variables` eine der
+folgenden Variablen anlegen:
+
+Empfohlen:
+
+`SUPABASE_SECRET_KEY`
+
+Alternativ mit dem bisherigen Schlüssel:
+
+`SUPABASE_SERVICE_ROLE_KEY`
+
+Als Wert den Secret-Key aus Supabase verwenden. Der Variablenname darf
+**niemals** mit `NEXT_PUBLIC_` beginnen. Der Schlüssel wird ausschließlich
+in Next.js-Serverrouten verwendet und darf nicht in GitHub eingecheckt
+werden.
+
+Nach dem Hinzufügen der Variable ein neues Vercel-Deployment starten.
+
+### 4. Aufträge
+
+Das eigentliche Auftragssystem existiert noch nicht. Der Adminbereich prüft
+bereits sicher auf eine spätere Tabelle `orders`. Solange sie nicht
+vorhanden ist, erscheint eine verständliche Vorbereitungsmeldung statt
+ eines Fehlers.
+
+### Hinweis zur Kontosperre
+
+Die Sperre wird über Supabase Auth `ban_duration` gesetzt. Neue Logins und
+Token-Erneuerungen werden dadurch blockiert. Ein bereits ausgestelltes
+kurzlebiges Access-Token kann technisch noch bis zu seinem Ablauf gültig
+sein; deshalb sollte die JWT-Laufzeit in Supabase nicht unnötig lang sein.

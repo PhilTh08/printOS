@@ -49,6 +49,8 @@ type HubContextValue = {
   filaments: Filament[];
   logs: LogEntry[];
   displayName: string;
+  isAdmin: boolean;
+  adminRoleReady: boolean;
   filamentImageMode: FilamentImageMode;
   filamentDefaults: FilamentDefaults;
   preferenceSyncState: PreferenceSyncState;
@@ -248,6 +250,9 @@ export function HubProvider({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminRoleReady, setAdminRoleReady] =
+    useState(false);
   const [filaments, setFilaments] = useState<
     Filament[]
   >([]);
@@ -379,6 +384,59 @@ export function HubProvider({
       // Fehler wird im Context angezeigt.
     });
   }, [authReady, user, loadDataForUser]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
+    if (!user) {
+      setIsAdmin(false);
+      setAdminRoleReady(true);
+      return;
+    }
+
+    let active = true;
+    setAdminRoleReady(false);
+
+    void supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data, error: roleError }) => {
+        if (!active) {
+          return;
+        }
+
+        if (roleError) {
+          const code = roleError.code ?? "";
+          const missingTable =
+            code === "42P01" ||
+            code === "PGRST204" ||
+            code === "PGRST205";
+
+          if (!missingTable) {
+            console.error(
+              "Adminrolle konnte nicht geladen werden:",
+              roleError.message,
+            );
+          }
+
+          setIsAdmin(false);
+          setAdminRoleReady(true);
+          return;
+        }
+
+        setIsAdmin(data?.role === "admin");
+        setAdminRoleReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authReady, user]);
 
   useEffect(() => {
     if (!authReady) {
@@ -1225,6 +1283,8 @@ export function HubProvider({
       filaments,
       logs,
       displayName: getDisplayName(user),
+      isAdmin,
+      adminRoleReady,
       filamentImageMode,
       filamentDefaults,
       preferenceSyncState,
@@ -1251,6 +1311,8 @@ export function HubProvider({
       error,
       filaments,
       logs,
+      isAdmin,
+      adminRoleReady,
       filamentImageMode,
       filamentDefaults,
       preferenceSyncState,

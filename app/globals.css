@@ -4410,3 +4410,16 @@ a.dashboard-link-button {
     height: 170px;
   }
 }
+
+
+/* V15: Adminbereich */
+.nav-button-link[href="/admin"] {
+  color: #a8efc4;
+  border-color: rgba(57, 217, 138, 0.14);
+}
+
+.nav-button-link[href="/admin"].active {
+  color: #07130c;
+  background: var(--green);
+  border-color: var(--green);
+}

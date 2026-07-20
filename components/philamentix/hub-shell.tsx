@@ -43,6 +43,17 @@ const navigation = [
   },
 ];
 
+const adminNavigation = {
+  title: "Administration",
+  items: [
+    {
+      href: "/admin",
+      icon: "◆",
+      label: "Admin & Support",
+    },
+  ],
+};
+
 export function HubShell({
   children,
 }: {
@@ -57,10 +68,14 @@ export function HubShell({
     busy,
     error,
     displayName,
+    isAdmin,
     filaments,
     signOut,
   } = useHub();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const visibleNavigation = isAdmin
+    ? [...navigation, adminNavigation]
+    : navigation;
   const reorderCount = filaments.filter(
     (filament) =>
       filament.stock <= filament.minimumStock,
@@ -189,14 +204,16 @@ export function HubShell({
         </div>
 
         <nav>
-          {navigation.map((group) => (
+          {visibleNavigation.map((group) => (
             <div key={group.title}>
               <p className="nav-title">{group.title}</p>
               {group.items.map((item) => {
                 const active =
                   pathname === item.href ||
                   (item.href === "/filamente" &&
-                    pathname.startsWith("/filamente/"));
+                    pathname.startsWith("/filamente/")) ||
+                  (item.href === "/admin" &&
+                    pathname.startsWith("/admin"));
 
                 return (
                   <Link
