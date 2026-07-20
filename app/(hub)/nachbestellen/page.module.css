@@ -6,7 +6,7 @@
   display: block;
   margin-bottom: 6px;
   color: var(--accent);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -37,7 +37,7 @@
 .summaryCard > span {
   display: block;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -46,7 +46,7 @@
 .summaryCard strong {
   display: block;
   margin-top: 9px;
-  font-size: 29px;
+  font-size: 33px;
   line-height: 1;
 }
 
@@ -55,7 +55,7 @@
   min-height: 28px;
   margin-top: 8px;
   color: #728087;
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.4;
 }
 
@@ -95,7 +95,7 @@
 .searchField > span,
 .filterField > span {
   color: #718088;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -172,7 +172,7 @@
   align-items: center;
   padding: 0 7px;
   border-radius: 999px;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -209,7 +209,7 @@
 .productColumn h2 {
   margin: 10px 0 4px;
   overflow: hidden;
-  font-size: 17px;
+  font-size: 19px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -217,7 +217,7 @@
 .productColumn p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .productColumn code {
@@ -225,7 +225,7 @@
   margin-top: 7px;
   overflow: hidden;
   color: #617078;
-  font-size: 9px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -248,7 +248,7 @@
 
 .stockDetails dt {
   color: #718088;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -257,7 +257,7 @@
 .stockDetails dd {
   margin: 7px 0 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 850;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -272,7 +272,7 @@
   place-items: center;
   color: #110d0d;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .stockDetails .stockEmpty {
@@ -295,7 +295,7 @@
 
 .quantitySection > span {
   color: #718088;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -321,7 +321,7 @@
   background: rgba(245, 166, 35, 0.07);
   border: 0;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 900;
   transition:
     background 120ms ease,
@@ -351,7 +351,7 @@
   display: grid;
   place-items: center;
   color: var(--text);
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .orderButton,
@@ -365,7 +365,7 @@
   padding: 0 12px;
   cursor: pointer;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 900;
   text-align: center;
   text-decoration: none;
@@ -420,25 +420,25 @@
   color: #07120c;
   background: var(--green);
   border-radius: 50%;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 900;
 }
 
 .allGood strong {
   display: block;
   color: var(--text);
-  font-size: 15px;
+  font-size: 18px;
   text-align: left;
 }
 
 .allGood p {
   margin: 5px 0 0;
-  font-size: 11px;
+  font-size: 14px;
   text-align: left;
 }
 
 .emptyState {
-  font-size: 12px;
+  font-size: 15px;
 }
 
 @media (max-width: 1180px) {
@@ -514,4 +514,21 @@
   .reorderCard {
     transition: none;
   }
+}
+
+
+/* V15.2 – lokale Mindestgrößen für bessere Lesbarkeit */
+button,
+input,
+select,
+textarea {
+  font-size: max(14px, 1em);
+}
+
+label,
+p,
+small,
+span,
+em {
+  line-height: 1.45;
 }

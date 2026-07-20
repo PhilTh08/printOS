@@ -65,7 +65,7 @@ button {
 }
 
 .logo {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 900;
   letter-spacing: 0.04em;
 }
@@ -77,13 +77,13 @@ button {
 .version {
   margin: 5px 0 0;
   color: #66757d;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .nav-title {
   margin: 30px 10px 9px;
   color: #647078;
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -133,7 +133,7 @@ button {
 
 .topbar h1 {
   margin: 0;
-  font-size: 31px;
+  font-size: 36px;
 }
 
 .topbar p {
@@ -149,7 +149,7 @@ button {
   background: #10171b;
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .status-dot {
@@ -182,7 +182,7 @@ button {
 .stat-card span {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -190,7 +190,7 @@ button {
 .stat-card strong {
   display: block;
   margin-top: 9px;
-  font-size: 30px;
+  font-size: 34px;
 }
 
 .accent {
@@ -217,7 +217,7 @@ button {
 
 .panel h2 {
   margin: 0 0 15px;
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .mode-buttons {
@@ -262,7 +262,7 @@ button {
   border: 1px solid #46535b;
   border-radius: 8px;
   outline: none;
-  font-size: 22px;
+  font-size: 25px;
   letter-spacing: 0.1em;
 }
 
@@ -295,7 +295,7 @@ button {
 
 .empty-message {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .warning-list {
@@ -325,7 +325,7 @@ button {
 .warning-card p {
   margin: 7px 0 11px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .order-button {
@@ -457,7 +457,7 @@ button {
 
 .filament-card-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .filament-card-header p {
@@ -466,7 +466,7 @@ button {
 }
 
 .filament-card-header > strong {
-  font-size: 32px;
+  font-size: 36px;
 }
 
 .filament-details {
@@ -572,7 +572,7 @@ button {
   background: #1a2227;
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 24px;
+  font-size: 28px;
 }
 
 .close-button:hover {
@@ -587,7 +587,7 @@ button {
 
 .form-grid label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .form-grid input,
@@ -642,7 +642,7 @@ button {
   justify-content: center;
   border: 1px solid;
   border-radius: 8px;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 900;
 }
 
@@ -670,12 +670,12 @@ button {
 }
 
 .log-header strong {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .log-header time {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
   white-space: nowrap;
 }
 
@@ -685,7 +685,7 @@ button {
   gap: 7px 18px;
   margin-top: 9px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .hidden-file-input {
@@ -713,7 +713,7 @@ button {
   padding: 5px 8px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 900;
   letter-spacing: 0.1em;
 }
@@ -746,7 +746,7 @@ button {
   background: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 850;
 }
 
@@ -858,7 +858,7 @@ button {
 .dashboard-kpi > span {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -866,12 +866,12 @@ button {
 .dashboard-kpi > strong {
   display: block;
   margin: 9px 0 6px;
-  font-size: 30px;
+  font-size: 34px;
 }
 
 .dashboard-kpi small {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .dashboard-in {
@@ -913,7 +913,7 @@ button {
 .dashboard-panel-header p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .dashboard-link-button {
@@ -924,7 +924,7 @@ button {
   background: #1a2227;
   border: 1px solid #3a464d;
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 750;
 }
 
@@ -946,12 +946,12 @@ button {
   display: flex;
   justify-content: space-between;
   gap: 15px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .material-summary-label strong {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .material-summary-bar {
@@ -995,7 +995,7 @@ button {
 
 .dashboard-warning-row span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .dashboard-warning-stock {
@@ -1007,7 +1007,7 @@ button {
 
 .dashboard-warning-stock strong {
   color: var(--red);
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .dashboard-all-good {
@@ -1035,7 +1035,7 @@ button {
 .dashboard-all-good p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .recent-movements {
@@ -1068,7 +1068,7 @@ button {
   justify-content: center;
   border: 1px solid;
   border-radius: 8px;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 900;
 }
 
@@ -1093,7 +1093,7 @@ button {
 .recent-movement-main span,
 .recent-movement-meta time {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .recent-movement-meta {
@@ -1216,7 +1216,7 @@ button {
 .statistics-overview-card > span {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -1224,12 +1224,12 @@ button {
 .statistics-overview-card > strong {
   display: block;
   margin: 9px 0 6px;
-  font-size: 30px;
+  font-size: 34px;
 }
 
 .statistics-overview-card small {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .material-statistics-list {
@@ -1271,7 +1271,7 @@ button {
   display: block;
   margin-bottom: 5px;
   color: var(--accent);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 850;
   letter-spacing: 0.13em;
   text-transform: uppercase;
@@ -1279,13 +1279,13 @@ button {
 
 .material-statistics-heading h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 25px;
 }
 
 .material-statistics-heading p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .material-statistics-stock {
@@ -1295,12 +1295,12 @@ button {
 }
 
 .material-statistics-stock strong {
-  font-size: 27px;
+  font-size: 31px;
 }
 
 .material-statistics-stock span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .material-stock-progress {
@@ -1341,13 +1341,13 @@ button {
   display: block;
   margin-bottom: 6px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .material-statistics-values strong {
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .green {
@@ -1414,7 +1414,7 @@ button {
   background: #2a2418;
   border: 1px solid #5e4b24;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 850;
 }
 
@@ -1437,7 +1437,7 @@ button {
   color: var(--muted);
   background: #11171b;
   border-bottom: 1px solid #2c363c;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1460,7 +1460,7 @@ button {
 .material-detail-row > div span,
 .material-detail-row > span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .material-detail-status {
@@ -1469,7 +1469,7 @@ button {
   padding: 5px 8px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 10px !important;
+  font-size: 14px !important;
   font-weight: 850;
 }
 
@@ -1545,7 +1545,7 @@ button {
 
 .statistics-range-bar span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .statistics-range-buttons {
@@ -1577,14 +1577,14 @@ button {
 
 .statistics-text-value {
   overflow: hidden;
-  font-size: 19px !important;
+  font-size: 21px !important;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .statistics-small-value {
-  font-size: 14px !important;
+  font-size: 17px !important;
 }
 
 .statistics-main-grid {
@@ -1602,7 +1602,7 @@ button {
   display: flex;
   gap: 12px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .chart-legend span {
@@ -1669,7 +1669,7 @@ button {
 .movement-chart-column > span {
   overflow: hidden;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
   text-align: center;
   text-overflow: clip;
   writing-mode: vertical-rl;
@@ -1709,7 +1709,7 @@ button {
 .statistics-ranking-row > div > span {
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1724,7 +1724,7 @@ button {
   background: #1c2429;
   border: 1px solid #344047;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 850;
 }
 
@@ -1765,13 +1765,13 @@ button {
   display: block;
   margin-bottom: 7px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .analysis-tile-grid strong {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .statistics-section-heading {
@@ -1787,7 +1787,7 @@ button {
 .statistics-section-heading p {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .material-statistics-values-eight {
@@ -1819,7 +1819,7 @@ button {
 .material-detail-kpis span {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1827,12 +1827,12 @@ button {
 .material-detail-kpis strong {
   display: block;
   margin: 8px 0 4px;
-  font-size: 23px;
+  font-size: 26px;
 }
 
 .material-detail-kpis small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 @media (max-width: 1250px) {
@@ -2214,7 +2214,7 @@ body {
   margin-bottom: 14px;
   padding: 12px 14px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .database-status-banner {
@@ -2239,7 +2239,7 @@ body {
   background: var(--accent);
   border-radius: 8px;
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 850;
   animation: slideUp 0.2s ease-out;
 }
@@ -2278,7 +2278,7 @@ body {
 
 .hydration-logo {
   color: #f2f5f7;
-  font-size: 27px;
+  font-size: 31px;
   font-weight: 950;
   letter-spacing: -0.04em;
 }
@@ -2290,7 +2290,7 @@ body {
 .hydration-card p {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .hydration-loader {
@@ -2405,7 +2405,7 @@ body {
 
   .mobile-logo {
     overflow: hidden;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 950;
     letter-spacing: -0.03em;
     text-overflow: ellipsis;
@@ -2421,7 +2421,7 @@ body {
     align-items: center;
     gap: 6px;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 14px;
     font-weight: 750;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -2476,7 +2476,7 @@ body {
     background: #182126;
     border: 1px solid #36434a;
     border-radius: 9px;
-    font-size: 25px;
+    font-size: 29px;
     line-height: 1;
   }
 
@@ -2526,7 +2526,7 @@ body {
   }
 
   .topbar p {
-    font-size: 13px;
+    font-size: 16px;
     line-height: 1.45;
   }
 
@@ -2562,7 +2562,7 @@ body {
 
   .dashboard-kpi > strong,
   .statistics-overview-card > strong {
-    font-size: 27px;
+    font-size: 31px;
   }
 
   .dashboard-panel-header {
@@ -2571,7 +2571,7 @@ body {
 
   .dashboard-panel-header h2,
   .panel h2 {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .recent-movement-row {
@@ -2680,7 +2680,7 @@ body {
   }
 
   .filament-card-header h2 {
-    font-size: 19px;
+    font-size: 21px;
   }
 
   .filament-details {
@@ -2699,7 +2699,7 @@ body {
 
   .barcode-input {
     min-height: 54px;
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .scanner-message {
@@ -2852,7 +2852,7 @@ body {
 }
 
 .login-logo {
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 950;
   letter-spacing: -0.05em;
 }
@@ -2864,7 +2864,7 @@ body {
 .login-brand p {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.16em;
 }
@@ -2878,13 +2878,13 @@ body {
 
 .login-heading h1 {
   margin: 0;
-  font-size: 25px;
+  font-size: 29px;
 }
 
 .login-heading p {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -2898,7 +2898,7 @@ body {
   background: #123324;
   border: 1px solid #2b6b4c;
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .login-form {
@@ -2910,7 +2910,7 @@ body {
   display: grid;
   gap: 7px;
   color: #d9e0e4;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 750;
 }
 
@@ -2937,7 +2937,7 @@ body {
   background: #351a1d;
   border: 1px solid #6c3238;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.45;
 }
 
@@ -2967,7 +2967,7 @@ body {
 .login-security-note {
   margin: 17px 0 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   text-align: center;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2989,14 +2989,14 @@ body {
 
 .sidebar-account-info span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .sidebar-account-info strong {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3057,7 +3057,7 @@ body {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 850;
 }
 
@@ -3105,7 +3105,7 @@ body {
   border: 1px solid #e0e3e7;
   border-radius: 50%;
   font-family: Arial, sans-serif;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 900;
 }
 
@@ -3115,7 +3115,7 @@ body {
   gap: 11px;
   margin: 18px 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -3136,7 +3136,7 @@ body {
   background: #10291d;
   border: 1px solid #285a43;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.45;
 }
 
@@ -3175,7 +3175,7 @@ body {
   display: block;
   margin-bottom: 4px;
   color: var(--accent);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 850;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -3190,7 +3190,7 @@ body {
   background: transparent;
   border: 0;
   font: inherit;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -3211,7 +3211,7 @@ body {
 .sidebar-account-info small {
   overflow: hidden;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3239,7 +3239,7 @@ body {
 }
 
 .logo {
-  font-size: 23px;
+  font-size: 26px;
 }
 
 .login-logo,
@@ -3248,7 +3248,7 @@ body {
 }
 
 .mobile-logo {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 
@@ -3275,7 +3275,7 @@ body {
   padding: 13px 15px;
   border: 1px solid;
   border-radius: 9px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -3325,25 +3325,25 @@ body {
   box-shadow:
     0 18px 45px rgba(245, 166, 35, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  font-size: 37px;
+  font-size: 39px;
   font-weight: 950;
 }
 
 .profile-overview-card h2 {
   margin: 7px 0 5px;
-  font-size: 23px;
+  font-size: 26px;
 }
 
 .profile-overview-card p {
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .profile-eyebrow {
   color: var(--accent);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -3360,7 +3360,7 @@ body {
   background: #0e1519;
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .profile-status-dot {
@@ -3394,7 +3394,7 @@ body {
   max-width: 340px;
   margin: 1px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.55;
   text-align: right;
 }
@@ -3408,7 +3408,7 @@ body {
   background: rgba(245, 166, 35, 0.08);
   border: 1px solid rgba(245, 166, 35, 0.3);
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 900;
 }
 
@@ -3420,7 +3420,7 @@ body {
 
 .profile-form label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -3523,13 +3523,13 @@ body {
 
 .settings-card-heading h2 {
   margin: 0;
-  font-size: 19px;
+  font-size: 21px;
 }
 
 .settings-card-heading p {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
@@ -3543,7 +3543,7 @@ body {
   background: rgba(245, 166, 35, 0.08);
   border: 1px solid rgba(245, 166, 35, 0.3);
   border-radius: 10px;
-  font-size: 22px;
+  font-size: 25px;
   font-weight: 900;
 }
 
@@ -3559,7 +3559,7 @@ body {
 .settings-warning strong {
   display: block;
   margin-bottom: 5px;
-  font-size: 12px;
+  font-size: 15px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -3567,7 +3567,7 @@ body {
 .settings-warning p {
   margin: 0;
   color: #d9a1a1;
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.55;
 }
 
@@ -3630,7 +3630,7 @@ a {
   border: 1px solid rgba(245, 166, 35, 0.28);
   border-radius: 999px;
   font-family: Consolas, "Courier New", monospace;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -3666,14 +3666,14 @@ a {
 
 .detail-stock-value span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .detail-stock-value strong {
   margin-top: 8px;
-  font-size: 46px;
+  font-size: 49px;
 }
 
 .detail-stock-value small {
@@ -3702,7 +3702,7 @@ a {
   display: grid;
   gap: 7px;
   color: #b7c2c7;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -3741,7 +3741,7 @@ a {
   margin-bottom: 15px;
   padding: 12px 14px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .page-feedback.success {
@@ -3939,7 +3939,7 @@ a.dashboard-link-button {
   color: #160b0b;
   background: var(--red);
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 950;
   box-shadow: 0 0 12px rgba(255, 100, 100, 0.28);
 }
@@ -4042,11 +4042,11 @@ a.dashboard-link-button {
 
 .filament-card-image > div span {
   color: var(--accent);
-  font-size: 29px;
+  font-size: 33px;
 }
 
 .filament-card-image > div small {
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 850;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -4086,12 +4086,12 @@ a.dashboard-link-button {
 
 .detail-filament-image > div span {
   color: var(--accent);
-  font-size: 34px;
+  font-size: 38px;
 }
 
 .detail-filament-image > div p {
   margin: 0;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .filament-image-editor {
@@ -4122,13 +4122,13 @@ a.dashboard-link-button {
 
 .filament-image-editor-heading strong {
   color: var(--text);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .filament-image-editor-heading span {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -4138,7 +4138,7 @@ a.dashboard-link-button {
   padding: 0 11px;
   cursor: pointer;
   border-radius: 7px;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -4195,12 +4195,12 @@ a.dashboard-link-button {
 
 .filament-image-preview > div span {
   color: var(--accent);
-  font-size: 32px;
+  font-size: 36px;
 }
 
 .filament-image-preview > div p {
   margin: 0;
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .filament-image-fields {
@@ -4218,7 +4218,7 @@ a.dashboard-link-button {
   margin: 0;
   padding: 9px;
   border-radius: 7px;
-  font-size: 9px;
+  font-size: 13px;
   line-height: 1.45;
 }
 
@@ -4268,7 +4268,7 @@ a.dashboard-link-button {
   border: 1px solid rgba(255, 100, 100, 0.25);
   border-radius: 7px;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -4287,12 +4287,12 @@ a.dashboard-link-button {
 
 .product-image-picker-heading strong {
   color: var(--text);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .product-image-picker-heading span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   text-align: right;
 }
 
@@ -4334,7 +4334,7 @@ a.dashboard-link-button {
   display: block;
   overflow: hidden;
   padding: 7px 5px;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   text-align: center;
   text-overflow: ellipsis;
@@ -4422,4 +4422,314 @@ a.dashboard-link-button {
   color: #07130c;
   background: var(--green);
   border-color: var(--green);
+}
+
+
+/* ===============================================================
+   V15.2 – Lesbare Panel-Typografie
+   =============================================================== */
+
+:root {
+  --panel-font-body: 16px;
+  --panel-font-small: 13px;
+  --panel-font-label: 14px;
+  --panel-font-control: 15px;
+  --panel-font-title: clamp(32px, 3.1vw, 42px);
+  --panel-control-height: 46px;
+}
+
+html {
+  font-size: 16px;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-size: var(--panel-font-body);
+  line-height: 1.5;
+  letter-spacing: 0.005em;
+}
+
+.app-shell {
+  grid-template-columns: 278px minmax(0, 1fr);
+}
+
+.sidebar {
+  padding: 30px 22px;
+}
+
+.logo {
+  font-size: 31px;
+}
+
+.version {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.nav-title {
+  margin-top: 30px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.nav-button {
+  min-height: 49px;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.nav-button > span:first-child {
+  display: grid;
+  width: 25px;
+  min-width: 25px;
+  place-items: center;
+  font-size: 18px;
+}
+
+.nav-item-label {
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.nav-alert-badge {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+.sidebar-account-info > span,
+.sidebar-account-info > small {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sidebar-account-info > strong {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.sidebar-logout-button {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.main-content {
+  padding: 36px 38px 44px;
+}
+
+.topbar {
+  margin-bottom: 28px;
+}
+
+.topbar h1 {
+  font-size: var(--panel-font-title);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.topbar p {
+  max-width: 780px;
+  margin-top: 9px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.welcome-label {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.system-status {
+  min-height: 44px;
+  padding: 10px 15px;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.stat-card,
+.panel {
+  border-radius: 12px;
+}
+
+.stat-card {
+  min-height: 128px;
+  padding: 20px;
+}
+
+.stat-card span {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.stat-card strong {
+  font-size: 35px;
+  line-height: 1.05;
+}
+
+.panel {
+  padding: 21px;
+}
+
+.panel h2 {
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+button,
+input,
+select,
+textarea {
+  font-size: var(--panel-font-control);
+  line-height: 1.35;
+}
+
+button,
+select,
+input:not([type="checkbox"]):not([type="radio"]),
+textarea {
+  min-height: var(--panel-control-height);
+}
+
+button {
+  letter-spacing: 0.01em;
+}
+
+input,
+select,
+textarea {
+  padding-left: 13px;
+  padding-right: 13px;
+}
+
+table {
+  font-size: 14px;
+}
+
+table th {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+table td {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+small,
+.help-text,
+.empty-message {
+  line-height: 1.5;
+}
+
+.page-feedback {
+  min-height: 46px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.filament-card {
+  border-radius: 12px;
+}
+
+.filament-card h2,
+.filament-card h3 {
+  line-height: 1.25;
+}
+
+.filament-card p,
+.filament-card small,
+.filament-card span {
+  line-height: 1.45;
+}
+
+.detail-form-grid label,
+.detail-form-grid input,
+.detail-form-grid select,
+.detail-form-grid textarea {
+  font-size: 14px;
+}
+
+.detail-form-grid label {
+  line-height: 1.35;
+}
+
+.product-image-options span,
+.filament-image-message {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.mobile-app-header {
+  min-height: 64px;
+}
+
+.mobile-logo {
+  font-size: 22px;
+}
+
+.mobile-sync-status {
+  font-size: 13px;
+}
+
+@media (max-width: 1120px) {
+  .app-shell {
+    grid-template-columns: 252px minmax(0, 1fr);
+  }
+
+  .main-content {
+    padding: 30px;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    display: block;
+  }
+
+  .main-content {
+    padding: 24px 20px 40px;
+  }
+
+  .topbar h1 {
+    font-size: clamp(30px, 7vw, 38px);
+  }
+
+  .topbar p {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --panel-font-body: 15px;
+    --panel-font-control: 16px;
+  }
+
+  .main-content {
+    padding: 20px 15px 34px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .topbar h1 {
+    font-size: 30px;
+  }
+
+  .system-status {
+    font-size: 13px;
+  }
+
+  .stat-card {
+    min-height: 112px;
+  }
+
+  table th,
+  table td {
+    font-size: 13px;
+  }
 }

@@ -14,14 +14,14 @@
   color: #07130c;
   background: var(--green);
   border-radius: 4px;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 950;
   letter-spacing: 0.12em;
 }
 
 .adminIdentity strong {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .statsGrid {
@@ -47,12 +47,12 @@
 .statsGrid span,
 .statsGrid small {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .statsGrid strong {
   margin: 6px 0 2px;
-  font-size: 24px;
+  font-size: 28px;
 }
 
 .workspace {
@@ -82,7 +82,7 @@
 
 .panelHeading span {
   color: var(--green);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -90,7 +90,7 @@
 
 .panelHeading h2 {
   margin-top: 3px;
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .panelHeading button {
@@ -113,7 +113,7 @@
   border: 1px solid #344148;
   border-radius: 7px;
   outline: none;
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .userSearch:focus {
@@ -175,19 +175,19 @@
 }
 
 .userItem strong {
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .userItem small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .userItem em {
   margin-top: 5px;
   color: #839198;
-  font-size: 7px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 900;
   text-transform: uppercase;
@@ -207,7 +207,7 @@
   place-items: center;
   color: var(--muted);
   background: rgba(8, 14, 18, 0.88);
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .emptyDetail,
@@ -226,7 +226,7 @@
 
 .deniedCard strong {
   color: var(--red);
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .deniedCard p {
@@ -244,7 +244,7 @@
 
 .userHeader > div:first-child > span {
   color: var(--green);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -252,13 +252,13 @@
 
 .userHeader h2 {
   margin-top: 4px;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .userHeader p {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .accountActions {
@@ -272,7 +272,7 @@
   padding: 5px 8px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -296,7 +296,7 @@
   cursor: pointer;
   border: 1px solid;
   border-radius: 7px;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -325,7 +325,7 @@
   background: rgba(245, 166, 35, 0.055);
   border: 1px solid rgba(245, 166, 35, 0.22);
   border-radius: 7px;
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -348,7 +348,7 @@
   background: transparent;
   border: 0;
   border-bottom: 2px solid transparent;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -361,7 +361,7 @@
   place-items: center;
   background: #152127;
   border-radius: 999px;
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .tabs .tabActive {
@@ -396,14 +396,14 @@
 .tableWrap th {
   color: #7f8d93;
   background: #0c1519;
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .tableWrap td {
   color: #cbd4d8;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .tableWrap td strong,
@@ -413,18 +413,18 @@
 
 .tableWrap td strong {
   color: var(--text);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .tableWrap td small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .tableWrap code {
   color: #9ab1bb;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .goodStock,
@@ -436,7 +436,7 @@
   padding: 4px 7px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
 }
 
@@ -470,7 +470,7 @@
   background: #111c21;
   border: 1px solid #344148;
   border-radius: 6px;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
 }
 
@@ -499,7 +499,7 @@
 .featurePending p {
   margin-top: 8px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -517,7 +517,7 @@
 }
 
 .orderGrid article > strong {
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .orderGrid p {
@@ -525,7 +525,7 @@
   grid-template-columns: 120px minmax(0, 1fr);
   gap: 8px;
   margin-top: 7px;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .orderGrid p span {
@@ -566,7 +566,7 @@
 
 .modalHeading span {
   color: var(--green);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -574,7 +574,7 @@
 
 .modalHeading h2 {
   margin-top: 4px;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .modalHeading button {
@@ -585,7 +585,7 @@
   background: #111b20;
   border: 1px solid #344148;
   border-radius: 7px;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .editGrid {
@@ -599,7 +599,7 @@
   display: grid;
   gap: 6px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -644,7 +644,7 @@
   background: #111b20;
   border: 1px solid #344148;
   border-radius: 7px;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -725,7 +725,7 @@
 .panelHeading small {
   display: block;
   margin-top: 5px;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -755,7 +755,7 @@
   margin-top: 4px;
   overflow: hidden;
   color: #66757b;
-  font-size: 7px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -765,7 +765,7 @@
   padding: 5px 8px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -790,7 +790,7 @@
   background: rgba(245, 166, 35, 0.055);
   border: 1px solid rgba(245, 166, 35, 0.22);
   border-radius: 7px;
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -798,7 +798,7 @@
   display: inline-block;
   margin: 0 4px;
   color: #fff0ca;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 @keyframes onlinePulse {
@@ -818,4 +818,21 @@
   .userStatusOnline {
     animation: none;
   }
+}
+
+
+/* V15.2 – lokale Mindestgrößen für bessere Lesbarkeit */
+button,
+input,
+select,
+textarea {
+  font-size: max(14px, 1em);
+}
+
+label,
+p,
+small,
+span,
+em {
+  line-height: 1.45;
 }

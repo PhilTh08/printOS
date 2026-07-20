@@ -18,7 +18,7 @@
   padding: 0 10px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -91,7 +91,7 @@
   padding: 0 13px;
   cursor: pointer;
   border-radius: 7px;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -134,7 +134,7 @@
 .libraryHeader > span {
   display: block;
   color: var(--accent);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -143,14 +143,14 @@
 .editorHeader h2,
 .libraryHeader h2 {
   margin: 5px 0 0;
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .editorHeader p,
 .libraryHeader p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .editorHeaderActions {
@@ -167,7 +167,7 @@
   border: 1px solid #39464d;
   border-radius: 7px;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 850;
 }
 
@@ -211,7 +211,7 @@
   background: rgba(245, 166, 35, 0.09);
   border: 1px solid rgba(245, 166, 35, 0.24);
   border-radius: 7px;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 950;
 }
 
@@ -225,14 +225,14 @@
 }
 
 .editorWidgetText strong {
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .editorWidgetText small {
   margin-top: 3px;
   overflow: hidden;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -246,7 +246,7 @@
 
 .editorRow label span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 850;
   text-transform: uppercase;
 }
@@ -258,7 +258,7 @@
   background: #091115;
   border: 1px solid #364249;
   border-radius: 6px;
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .editorActions {
@@ -275,7 +275,7 @@
   background: rgba(245, 166, 35, 0.07);
   border: 1px solid rgba(245, 166, 35, 0.28);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -290,7 +290,7 @@
   color: #ffaaaa;
   background: rgba(255, 100, 100, 0.07);
   border-color: rgba(255, 100, 100, 0.28);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .libraryHeader {
@@ -328,7 +328,7 @@
   background: rgba(245, 166, 35, 0.08);
   border: 1px solid rgba(245, 166, 35, 0.22);
   border-radius: 7px;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 950;
 }
 
@@ -338,14 +338,14 @@
 
 .widgetLibrary strong {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .widgetLibrary p {
   min-height: 31px;
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -357,7 +357,7 @@
   border: 1px solid var(--accent);
   border-radius: 6px;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -367,7 +367,7 @@
   align-items: flex-start;
   gap: 7px;
   color: #748188;
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -388,7 +388,7 @@
   background: #0b1317;
   border: 1px dashed #3a464d;
   border-radius: 8px;
-  font-size: 9px;
+  font-size: 13px;
   text-align: center;
 }
 
@@ -436,7 +436,7 @@
   color: #171109;
   background: var(--accent);
   border-radius: 999px;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 950;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -453,7 +453,7 @@
 .widgetHeading span {
   display: block;
   color: var(--accent);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -461,13 +461,13 @@
 
 .widgetHeading h2 {
   margin: 5px 0 0;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .widgetHeading a {
   flex: 0 0 auto;
   color: var(--accent);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   text-decoration: none;
 }
@@ -526,7 +526,7 @@
   background: rgba(245, 166, 35, 0.09);
   border: 1px solid rgba(245, 166, 35, 0.23);
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 950;
 }
 
@@ -548,19 +548,19 @@
 
 .quickAction strong,
 .quickActionPrimary strong {
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .quickAction small,
 .quickActionPrimary small {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .quickActionPrimary b {
   color: var(--accent);
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .summaryGrid {
@@ -587,7 +587,7 @@
 
 .summaryGrid > div > span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -596,7 +596,7 @@
 .summaryGrid strong {
   margin-top: 9px;
   overflow: hidden;
-  font-size: 23px;
+  font-size: 26px;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -605,7 +605,7 @@
 .summaryGrid small {
   margin-top: 8px;
   color: #738188;
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -660,14 +660,14 @@
 
 .healthRing strong {
   display: block;
-  font-size: 25px;
+  font-size: 29px;
 }
 
 .healthRing span {
   display: block;
   margin-top: 3px;
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -691,13 +691,13 @@
 }
 
 .healthFacts strong {
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .healthFacts small {
   overflow: hidden;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -759,18 +759,18 @@
 }
 
 .reorderRow > div strong {
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .reorderRow > div small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .reorderRow > b {
   color: var(--accent);
-  font-size: 12px;
+  font-size: 15px;
   text-align: right;
 }
 
@@ -778,7 +778,7 @@
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .stockEmpty,
@@ -790,7 +790,7 @@
   place-items: center;
   color: #150b0b;
   border-radius: 7px;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 950;
 }
 
@@ -825,7 +825,7 @@
   place-items: center;
   color: #08110c;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 950;
 }
 
@@ -850,18 +850,18 @@
 }
 
 .activityRow strong {
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .activityRow small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .activityRow time {
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -877,7 +877,7 @@
 
 .quickStock label > span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -924,20 +924,20 @@
 
 .quickStockCurrent span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .quickStockCurrent strong {
   margin-top: 7px;
-  font-size: 27px;
+  font-size: 31px;
 }
 
 .quickStockCurrent small {
   margin-top: 5px;
   color: #77858b;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .quickStockButtons {
@@ -951,7 +951,7 @@
   min-height: 54px;
   cursor: pointer;
   border-radius: 8px;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -977,7 +977,7 @@
   margin: 0;
   padding: 9px;
   border-radius: 7px;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .widgetSuccess {
@@ -1006,7 +1006,7 @@
   background: #0c1418;
   border: 1px dashed #354148;
   border-radius: 8px;
-  font-size: 9px;
+  font-size: 13px;
   text-align: center;
 }
 
@@ -1038,13 +1038,13 @@
 }
 
 .searchResults strong {
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .searchResults small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .searchResults b {
@@ -1060,7 +1060,7 @@
   place-items: center;
   color: #110b0b;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 950;
 }
 
@@ -1093,14 +1093,14 @@
 
 .balanceGrid span {
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .balanceGrid strong {
   margin-top: 8px;
-  font-size: 21px;
+  font-size: 24px;
 }
 
 .balanceIn strong,
@@ -1136,7 +1136,7 @@
   display: block;
   margin-top: 6px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .balanceAction {
@@ -1149,7 +1149,7 @@
   background: rgba(245, 166, 35, 0.07);
   border: 1px solid rgba(245, 166, 35, 0.25);
   border-radius: 7px;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   text-decoration: none;
 }
@@ -1169,7 +1169,7 @@
 
 .locationList > div > span {
   color: var(--accent);
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .locationList > div > div {
@@ -1185,24 +1185,24 @@
 }
 
 .locationList strong {
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .locationList small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .locationList b {
   color: var(--text);
-  font-size: 12px;
+  font-size: 15px;
   text-align: right;
 }
 
 .locationList b small {
   margin-top: 2px;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -1231,25 +1231,25 @@
   color: #07120c;
   background: var(--green);
   border-radius: 50%;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 950;
 }
 
 .allGood strong {
   display: block;
   color: var(--text);
-  font-size: 11px;
+  font-size: 14px;
   text-align: left;
 }
 
 .allGood p {
   margin: 4px 0 0;
-  font-size: 8px;
+  font-size: 12px;
   text-align: left;
 }
 
 .emptyState {
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .noWidgets {
@@ -1262,18 +1262,18 @@
 
 .noWidgets > span {
   color: var(--accent);
-  font-size: 32px;
+  font-size: 36px;
 }
 
 .noWidgets h2 {
   margin: 12px 0 0;
   color: var(--text);
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .noWidgets p {
   margin: 7px 0 0;
-  font-size: 9px;
+  font-size: 13px;
 }
 
 @media (max-width: 1120px) {
@@ -1402,4 +1402,21 @@
   .syncWorking > span {
     animation: none;
   }
+}
+
+
+/* V15.2 – lokale Mindestgrößen für bessere Lesbarkeit */
+button,
+input,
+select,
+textarea {
+  font-size: max(14px, 1em);
+}
+
+label,
+p,
+small,
+span,
+em {
+  line-height: 1.45;
 }

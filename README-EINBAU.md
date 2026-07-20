@@ -530,3 +530,27 @@ unverändert.
 
 Bei einem abrupt geschlossenen Browser kann der Account noch maximal rund
 75 Sekunden als online erscheinen. Das ist bei Heartbeat-Systemen normal.
+
+
+## V15.2 – Größere Schrift im gesamten Panel
+
+Die Lesbarkeit wurde appweit angehoben:
+
+- 16 px Grundschrift
+- Navigation überwiegend 15 px
+- Tabellen und Listen mindestens 13–14 px
+- größere Überschriften und Kennzahlen
+- Eingaben und Buttons mindestens 46 px hoch
+- breitere Desktop-Sidebar
+- mehr Innenabstand in Karten und Panels
+- größere mobile Bedienelemente
+- bestehender Industrial-Look, Farben und Funktionen bleiben erhalten
+
+Im Paket liegt außerdem:
+
+`DESIGNVORSCHLAG-V15.2.html`
+
+Die Datei kann direkt im Browser geöffnet werden und zeigt einen
+alternativen, lesbareren Entwurf für Dashboard und Adminbereich.
+
+Keine neue Supabase-Migration erforderlich.

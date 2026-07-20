@@ -43,14 +43,14 @@
   background: rgba(245, 166, 35, 0.1);
   border: 1px solid rgba(245, 166, 35, 0.28);
   border-radius: 9px;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 900;
 }
 
 .eyebrow {
   display: block;
   color: var(--accent);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -58,13 +58,13 @@
 
 .cardHeading h2 {
   margin: 5px 0 0;
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .cardHeading p {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -91,7 +91,7 @@
 
 .backupStats span {
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -100,7 +100,7 @@
 .backupStats strong {
   margin-top: 7px;
   overflow: hidden;
-  font-size: 16px;
+  font-size: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -123,12 +123,12 @@
 .infoBox strong {
   display: block;
   color: var(--text);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .infoBox p {
   margin: 5px 0 0;
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -147,7 +147,7 @@
   padding: 0 12px;
   cursor: pointer;
   border-radius: 7px;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -263,14 +263,14 @@
 .imageModeButton > strong {
   margin-top: 10px;
   color: var(--text);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .imageModeButton > small {
   min-height: 36px;
   margin-top: 5px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -297,7 +297,7 @@
       #f5f5f2,
       #d9ddda
     );
-  font-size: 8px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 950;
   letter-spacing: 0.14em;
@@ -342,7 +342,7 @@
   height: 28px;
   place-items: center;
   color: #76848a;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.1em;
 }
@@ -370,13 +370,13 @@
 }
 
 .preferenceStatus strong {
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .preferenceStatus small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -468,7 +468,7 @@
 
 .defaultsForm label > span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -483,7 +483,7 @@
   border: 1px solid #364249;
   border-radius: 7px;
   outline: none;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .defaultsForm input:focus {
@@ -510,7 +510,7 @@
   border: 1px solid #364249;
   border-left: 0;
   border-radius: 0 7px 7px 0;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .defaultsPreview {
@@ -536,7 +536,7 @@
 
 .defaultsPreview span {
   color: var(--green);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -544,13 +544,13 @@
 
 .defaultsPreview strong {
   margin-top: 6px;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .defaultsPreview small {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .defaultsActions {
@@ -566,7 +566,7 @@
   padding: 0 12px;
   cursor: pointer;
   border-radius: 7px;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -613,4 +613,21 @@
   .secondarySettingsButton {
     width: 100%;
   }
+}
+
+
+/* V15.2 – lokale Mindestgrößen für bessere Lesbarkeit */
+button,
+input,
+select,
+textarea {
+  font-size: max(14px, 1em);
+}
+
+label,
+p,
+small,
+span,
+em {
+  line-height: 1.45;
 }

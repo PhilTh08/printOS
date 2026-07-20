@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Philamentix Hub – Designvorschlag V15.2</title>
+  <style>
+    :root {
+      --bg: #070b0e;
+      --panel: #11191e;
+      --panel-2: #172127;
+      --line: #304049;
+      --text: #f2f5f6;
+      --muted: #98a7af;
+      --orange: #f7a927;
+      --green: #39d98a;
+      --red: #ff6a6a;
+      --blue: #64aefc;
+      --shadow: 0 20px 54px rgba(0,0,0,.28);
+      --radius: 15px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        radial-gradient(circle at 88% 0%, #1d2d35, transparent 38%),
+        var(--bg);
+      background-size: 32px 32px, 32px 32px, auto, auto;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 285px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 31px 22px 22px;
+      background:
+        linear-gradient(180deg, rgba(17,25,30,.98), rgba(7,12,15,.98));
+      border-right: 1px solid var(--line);
+      box-shadow: 20px 0 55px rgba(0,0,0,.18);
+    }
+
+    .brand {
+      font-size: 1.95rem;
+      font-weight: 950;
+      letter-spacing: -.035em;
+    }
+
+    .brand span {
+      color: var(--orange);
+    }
+
+    .brand-sub {
+      margin: 5px 0 28px;
+      color: #718087;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .13em;
+    }
+
+    .nav-group {
+      margin-top: 25px;
+    }
+
+    .nav-group-title {
+      margin: 0 12px 9px;
+      color: #78868d;
+      font-size: .76rem;
+      font-weight: 900;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .nav-link {
+      display: flex;
+      width: 100%;
+      min-height: 50px;
+      align-items: center;
+      gap: 13px;
+      margin: 4px 0;
+      padding: 11px 13px;
+      cursor: pointer;
+      color: #d2dbe0;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      text-align: left;
+      font-weight: 760;
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      color: white;
+      background: linear-gradient(90deg, rgba(247,169,39,.11), rgba(255,255,255,.025));
+      border-color: #3a4850;
+    }
+
+    .nav-link.active {
+      box-shadow: inset 4px 0 0 var(--orange);
+    }
+
+    .nav-icon {
+      display: grid;
+      width: 27px;
+      height: 27px;
+      place-items: center;
+      color: var(--orange);
+      background: rgba(247,169,39,.08);
+      border: 1px solid rgba(247,169,39,.18);
+      border-radius: 8px;
+      font-size: 1.05rem;
+    }
+
+    .account {
+      position: absolute;
+      right: 22px;
+      bottom: 22px;
+      left: 22px;
+      padding: 14px;
+      background: #0e161a;
+      border: 1px solid #2d3a41;
+      border-radius: 12px;
+    }
+
+    .account span,
+    .account small {
+      display: block;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .account strong {
+      display: block;
+      margin: 3px 0;
+      font-size: 1rem;
+    }
+
+    .main {
+      min-width: 0;
+      padding: 38px 40px 50px;
+    }
+
+    .page-view {
+      display: none;
+      animation: appear .2s ease;
+    }
+
+    .page-view.active {
+      display: block;
+    }
+
+    @keyframes appear {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      color: var(--orange);
+      font-size: .82rem;
+      font-weight: 950;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 5px 0 0;
+      font-size: clamp(2.1rem, 4vw, 3rem);
+      line-height: 1.05;
+      letter-spacing: -.045em;
+    }
+
+    .lead {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .online-pill {
+      display: flex;
+      min-height: 46px;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 15px;
+      background: #10191d;
+      border: 1px solid #334149;
+      border-radius: 999px;
+      font-size: .9rem;
+      font-weight: 800;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 13px rgba(57,217,138,.65);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 15px;
+      margin-bottom: 17px;
+    }
+
+    .stat,
+    .panel {
+      background:
+        linear-gradient(180deg, rgba(24,34,40,.96), rgba(15,23,28,.96));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .stat {
+      position: relative;
+      min-height: 135px;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .stat::after {
+      position: absolute;
+      right: -25px;
+      bottom: -45px;
+      width: 125px;
+      height: 125px;
+      content: "";
+      background: radial-gradient(circle, rgba(247,169,39,.13), transparent 66%);
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 850;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 13px;
+      font-size: 2.35rem;
+      line-height: 1;
+    }
+
+    .stat small {
+      display: block;
+      margin-top: 8px;
+      color: #7f8e95;
+      font-size: .82rem;
+    }
+
+    .orange { color: var(--orange); }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .blue { color: var(--blue); }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(330px, .75fr);
+      gap: 17px;
+    }
+
+    .panel {
+      padding: 22px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 18px;
+    }
+
+    .panel-title span {
+      color: var(--orange);
+      font-size: .78rem;
+      font-weight: 900;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .panel-title h2 {
+      margin: 3px 0 0;
+      font-size: 1.35rem;
+    }
+
+    .ghost-button,
+    .primary-button {
+      min-height: 44px;
+      padding: 9px 14px;
+      cursor: pointer;
+      border-radius: 9px;
+      font-size: .9rem;
+      font-weight: 850;
+    }
+
+    .ghost-button {
+      color: #d0d9dd;
+      background: #111a1f;
+      border: 1px solid #3a4850;
+    }
+
+    .primary-button {
+      color: #161009;
+      background: var(--orange);
+      border: 1px solid var(--orange);
+    }
+
+    .filament-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .filament-row {
+      display: grid;
+      grid-template-columns: 6px 54px minmax(0, 1fr) auto;
+      min-height: 72px;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 13px 10px 0;
+      background: #0d1519;
+      border: 1px solid #2d3940;
+      border-radius: 11px;
+    }
+
+    .status-strip {
+      align-self: stretch;
+      background: var(--green);
+      border-radius: 10px 0 0 10px;
+    }
+
+    .status-strip.warning {
+      background: var(--orange);
+    }
+
+    .spool {
+      display: grid;
+      width: 50px;
+      height: 50px;
+      place-items: center;
+      color: #283137;
+      background: #e7e8e5;
+      border: 5px solid #d1d4d2;
+      border-radius: 50%;
+      font-size: .7rem;
+      font-weight: 950;
+    }
+
+    .filament-row h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .filament-row p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .stock {
+      min-width: 80px;
+      text-align: right;
+    }
+
+    .stock strong {
+      display: block;
+      font-size: 1.45rem;
+    }
+
+    .stock span {
+      color: var(--muted);
+      font-size: .78rem;
+    }
+
+    .activity {
+      display: grid;
+      gap: 8px;
+    }
+
+    .activity-item {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 11px;
+      padding: 11px;
+      background: #0d1519;
+      border: 1px solid #29353b;
+      border-radius: 10px;
+    }
+
+    .activity-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      color: var(--green);
+      background: rgba(57,217,138,.08);
+      border: 1px solid rgba(57,217,138,.22);
+      border-radius: 9px;
+      font-weight: 950;
+    }
+
+    .activity-item strong {
+      display: block;
+      font-size: .93rem;
+    }
+
+    .activity-item small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .admin-layout {
+      display: grid;
+      grid-template-columns: minmax(300px, .72fr) minmax(0, 1.28fr);
+      gap: 17px;
+    }
+
+    .search {
+      width: 100%;
+      min-height: 46px;
+      margin-bottom: 12px;
+      padding: 0 13px;
+      color: white;
+      background: #091115;
+      border: 1px solid #3b4951;
+      border-radius: 9px;
+      outline: none;
+      font-size: .95rem;
+    }
+
+    .user-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .user {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      padding: 12px;
+      cursor: pointer;
+      background: #0d1519;
+      border: 1px solid #2c3940;
+      border-radius: 10px;
+    }
+
+    .user.selected {
+      background: linear-gradient(90deg, rgba(247,169,39,.1), #10191d);
+      border-color: rgba(247,169,39,.46);
+    }
+
+    .presence {
+      width: 11px;
+      height: 11px;
+      background: #59676d;
+      border-radius: 50%;
+    }
+
+    .presence.online {
+      background: var(--green);
+      box-shadow: 0 0 10px rgba(57,217,138,.7);
+    }
+
+    .user strong {
+      display: block;
+      font-size: .94rem;
+    }
+
+    .user small,
+    .user em {
+      display: block;
+      color: var(--muted);
+      font-size: .79rem;
+      font-style: normal;
+    }
+
+    .user em {
+      margin-top: 3px;
+    }
+
+    .badge {
+      padding: 5px 8px;
+      border: 1px solid rgba(57,217,138,.25);
+      border-radius: 999px;
+      color: #9febbf;
+      background: rgba(57,217,138,.06);
+      font-size: .72rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .detail-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 15px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #2d3940;
+    }
+
+    .detail-head h2 {
+      margin: 0;
+      font-size: 1.45rem;
+    }
+
+    .detail-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .detail-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 17px 0;
+    }
+
+    .detail-stat {
+      padding: 13px;
+      background: #0d1519;
+      border: 1px solid #2d3940;
+      border-radius: 10px;
+    }
+
+    .detail-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    .detail-stat strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.25rem;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .table th,
+    .table td {
+      padding: 12px;
+      border-bottom: 1px solid #2a363d;
+      text-align: left;
+    }
+
+    .table th {
+      color: #829199;
+      font-size: .76rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .table td {
+      font-size: .88rem;
+    }
+
+    .concept-note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      color: #d7e0e4;
+      background: rgba(100,174,252,.055);
+      border: 1px solid rgba(100,174,252,.2);
+      border-radius: 11px;
+      font-size: .9rem;
+    }
+
+    .concept-note strong {
+      color: var(--blue);
+    }
+
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 245px minmax(0, 1fr);
+      }
+
+      .main {
+        padding: 30px 25px 42px;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dashboard-grid,
+      .admin-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        display: block;
+      }
+
+      .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        padding: 22px;
+      }
+
+      .brand-sub {
+        margin-bottom: 17px;
+      }
+
+      .nav-group {
+        display: inline;
+      }
+
+      .nav-group-title {
+        display: none;
+      }
+
+      .nav-link {
+        display: inline-flex;
+        width: auto;
+        min-height: 44px;
+        margin-right: 5px;
+      }
+
+      .account {
+        display: none;
+      }
+
+      .main {
+        padding: 24px 16px 38px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+      }
+
+      .online-pill {
+        display: none;
+      }
+
+      .stats {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 500px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .filament-row {
+        grid-template-columns: 6px 46px minmax(0, 1fr);
+      }
+
+      .stock {
+        grid-column: 3;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">Philamentix<span>Hub</span></div>
+      <p class="brand-sub">FILAMENT MANAGEMENT // DESIGN V15.2</p>
+
+      <div class="nav-group">
+        <p class="nav-group-title">Übersicht</p>
+        <button class="nav-link active" data-view="dashboard">
+          <span class="nav-icon">⌂</span>
+          Dashboard
+        </button>
+        <button class="nav-link" data-view="admin">
+          <span class="nav-icon">◆</span>
+          Admin & Support
+        </button>
+      </div>
+
+      <div class="nav-group">
+        <p class="nav-group-title">Lager</p>
+        <button class="nav-link">
+          <span class="nav-icon">▣</span>
+          Ein-/Auslagerung
+        </button>
+        <button class="nav-link">
+          <span class="nav-icon">▤</span>
+          Filamenttypen
+        </button>
+        <button class="nav-link">
+          <span class="nav-icon">!</span>
+          Nachbestellen
+        </button>
+      </div>
+
+      <div class="account">
+        <span>Angemeldet als</span>
+        <strong>Phil Th.</strong>
+        <small>admin@philamentix.de</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="dashboard" class="page-view active">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Lagerübersicht</span>
+            <h1>Guten Abend, Phil.</h1>
+            <p class="lead">Alle Bestände, Bewegungen und kritischen Filamente auf einen Blick.</p>
+          </div>
+          <div class="online-pill"><span class="dot"></span> Supabase synchronisiert</div>
+        </header>
+
+        <div class="stats">
+          <article class="stat">
+            <span>Filamenttypen</span>
+            <strong class="orange">24</strong>
+            <small>5 Hersteller · 8 Materialien</small>
+          </article>
+          <article class="stat">
+            <span>Rollen auf Lager</span>
+            <strong>57</strong>
+            <small>Gesamtbestand 49,8 kg</small>
+          </article>
+          <article class="stat">
+            <span>Kritischer Bestand</span>
+            <strong class="red">3</strong>
+            <small>Nachbestellung empfohlen</small>
+          </article>
+          <article class="stat">
+            <span>Heute bewegt</span>
+            <strong class="green">+6</strong>
+            <small>8 Ein- · 2 Auslagerungen</small>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel">
+            <div class="panel-title">
+              <div>
+                <span>Bestandskontrolle</span>
+                <h2>Filamenttypen</h2>
+              </div>
+              <button class="primary-button">+ Filament hinzufügen</button>
+            </div>
+
+            <div class="filament-list">
+              <div class="filament-row">
+                <i class="status-strip"></i>
+                <div class="spool">PLA</div>
+                <div>
+                  <h3>Bambu Lab · PLA Basic · Schwarz</h3>
+                  <p>Regal A2 · Mindestbestand 2 Rollen</p>
+                </div>
+                <div class="stock">
+                  <strong class="green">5</strong>
+                  <span>Rollen</span>
+                </div>
+              </div>
+              <div class="filament-row">
+                <i class="status-strip warning"></i>
+                <div class="spool">PETG</div>
+                <div>
+                  <h3>Bambu Lab · PETG HF · Weiß</h3>
+                  <p>Regal B1 · Mindestbestand 2 Rollen</p>
+                </div>
+                <div class="stock">
+                  <strong class="orange">2</strong>
+                  <span>Rollen</span>
+                </div>
+              </div>
+              <div class="filament-row">
+                <i class="status-strip"></i>
+                <div class="spool">ASA</div>
+                <div>
+                  <h3>Polymaker · ASA · Grau</h3>
+                  <p>Regal C3 · Mindestbestand 1 Rolle</p>
+                </div>
+                <div class="stock">
+                  <strong class="green">3</strong>
+                  <span>Rollen</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title">
+              <div>
+                <span>Live-Protokoll</span>
+                <h2>Letzte Bewegungen</h2>
+              </div>
+              <button class="ghost-button">Alle öffnen</button>
+            </div>
+
+            <div class="activity">
+              <div class="activity-item">
+                <div class="activity-icon">+</div>
+                <div>
+                  <strong>PLA Basic Schwarz eingelagert</strong>
+                  <small>Vor 3 Minuten · Bestand jetzt 5 Rollen</small>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon">−</div>
+                <div>
+                  <strong>PETG HF Weiß entnommen</strong>
+                  <small>Vor 26 Minuten · Bestand jetzt 2 Rollen</small>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon">+</div>
+                <div>
+                  <strong>ASA Grau eingelagert</strong>
+                  <small>Heute, 16:42 Uhr · Manuelle Buchung</small>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="concept-note">
+          <strong>Designprinzip:</strong> Keine Mikrotexte mehr. Wichtige Informationen liegen bei 14–16 px, Navigation und Buttons sind mindestens 44 px hoch. Der industrielle Charakter bleibt durch klare Kanten, technische Labels und Orange als Akzent erhalten.
+        </div>
+      </section>
+
+      <section id="admin" class="page-view">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Administration</span>
+            <h1>Admin & Support</h1>
+            <p class="lead">Nutzerstatus, Supportdaten und protokollierte Eingriffe übersichtlich verwalten.</p>
+          </div>
+          <div class="online-pill"><span class="dot"></span> 3 Nutzer online</div>
+        </header>
+
+        <div class="stats">
+          <article class="stat">
+            <span>Nutzerkonten</span>
+            <strong>18</strong>
+            <small>17 aktiv · 1 gesperrt</small>
+          </article>
+          <article class="stat">
+            <span>Gerade online</span>
+            <strong class="green">3</strong>
+            <small>Aktivität innerhalb 75 Sekunden</small>
+          </article>
+          <article class="stat">
+            <span>Administratoren</span>
+            <strong class="orange">1</strong>
+            <small>Rolle über Supabase vergeben</small>
+          </article>
+          <article class="stat">
+            <span>Adminaktionen</span>
+            <strong class="blue">42</strong>
+            <small>Vollständig protokolliert</small>
+          </article>
+        </div>
+
+        <div class="admin-layout">
+          <article class="panel">
+            <div class="panel-title">
+              <div>
+                <span>Nutzerverwaltung</span>
+                <h2>Accounts</h2>
+              </div>
+              <button class="ghost-button">Aktualisieren</button>
+            </div>
+
+            <input class="search" placeholder="Name oder E-Mail suchen">
+
+            <div class="user-list">
+              <div class="user selected">
+                <span class="presence online"></span>
+                <div>
+                  <strong>Phil Th.</strong>
+                  <small>admin@philamentix.de</small>
+                  <em>Gerade eben aktiv</em>
+                </div>
+                <span class="badge">Admin</span>
+              </div>
+              <div class="user">
+                <span class="presence online"></span>
+                <div>
+                  <strong>Maker Werkstatt</strong>
+                  <small>werkstatt@example.de</small>
+                  <em>Vor 1 Min. aktiv</em>
+                </div>
+                <span class="badge">Online</span>
+              </div>
+              <div class="user">
+                <span class="presence"></span>
+                <div>
+                  <strong>Tom Druckservice</strong>
+                  <small>tom@example.de</small>
+                  <em>Vor 5 Std. aktiv</em>
+                </div>
+              </div>
+              <div class="user">
+                <span class="presence"></span>
+                <div>
+                  <strong>Demo Nutzer</strong>
+                  <small>demo@example.de</small>
+                  <em>Zuletzt aktiv gestern, 21:14</em>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="detail-head">
+              <div>
+                <h2>Phil Th.</h2>
+                <p>admin@philamentix.de · Gerade eben aktiv</p>
+              </div>
+              <span class="badge">Online</span>
+            </div>
+
+            <div class="detail-stats">
+              <div class="detail-stat">
+                <span>Filamenttypen</span>
+                <strong>24</strong>
+              </div>
+              <div class="detail-stat">
+                <span>Protokolle</span>
+                <strong>186</strong>
+              </div>
+              <div class="detail-stat">
+                <span>Status</span>
+                <strong class="green">Aktiv</strong>
+              </div>
+            </div>
+
+            <div class="panel-title">
+              <div>
+                <span>Supportansicht</span>
+                <h2>Filamente des Nutzers</h2>
+              </div>
+              <button class="ghost-button">Korrektur öffnen</button>
+            </div>
+
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Filament</th>
+                  <th>Lagerort</th>
+                  <th>Bestand</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Bambu PLA Basic Schwarz</td>
+                  <td>Regal A2</td>
+                  <td>5 Rollen</td>
+                  <td class="green">In Ordnung</td>
+                </tr>
+                <tr>
+                  <td>Bambu PETG HF Weiß</td>
+                  <td>Regal B1</td>
+                  <td>2 Rollen</td>
+                  <td class="orange">Mindestbestand</td>
+                </tr>
+                <tr>
+                  <td>Polymaker ASA Grau</td>
+                  <td>Regal C3</td>
+                  <td>3 Rollen</td>
+                  <td class="green">In Ordnung</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const links = document.querySelectorAll("[data-view]");
+    const views = document.querySelectorAll(".page-view");
+
+    links.forEach((link) => {
+      link.addEventListener("click", () => {
+        links.forEach((item) => item.classList.remove("active"));
+        views.forEach((view) => view.classList.remove("active"));
+
+        link.classList.add("active");
+        document.getElementById(link.dataset.view).classList.add("active");
+      });
+    });
+  </script>
+</body>
+</html>
