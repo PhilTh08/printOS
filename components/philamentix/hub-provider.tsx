@@ -218,6 +218,33 @@ function isMissingPreferencesTable(
   );
 }
 
+const PRESENCE_HEARTBEAT_MS = 30_000;
+
+function isMissingPresenceSetup(
+  error: unknown,
+): boolean {
+  if (
+    typeof error !== "object" ||
+    error === null
+  ) {
+    return false;
+  }
+
+  const code =
+    "code" in error &&
+    typeof error.code === "string"
+      ? error.code
+      : "";
+
+  return (
+    code === "42P01" ||
+    code === "42883" ||
+    code === "PGRST202" ||
+    code === "PGRST204" ||
+    code === "PGRST205"
+  );
+}
+
 function cleanForm(form: FilamentForm): FilamentForm {
   return {
     ...form,
@@ -435,6 +462,95 @@ export function HubProvider({
 
     return () => {
       active = false;
+    };
+  }, [authReady, user]);
+
+  useEffect(() => {
+    if (!authReady || !user) {
+      return;
+    }
+
+    let active = true;
+    let presenceUnavailable = false;
+
+    async function sendHeartbeat() {
+      if (!active || presenceUnavailable) {
+        return;
+      }
+
+      const {
+        error: heartbeatError,
+      } = await supabase.rpc(
+        "touch_user_presence",
+      );
+
+      if (!active || !heartbeatError) {
+        return;
+      }
+
+      if (
+        isMissingPresenceSetup(
+          heartbeatError,
+        )
+      ) {
+        presenceUnavailable = true;
+        console.info(
+          "Online-Status ist noch nicht eingerichtet. Bitte supabase/admin_online_presence.sql ausführen.",
+        );
+        return;
+      }
+
+      console.warn(
+        "Online-Status konnte nicht aktualisiert werden:",
+        heartbeatError.message,
+      );
+    }
+
+    void sendHeartbeat();
+
+    const heartbeatTimer =
+      window.setInterval(
+        () => {
+          void sendHeartbeat();
+        },
+        PRESENCE_HEARTBEAT_MS,
+      );
+
+    const handleVisibility = () => {
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        void sendHeartbeat();
+      }
+    };
+
+    const handleOnline = () => {
+      void sendHeartbeat();
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility,
+    );
+    window.addEventListener(
+      "online",
+      handleOnline,
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(
+        heartbeatTimer,
+      );
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility,
+      );
+      window.removeEventListener(
+        "online",
+        handleOnline,
+      );
     };
   }, [authReady, user]);
 

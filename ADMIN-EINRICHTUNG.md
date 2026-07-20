@@ -8,3 +8,15 @@
 
 Der Secret-Key darf nie in `NEXT_PUBLIC_...`, Browsercode, GitHub oder
 Screenshots auftauchen.
+
+
+## Online-Status ergänzen – V15.1
+
+Wenn V15 bereits eingerichtet wurde, diese Datei einmal zusätzlich im
+Supabase SQL Editor ausführen:
+
+`supabase/admin_online_presence.sql`
+
+Danach ist keine weitere Environment Variable nötig. Nach dem Deployment
+meldet sich jeder angemeldete Benutzer automatisch. Der Adminbereich
+aktualisiert die Online-Anzeige alle 20 Sekunden.

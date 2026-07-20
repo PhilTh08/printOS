@@ -493,3 +493,40 @@ Die Sperre wird über Supabase Auth `ban_duration` gesetzt. Neue Logins und
 Token-Erneuerungen werden dadurch blockiert. Ein bereits ausgestelltes
 kurzlebiges Access-Token kann technisch noch bis zu seinem Ablauf gültig
 sein; deshalb sollte die JWT-Laufzeit in Supabase nicht unnötig lang sein.
+
+
+## V15.1 – Online-Status im Adminbereich
+
+Der Adminbereich zeigt jetzt:
+
+- Anzahl der aktuell aktiven Nutzer
+- grünen pulsierenden Punkt bei Online-Nutzern
+- grauen Punkt bei Offline-Nutzern
+- Zeitpunkt der letzten Aktivität
+- Online-/Offline-Badge beim ausgewählten Account
+- automatische Aktualisierung alle 20 Sekunden
+
+Ein Benutzer gilt als online, wenn innerhalb der letzten 75 Sekunden ein
+serverseitiger Heartbeat eingegangen ist. Der angemeldete Browser sendet
+alle 30 Sekunden einen Heartbeat.
+
+### Bestehende V15-Installation
+
+Einmal diese neue Datei im Supabase SQL Editor ausführen:
+
+`supabase/admin_online_presence.sql`
+
+Die bereits vergebene Adminrolle und vorhandenen Adminprotokolle bleiben
+unverändert.
+
+### Sicherheit
+
+- der Nutzer übermittelt keine frei wählbare Benutzer-ID
+- `auth.uid()` wird serverseitig verwendet
+- der Zeitstempel entsteht mit PostgreSQL `now()`
+- RLS erlaubt einem Nutzer nur seinen eigenen Presence-Datensatz
+- die vollständige Nutzerübersicht bleibt in der geschützten Admin-API
+- es werden keine Seitenpfade oder Browserdaten erfasst
+
+Bei einem abrupt geschlossenen Browser kann der Account noch maximal rund
+75 Sekunden als online erscheinen. Das ist bei Heartbeat-Systemen normal.

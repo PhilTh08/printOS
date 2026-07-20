@@ -8,6 +8,7 @@ import {
   recordAdminRead,
   requireAdmin,
 } from "@/lib/admin-auth";
+import { loadAdminPresence } from "@/lib/admin-presence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,6 +66,18 @@ export async function GET(request: NextRequest) {
         .filter((row) => row.role === "admin")
         .map((row) => String(row.user_id)),
     );
+    const presenceResult =
+      await loadAdminPresence(
+        context.adminClient,
+      );
+    const presenceByUserId = new Map(
+      presenceResult.presence.map(
+        (entry) => [
+          entry.userId,
+          entry,
+        ],
+      ),
+    );
 
     const responseUsers = users
       .map((user) => {
@@ -74,6 +87,9 @@ export async function GET(request: NextRequest) {
             new Date(bannedUntil).getTime() >
               Date.now(),
         );
+
+        const presence =
+          presenceByUserId.get(user.id);
 
         return {
           id: user.id,
@@ -92,6 +108,10 @@ export async function GET(request: NextRequest) {
           isAdmin: adminIds.has(user.id),
           isCurrentAdmin:
             user.id === context.adminUser.id,
+          online:
+            presence?.online ?? false,
+          lastSeenAt:
+            presence?.lastSeenAt ?? null,
         };
       })
       .sort((first, second) => {
@@ -115,7 +135,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       users: responseUsers,
-      currentAdminId: context.adminUser.id,
+      currentAdminId:
+        context.adminUser.id,
+      presenceAvailable:
+        presenceResult.available,
     });
   } catch (error) {
     return adminErrorResponse(error);

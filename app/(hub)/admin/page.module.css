@@ -26,7 +26,7 @@
 
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -717,5 +717,105 @@
   .lockButton,
   .unlockButton {
     width: 100%;
+  }
+}
+
+
+/* V15.1 – Online-/Offline-Anzeige */
+.panelHeading small {
+  display: block;
+  margin-top: 5px;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.presenceConnected {
+  color: #79dca2;
+}
+
+.presenceUnavailable {
+  color: #ffd48f;
+}
+
+.userStatusOnline {
+  background: var(--green);
+  box-shadow:
+    0 0 0 3px rgba(57, 217, 138, 0.08),
+    0 0 9px rgba(57, 217, 138, 0.65);
+  animation: onlinePulse 2.1s ease-in-out infinite;
+}
+
+.userStatusOffline {
+  background: #59676d;
+  box-shadow: none;
+}
+
+.lastSeen {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #66757b;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onlineBadge,
+.offlineBadge {
+  padding: 5px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.onlineBadge {
+  color: #a4efc2;
+  background: rgba(57, 217, 138, 0.07);
+  border-color: rgba(57, 217, 138, 0.3);
+  box-shadow: 0 0 8px rgba(57, 217, 138, 0.12);
+}
+
+.offlineBadge {
+  color: #a8b2b6;
+  background: rgba(140, 153, 159, 0.06);
+  border-color: rgba(140, 153, 159, 0.24);
+}
+
+.presenceWarning {
+  margin-top: 12px;
+  padding: 10px;
+  color: #ffd48f;
+  background: rgba(245, 166, 35, 0.055);
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  border-radius: 7px;
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.presenceWarning code {
+  display: inline-block;
+  margin: 0 4px;
+  color: #fff0ca;
+  font-size: 8px;
+}
+
+@keyframes onlinePulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(0.84);
+    opacity: 0.68;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .userStatusOnline {
+    animation: none;
   }
 }

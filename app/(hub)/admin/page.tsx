@@ -24,6 +24,8 @@ type AdminUser = {
   locked: boolean;
   isAdmin: boolean;
   isCurrentAdmin: boolean;
+  online: boolean;
+  lastSeenAt: string | null;
 };
 
 type AdminFilament = {
@@ -115,6 +117,47 @@ function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
+function formatLastSeen(
+  value: string | null,
+): string {
+  if (!value) {
+    return "Noch keine Aktivität erfasst";
+  }
+
+  const difference = Math.max(
+    0,
+    Date.now() -
+      new Date(value).getTime(),
+  );
+  const seconds = Math.floor(
+    difference / 1000,
+  );
+
+  if (seconds < 45) {
+    return "Gerade eben aktiv";
+  }
+
+  const minutes = Math.floor(
+    seconds / 60,
+  );
+
+  if (minutes < 60) {
+    return `Vor ${minutes} Min. aktiv`;
+  }
+
+  const hours = Math.floor(
+    minutes / 60,
+  );
+
+  if (hours < 24) {
+    return `Vor ${hours} Std. aktiv`;
+  }
+
+  return `Zuletzt aktiv ${formatDate(
+    value,
+  )}`;
+}
+
 function orderTitle(
   order: Record<string, unknown>,
   index: number,
@@ -156,6 +199,14 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [loadingUsers, setLoadingUsers] =
     useState(false);
+  const [
+    presenceAvailable,
+    setPresenceAvailable,
+  ] = useState<boolean | null>(null);
+  const [
+    presenceRefreshing,
+    setPresenceRefreshing,
+  ] = useState(false);
   const [loadingDetail, setLoadingDetail] =
     useState(false);
   const [saving, setSaving] = useState(false);
@@ -226,8 +277,12 @@ export default function AdminPage() {
     try {
       const result = await adminFetch<{
         users: AdminUser[];
+        presenceAvailable: boolean;
       }>("/api/admin/users");
       setUsers(result.users);
+      setPresenceAvailable(
+        result.presenceAvailable,
+      );
       setSelectedUserId((current) =>
         current || result.users[0]?.id || "",
       );
@@ -235,6 +290,55 @@ export default function AdminPage() {
       setLoadingUsers(false);
     }
   }, [adminFetch]);
+
+  const loadPresence = useCallback(
+    async () => {
+      setPresenceRefreshing(true);
+
+      try {
+        const result = await adminFetch<{
+          presence: Array<{
+            userId: string;
+            lastSeenAt: string;
+            online: boolean;
+          }>;
+          available: boolean;
+        }>("/api/admin/presence");
+        const presenceByUserId = new Map(
+          result.presence.map(
+            (entry) => [
+              entry.userId,
+              entry,
+            ],
+          ),
+        );
+
+        setUsers((current) =>
+          current.map((account) => {
+            const presence =
+              presenceByUserId.get(
+                account.id,
+              );
+
+            return {
+              ...account,
+              online:
+                presence?.online ?? false,
+              lastSeenAt:
+                presence?.lastSeenAt ??
+                account.lastSeenAt,
+            };
+          }),
+        );
+        setPresenceAvailable(
+          result.available,
+        );
+      } finally {
+        setPresenceRefreshing(false);
+      }
+    },
+    [adminFetch],
+  );
 
   const loadUserDetail = useCallback(
     async (userId: string) => {
@@ -282,6 +386,35 @@ export default function AdminPage() {
   ]);
 
   useEffect(() => {
+    if (!adminRoleReady || !isAdmin) {
+      return;
+    }
+
+    const intervalId =
+      window.setInterval(
+        () => {
+          void loadPresence().catch(
+            (caughtError) => {
+              console.warn(
+                "Online-Status konnte nicht aktualisiert werden:",
+                caughtError,
+              );
+            },
+          );
+        },
+        20_000,
+      );
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [
+    adminRoleReady,
+    isAdmin,
+    loadPresence,
+  ]);
+
+  useEffect(() => {
     if (!isAdmin || !selectedUserId) {
       return;
     }
@@ -303,15 +436,35 @@ export default function AdminPage() {
 
   const filteredUsers = useMemo(() => {
     const needle = search.trim().toLowerCase();
+    const matchingUsers = needle
+      ? users.filter((user) =>
+          `${user.email} ${user.displayName}`
+            .toLowerCase()
+            .includes(needle),
+        )
+      : [...users];
 
-    if (!needle) {
-      return users;
-    }
+    return matchingUsers.sort(
+      (first, second) => {
+        if (
+          first.online !==
+          second.online
+        ) {
+          return first.online ? -1 : 1;
+        }
 
-    return users.filter((user) =>
-      `${user.email} ${user.displayName}`
-        .toLowerCase()
-        .includes(needle),
+        if (
+          first.isAdmin !==
+          second.isAdmin
+        ) {
+          return first.isAdmin ? -1 : 1;
+        }
+
+        return first.email.localeCompare(
+          second.email,
+          "de",
+        );
+      },
     );
   }, [search, users]);
 
@@ -321,6 +474,14 @@ export default function AdminPage() {
   const adminCount = users.filter(
     (user) => user.isAdmin,
   ).length;
+  const onlineCount = users.filter(
+    (user) => user.online,
+  ).length;
+  const selectedAccount =
+    users.find(
+      (account) =>
+        account.id === selectedUserId,
+    ) ?? null;
 
   async function reloadEverything() {
     await Promise.all([
@@ -581,6 +742,13 @@ export default function AdminPage() {
           <small>Rolle aus user_roles</small>
         </article>
         <article>
+          <span>Gerade online</span>
+          <strong>{onlineCount}</strong>
+          <small>
+            Aktivität der letzten 75 Sek.
+          </small>
+        </article>
+        <article>
           <span>Adminaktionen</span>
           <strong>{audit.length}</strong>
           <small>zuletzt geladen</small>
@@ -593,10 +761,27 @@ export default function AdminPage() {
             <div>
               <span>Nutzerverwaltung</span>
               <h2>Accounts</h2>
+              <small
+                className={
+                  presenceAvailable === false
+                    ? styles.presenceUnavailable
+                    : styles.presenceConnected
+                }
+              >
+                {presenceRefreshing
+                  ? "Online-Status wird aktualisiert …"
+                  : presenceAvailable === false
+                    ? "Online-Anzeige noch nicht eingerichtet"
+                    : "Online-Status · automatisch alle 20 Sek."}
+              </small>
             </div>
             <button
               type="button"
-              disabled={loadingUsers || saving}
+              disabled={
+                loadingUsers ||
+                presenceRefreshing ||
+                saving
+              }
               onClick={() =>
                 void reloadEverything().catch(
                   (caughtError) =>
@@ -639,21 +824,38 @@ export default function AdminPage() {
               >
                 <span
                   className={`${styles.userStatus} ${
-                    user.locked
-                      ? styles.userStatusLocked
-                      : styles.userStatusActive
+                    user.online
+                      ? styles.userStatusOnline
+                      : styles.userStatusOffline
                   }`}
+                  title={
+                    user.online
+                      ? "Online"
+                      : "Offline"
+                  }
                 />
                 <div>
                   <strong>{user.displayName}</strong>
                   <small>{user.email}</small>
                   <em>
                     {user.isAdmin
-                      ? "Administrator"
+                      ? "Administrator · "
                       : user.locked
-                        ? "Gesperrt"
-                        : "Aktiv"}
+                        ? "Gesperrt · "
+                        : ""}
+                    {user.online
+                      ? "Online"
+                      : "Offline"}
                   </em>
+                  <span
+                    className={
+                      styles.lastSeen
+                    }
+                  >
+                    {formatLastSeen(
+                      user.lastSeenAt,
+                    )}
+                  </span>
                 </div>
               </button>
             ))}
@@ -692,10 +894,27 @@ export default function AdminPage() {
                     {formatDate(
                       detail.user.lastSignInAt,
                     )}
+                    {" · "}
+                    {formatLastSeen(
+                      selectedAccount?.lastSeenAt ??
+                        null,
+                    )}
                   </p>
                 </div>
 
                 <div className={styles.accountActions}>
+                  <span
+                    className={
+                      selectedAccount?.online
+                        ? styles.onlineBadge
+                        : styles.offlineBadge
+                    }
+                  >
+                    {selectedAccount?.online
+                      ? "Online"
+                      : "Offline"}
+                  </span>
+
                   <span
                     className={
                       detail.user.locked
@@ -731,6 +950,17 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
+
+              {presenceAvailable === false && (
+                <div className={styles.presenceWarning}>
+                  Die sichere Online-Anzeige ist noch
+                  nicht eingerichtet. Führe einmal
+                  <code>
+                    supabase/admin_online_presence.sql
+                  </code>
+                  im Supabase SQL Editor aus.
+                </div>
+              )}
 
               {detail.user.isAdmin && (
                 <div className={styles.adminWarning}>
