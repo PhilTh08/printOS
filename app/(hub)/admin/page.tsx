@@ -243,10 +243,17 @@ function adminOrderIsOverdue(
   );
 }
 
+type AdminOrderSummary = {
+  open: number;
+  inProgress: number;
+  overdue: number;
+  completed: number;
+};
+
 function adminOrderSummary(
   orders: Record<string, unknown>[],
-) {
-  return orders.reduce(
+): AdminOrderSummary {
+  return orders.reduce<AdminOrderSummary>(
     (summary, order) => {
       const status =
         adminOrderStatus(order);
