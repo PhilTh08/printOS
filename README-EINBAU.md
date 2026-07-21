@@ -612,3 +612,23 @@ Neu:
 Keine neue SQL-Migration erforderlich. Die Servervariable
 `SUPABASE_SECRET_KEY` aus dem Adminsystem wird auch für die Kontolöschung
 verwendet.
+
+## V16.2 – Demo-Modus vor der Anmeldung
+
+Die Startseite zeigt vor dem Anmeldeformular eine Auswahl:
+
+- **Demo starten** öffnet `/demo`
+- **Anmelden oder registrieren** öffnet das bestehende Auth-Formular
+
+Die Demo verwendet ausschließlich vorbereitete React-Zustände im Browser.
+Sie liest und schreibt keine Supabase-Daten. Enthalten sind:
+
+- Dashboard mit Beispielkennzahlen
+- Filamentbestand
+- lokale Ein- und Auslagerungen
+- Beispielaufträge mit Statuswechsel
+- lokales Aktivitätsprotokoll
+- Zurücksetzen auf den Ausgangszustand
+- direkter Wechsel zur echten Anmeldung
+
+Für V16.2 ist keine Supabase-Migration und keine neue Umgebungsvariable nötig.
