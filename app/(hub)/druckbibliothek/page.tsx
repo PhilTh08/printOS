@@ -44,6 +44,7 @@ const STORAGE_BUCKET = "print-library";
 const SCAN_FORMAT_STORAGE_KEY =
   "philamentix.print-library.scan-formats.v1";
 const SCAN_RESULTS_PER_PAGE = 200;
+const BAMBU_STUDIO_EXTENSIONS = new Set(["stl", "3mf"]);
 
 type PrintProjectRow = {
   id: string;
@@ -1916,6 +1917,37 @@ export default function PrintLibraryPage() {
     window.open(result.data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
+  async function openInBambuStudio(file: PrintProjectFileRow) {
+    if (!BAMBU_STUDIO_EXTENSIONS.has(file.file_type.toLowerCase())) {
+      setError("Direktes Öffnen wird aktuell für STL- und 3MF-Dateien unterstützt.");
+      return;
+    }
+
+    setError("");
+    setMessage("Bambu Studio wird vorbereitet …");
+
+    const result = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(file.storage_path, 10 * 60);
+
+    if (result.error || !result.data?.signedUrl) {
+      setMessage("");
+      setError(result.error?.message ?? "Die Datei konnte nicht für Bambu Studio vorbereitet werden.");
+      return;
+    }
+
+    const bridgeUrl = new URL("philamentix-bambu://open");
+    bridgeUrl.searchParams.set("url", result.data.signedUrl);
+    bridgeUrl.searchParams.set("name", file.file_name);
+
+    window.location.href = bridgeUrl.toString();
+    window.setTimeout(() => {
+      setMessage(
+        "Falls nichts passiert: Bambu-Bridge installieren oder die Datei normal herunterladen.",
+      );
+    }, 1800);
+  }
+
   async function setCover(file: PrintProjectFileRow) {
     if (!user || !selectedProject) {
       return;
@@ -2115,6 +2147,13 @@ export default function PrintLibraryPage() {
           >
             Ordner scannen
           </button>
+          <a
+            className="secondary-button"
+            href="/bambu-bridge/Philamentix-Bambu-Bridge-Windows.zip"
+            download
+          >
+            Bambu-Bridge
+          </a>
           <button
             className="secondary-button"
             type="button"
@@ -2946,6 +2985,15 @@ export default function PrintLibraryPage() {
                             onClick={() => void setCover(file)}
                           >
                             Als Vorschau
+                          </button>
+                        )}
+                        {BAMBU_STUDIO_EXTENSIONS.has(file.file_type.toLowerCase()) && (
+                          <button
+                            className="primary-button"
+                            type="button"
+                            onClick={() => void openInBambuStudio(file)}
+                          >
+                            In Bambu Studio öffnen
                           </button>
                         )}
                         <button
