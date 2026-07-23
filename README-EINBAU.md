@@ -1,3 +1,19 @@
+# Philamentix Hub V17.2 – Einbauhinweis
+
+Die aktuelle Erweiterung ergänzt die Druckbibliothek um einen interaktiven STL-/3MF-Viewer, automatische Modellmetadaten, generierte Vorschaubilder und Dateiversionen.
+
+## Empfohlener Ablauf für V17.2
+
+1. Projektordner sichern.
+2. Inhalt dieses ZIP in das bestehende PrintOS-Projekt kopieren und vorhandene Dateien ersetzen.
+3. `V17-2-INSTALLIEREN.bat` ausführen. Das Skript installiert die Three.js-Abhängigkeiten und startet anschließend den Produktionsbuild.
+4. In Supabase `supabase/print_library_v17_2.sql` vollständig ausführen.
+5. Erst nach erfolgreichem Build committen und pushen.
+
+Ausführliche Hinweise stehen in `V17-2-EINRICHTUNG.md`.
+
+---
+
 # Philamentix Hub – Industrial Modular V2
 
 Diese Version stellt das bisherige Industrial-Design wieder her und behält trotzdem getrennte Next.js-Routen.

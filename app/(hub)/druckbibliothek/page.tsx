@@ -11,6 +11,13 @@ import {
 } from "react";
 
 import { useHub } from "@/components/philamentix/hub-provider";
+import ModelViewer from "@/components/philamentix/model-viewer";
+import {
+  MAX_AUTOMATIC_MODEL_ANALYSIS_SIZE,
+  analyzeModelFile,
+  isViewableModelExtension,
+  type ModelMetadata,
+} from "@/components/philamentix/model-analyzer";
 import {
   ALL_PRINT_EXTENSIONS,
   DEFAULT_SCAN_EXTENSIONS,
@@ -64,6 +71,16 @@ type PrintProjectFileRow = {
   relative_path: string;
   source_modified_at: string | null;
   source_kind: "upload" | "folder_scan";
+  generated_preview_path: string | null;
+  model_width_mm: number | null;
+  model_depth_mm: number | null;
+  model_height_mm: number | null;
+  model_volume_mm3: number | null;
+  triangle_count: number | null;
+  metadata_extracted_at: string | null;
+  version_group_id: string | null;
+  version_number: number;
+  version_note: string;
   created_at: string;
 };
 
@@ -134,6 +151,42 @@ function isScannerMigrationMissing(
   ].some((column) => message.includes(column));
 }
 
+function isViewerMigrationMissing(error: unknown): boolean {
+  if (errorCode(error) === "PGRST204") {
+    return true;
+  }
+
+  const message = errorMessage(error);
+  return [
+    "generated_preview_path",
+    "model_width_mm",
+    "triangle_count",
+    "version_number",
+  ].some((column) => message.includes(column));
+}
+
+function metadataFromFile(file: PrintProjectFileRow): ModelMetadata | null {
+  const values = [
+    file.model_width_mm,
+    file.model_depth_mm,
+    file.model_height_mm,
+    file.model_volume_mm3,
+    file.triangle_count,
+  ];
+
+  if (values.some((value) => typeof value !== "number")) {
+    return null;
+  }
+
+  return {
+    widthMm: Number(file.model_width_mm),
+    depthMm: Number(file.model_depth_mm),
+    heightMm: Number(file.model_height_mm),
+    volumeMm3: Number(file.model_volume_mm3),
+    triangleCount: Number(file.triangle_count),
+  };
+}
+
 function parseTags(value: string): string[] {
   return Array.from(
     new Set(
@@ -183,6 +236,7 @@ function fileKind(file: PrintProjectFileRow): string {
 export default function PrintLibraryPage() {
   const { user } = useHub();
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const versionInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [projects, setProjects] = useState<PrintProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<PrintProject | null>(
@@ -200,6 +254,11 @@ export default function PrintLibraryPage() {
   const [uploading, setUploading] = useState(false);
   const [setupMissing, setSetupMissing] = useState(false);
   const [migrationMissing, setMigrationMissing] = useState(false);
+  const [viewerMigrationMissing, setViewerMigrationMissing] = useState(false);
+  const [viewerFile, setViewerFile] = useState<PrintProjectFileRow | null>(null);
+  const [viewerUrl, setViewerUrl] = useState("");
+  const [viewerSaving, setViewerSaving] = useState(false);
+  const [versionTarget, setVersionTarget] = useState<PrintProjectFileRow | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanResult, setScanResult] = useState<DirectoryScanResult | null>(null);
   const [scanSearch, setScanSearch] = useState("");
@@ -320,12 +379,43 @@ export default function PrintLibraryPage() {
     const fileResult = await supabase
       .from("print_project_files")
       .select(
-        "project_id,size_bytes,relative_path,source_kind",
+        "project_id,size_bytes,relative_path,source_kind,model_width_mm,generated_preview_path,version_number",
       )
       .eq("user_id", user.id);
 
     if (fileResult.error) {
-      if (
+      if (isViewerMigrationMissing(fileResult.error)) {
+        setViewerMigrationMissing(true);
+        const v171Fallback = await supabase
+          .from("print_project_files")
+          .select("project_id,size_bytes,relative_path,source_kind")
+          .eq("user_id", user.id);
+
+        if (v171Fallback.error) {
+          if (isScannerMigrationMissing(v171Fallback.error)) {
+            setMigrationMissing(true);
+            const legacyFallback = await supabase
+              .from("print_project_files")
+              .select("project_id,size_bytes")
+              .eq("user_id", user.id);
+
+            if (legacyFallback.error) {
+              setError(legacyFallback.error.message);
+              setLoading(false);
+              return;
+            }
+
+            fileRows = legacyFallback.data ?? [];
+          } else {
+            setError(v171Fallback.error.message);
+            setLoading(false);
+            return;
+          }
+        } else {
+          setMigrationMissing(false);
+          fileRows = v171Fallback.data ?? [];
+        }
+      } else if (
         isScannerMigrationMissing(
           fileResult.error,
         )
@@ -359,6 +449,7 @@ export default function PrintLibraryPage() {
       }
     } else {
       setMigrationMissing(false);
+      setViewerMigrationMissing(false);
       fileRows = fileResult.data ?? [];
     }
 
@@ -460,6 +551,8 @@ export default function PrintLibraryPage() {
 
       clearFeedback();
       setSelectedProject(project);
+      setViewerFile(null);
+      setViewerUrl("");
       const result = await supabase
         .from("print_project_files")
         .select("*")
@@ -477,6 +570,174 @@ export default function PrintLibraryPage() {
     },
     [clearFeedback, user],
   );
+
+  const storeModelAnalysis = useCallback(
+    async (
+      file: PrintProjectFileRow,
+      metadata: ModelMetadata,
+      preview: Blob | null,
+    ): Promise<string | null> => {
+      if (!user) {
+        return null;
+      }
+
+      if (viewerMigrationMissing) {
+        throw new Error(
+          "Bitte zuerst supabase/print_library_v17_2.sql ausführen.",
+        );
+      }
+
+      let previewPath = file.generated_preview_path ?? null;
+      let createdPreviewPath = false;
+
+      if (preview) {
+        previewPath =
+          file.generated_preview_path ||
+          `${user.id}/${file.project_id}/generated/${file.id}-preview.png`;
+        createdPreviewPath = !file.generated_preview_path;
+        const previewUpload = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(previewPath, preview, {
+            cacheControl: "3600",
+            contentType: "image/png",
+            upsert: true,
+          });
+
+        if (previewUpload.error) {
+          throw previewUpload.error;
+        }
+      }
+
+      const updateResult = await supabase
+        .from("print_project_files")
+        .update({
+          generated_preview_path: previewPath,
+          model_width_mm: metadata.widthMm,
+          model_depth_mm: metadata.depthMm,
+          model_height_mm: metadata.heightMm,
+          model_volume_mm3: metadata.volumeMm3,
+          triangle_count: metadata.triangleCount,
+          metadata_extracted_at: new Date().toISOString(),
+        })
+        .eq("id", file.id)
+        .eq("user_id", user.id);
+
+      if (updateResult.error) {
+        if (createdPreviewPath && previewPath) {
+          await supabase.storage
+            .from(STORAGE_BUCKET)
+            .remove([previewPath]);
+        }
+        throw updateResult.error;
+      }
+
+      setProjectFiles((current) =>
+        current.map((entry) =>
+          entry.id === file.id
+            ? {
+                ...entry,
+                generated_preview_path: previewPath,
+                model_width_mm: metadata.widthMm,
+                model_depth_mm: metadata.depthMm,
+                model_height_mm: metadata.heightMm,
+                model_volume_mm3: metadata.volumeMm3,
+                triangle_count: metadata.triangleCount,
+                metadata_extracted_at: new Date().toISOString(),
+              }
+            : entry,
+        ),
+      );
+
+      return previewPath;
+    },
+    [user, viewerMigrationMissing],
+  );
+
+  const saveViewerAnalysis = useCallback(
+    async (metadata: ModelMetadata, preview: Blob | null) => {
+      if (!user || !selectedProject || !viewerFile) {
+        return;
+      }
+
+      setViewerSaving(true);
+      try {
+        const previewPath = await storeModelAnalysis(
+          viewerFile,
+          metadata,
+          preview,
+        );
+
+        if (!selectedProject.cover_path && previewPath) {
+          const coverResult = await supabase
+            .from("print_projects")
+            .update({ cover_path: previewPath })
+            .eq("id", selectedProject.id)
+            .eq("user_id", user.id);
+
+          if (coverResult.error) {
+            throw coverResult.error;
+          }
+        }
+
+        setMessage("3D-Metadaten und Vorschau wurden gespeichert.");
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Die 3D-Metadaten konnten nicht gespeichert werden.",
+        );
+      } finally {
+        setViewerSaving(false);
+      }
+    },
+    [selectedProject, storeModelAnalysis, user, viewerFile],
+  );
+
+  async function openModelViewer(file: PrintProjectFileRow) {
+    if (!isViewableModelExtension(file.file_type)) {
+      return;
+    }
+
+    clearFeedback();
+    const result = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(file.storage_path, 60 * 60);
+
+    if (result.error || !result.data?.signedUrl) {
+      setError(
+        result.error?.message ??
+          "Die 3D-Vorschau konnte nicht vorbereitet werden.",
+      );
+      return;
+    }
+
+    setViewerFile(file);
+    setViewerUrl(result.data.signedUrl);
+  }
+
+  async function analyzeLocalModel(
+    sourceFile: File,
+    fileRow: PrintProjectFileRow,
+  ): Promise<string | null> {
+    if (
+      viewerMigrationMissing ||
+      sourceFile.size > MAX_AUTOMATIC_MODEL_ANALYSIS_SIZE ||
+      !isViewableModelExtension(fileRow.file_type)
+    ) {
+      return null;
+    }
+
+    const analysis = await analyzeModelFile(
+      sourceFile,
+      fileRow.file_type,
+      true,
+    );
+    return storeModelAnalysis(
+      fileRow,
+      analysis.metadata,
+      analysis.preview,
+    );
+  }
 
   const folders = useMemo(
     () =>
@@ -977,6 +1238,9 @@ export default function PrintLibraryPage() {
     const uploadedPaths: string[] = [];
     let createdProjectId: string | null =
       null;
+    let targetProjectIdForRollback: string | null = null;
+    let originalCoverPathForRollback: string | null = null;
+    let coverChanged = false;
 
     try {
       let targetProject:
@@ -1021,10 +1285,15 @@ export default function PrintLibraryPage() {
         targetProject = found;
       }
 
+      targetProjectIdForRollback = targetProject.id;
+      originalCoverPathForRollback = targetProject.cover_path;
+
       const existingResult = await supabase
         .from("print_project_files")
         .select(
-          "id,storage_path,file_name,size_bytes,relative_path,source_modified_at",
+          viewerMigrationMissing
+            ? "id,storage_path,file_name,size_bytes,relative_path,source_modified_at"
+            : "id,storage_path,file_name,size_bytes,relative_path,source_modified_at,generated_preview_path",
         )
         .eq("user_id", user.id)
         .eq(
@@ -1045,6 +1314,7 @@ export default function PrintLibraryPage() {
           size_bytes: number;
           relative_path: string;
           source_modified_at: string | null;
+          generated_preview_path?: string | null;
         }
       >();
 
@@ -1067,14 +1337,15 @@ export default function PrintLibraryPage() {
 
       const replacements: Array<{
         oldId: string;
-        oldPath: string;
-        newPath: string;
+        oldPaths: string[];
+        newCoverPath: string | null;
       }> = [];
       let skippedDuplicates =
         duplicateInputPaths;
       let firstPreviewPath: string | null =
         null;
       let importedCount = 0;
+      let analysisWarnings = 0;
 
       for (
         let index = 0;
@@ -1166,27 +1437,49 @@ export default function PrintLibraryPage() {
                   : null,
               source_kind:
                 "folder_scan",
-            });
+            })
+            .select("*")
+            .single();
 
         if (metadataResult.error) {
           throw metadataResult.error;
         }
 
+        const fileRow = metadataResult.data as PrintProjectFileRow;
+        let generatedPreviewPath: string | null = null;
+
+        if (isViewableModelExtension(scanned.extension)) {
+          try {
+            generatedPreviewPath = await analyzeLocalModel(
+              scanned.file,
+              fileRow,
+            );
+            if (generatedPreviewPath) {
+              uploadedPaths.push(generatedPreviewPath);
+            }
+          } catch {
+            analysisWarnings += 1;
+          }
+        }
+
         importedCount += 1;
 
-        if (
-          isPreview &&
-          !firstPreviewPath
-        ) {
-          firstPreviewPath = storagePath;
+        if (!firstPreviewPath) {
+          firstPreviewPath = isPreview
+            ? storagePath
+            : generatedPreviewPath;
         }
 
         if (existing) {
           replacements.push({
             oldId: existing.id,
-            oldPath:
+            oldPaths: [
               existing.storage_path,
-            newPath: storagePath,
+              existing.generated_preview_path,
+            ].filter((path): path is string => Boolean(path)),
+            newCoverPath: isPreview
+              ? storagePath
+              : generatedPreviewPath,
           });
         }
       }
@@ -1206,6 +1499,8 @@ export default function PrintLibraryPage() {
         if (coverResult.error) {
           throw coverResult.error;
         }
+
+        coverChanged = true;
       }
 
       let cleanupWarning = false;
@@ -1218,8 +1513,9 @@ export default function PrintLibraryPage() {
         const oldCoverReplacement =
           replacements.find(
             (replacement) =>
-              replacement.oldPath ===
-              targetProject.cover_path,
+              replacement.oldPaths.includes(
+                targetProject.cover_path ?? "",
+              ),
           );
 
         const deleteOldResult =
@@ -1234,12 +1530,12 @@ export default function PrintLibraryPage() {
         }
 
         let keepOldCoverPath = false;
-        if (oldCoverReplacement) {
+        if (oldCoverReplacement?.newCoverPath) {
           const coverResult = await supabase
             .from("print_projects")
             .update({
               cover_path:
-                oldCoverReplacement.newPath,
+                oldCoverReplacement.newCoverPath,
             })
             .eq("id", targetProject.id)
             .eq("user_id", user.id);
@@ -1247,20 +1543,22 @@ export default function PrintLibraryPage() {
           if (coverResult.error) {
             keepOldCoverPath = true;
             cleanupWarning = true;
+          } else {
+            coverChanged = true;
           }
+        } else if (oldCoverReplacement) {
+          keepOldCoverPath = true;
+          cleanupWarning = true;
         }
 
         const removableOldPaths =
           replacements
-            .map(
-              (replacement) =>
-                replacement.oldPath,
-            )
+            .flatMap((replacement) => replacement.oldPaths)
             .filter(
               (oldPath) =>
                 !keepOldCoverPath ||
                 oldPath !==
-                  oldCoverReplacement?.oldPath,
+                  targetProject.cover_path,
             );
 
         if (removableOldPaths.length > 0) {
@@ -1276,7 +1574,7 @@ export default function PrintLibraryPage() {
       }
 
       setMessage(
-        `${importedCount} Datei${importedCount === 1 ? "" : "en"} importiert${skippedDuplicates > 0 ? `, ${skippedDuplicates} unveränderte Duplikate übersprungen` : ""}${cleanupWarning ? "; ältere Storage-Dateien konnten teilweise nicht automatisch bereinigt werden" : ""}.`,
+        `${importedCount} Datei${importedCount === 1 ? "" : "en"} importiert${skippedDuplicates > 0 ? `, ${skippedDuplicates} unveränderte Duplikate übersprungen` : ""}${analysisWarnings > 0 ? `; ${analysisWarnings} Modell${analysisWarnings === 1 ? "" : "e"} nicht automatisch analysiert` : ""}${cleanupWarning ? "; ältere Storage-Dateien konnten teilweise nicht automatisch bereinigt werden" : ""}.`,
       );
       setScannerOpen(false);
       setScanResult(null);
@@ -1284,6 +1582,18 @@ export default function PrintLibraryPage() {
       setScanProgress(null);
       await loadProjects();
     } catch (caughtError) {
+      if (
+        coverChanged &&
+        targetProjectIdForRollback &&
+        !createdProjectId
+      ) {
+        await supabase
+          .from("print_projects")
+          .update({ cover_path: originalCoverPathForRollback })
+          .eq("id", targetProjectIdForRollback)
+          .eq("user_id", user.id);
+      }
+
       if (uploadedPaths.length > 0) {
         await supabase
           .from("print_project_files")
@@ -1343,6 +1653,10 @@ export default function PrintLibraryPage() {
 
     setUploading(true);
     const uploadedPaths: string[] = [];
+    let analysisWarnings = 0;
+    const originalCoverPath = selectedProject.cover_path;
+    let projectHasCover = Boolean(originalCoverPath);
+    let coverChanged = false;
 
     try {
       for (const file of files) {
@@ -1379,30 +1693,61 @@ export default function PrintLibraryPage() {
                 ? new Date(file.lastModified).toISOString()
                 : null,
             source_kind: "upload",
-          });
+          })
+          .select("*")
+          .single();
 
         if (metadataResult.error) {
           throw metadataResult.error;
         }
 
-        if (isImage && !selectedProject.cover_path) {
+        const fileRow = metadataResult.data as PrintProjectFileRow;
+        let generatedPreviewPath: string | null = null;
+
+        if (isViewableModelExtension(extension)) {
+          try {
+            generatedPreviewPath = await analyzeLocalModel(file, fileRow);
+            if (generatedPreviewPath) {
+              uploadedPaths.push(generatedPreviewPath);
+            }
+          } catch {
+            analysisWarnings += 1;
+          }
+        }
+
+        const coverCandidate = isImage
+          ? storagePath
+          : generatedPreviewPath;
+
+        if (coverCandidate && !projectHasCover) {
           const coverResult = await supabase
             .from("print_projects")
-            .update({ cover_path: storagePath })
+            .update({ cover_path: coverCandidate })
             .eq("id", selectedProject.id)
             .eq("user_id", user.id);
 
           if (coverResult.error) {
             throw coverResult.error;
           }
-          selectedProject.cover_path = storagePath;
+          projectHasCover = true;
+          coverChanged = true;
         }
       }
 
-      setMessage(`${files.length} Datei${files.length === 1 ? "" : "en"} hochgeladen.`);
+      setMessage(
+        `${files.length} Datei${files.length === 1 ? "" : "en"} hochgeladen${analysisWarnings > 0 ? `; ${analysisWarnings} Modell${analysisWarnings === 1 ? "" : "e"} konnte${analysisWarnings === 1 ? "" : "n"} nicht automatisch analysiert werden` : ""}.`,
+      );
       await loadProjects();
       await loadProjectFiles(selectedProject);
     } catch (caughtError) {
+      if (coverChanged) {
+        await supabase
+          .from("print_projects")
+          .update({ cover_path: originalCoverPath })
+          .eq("id", selectedProject.id)
+          .eq("user_id", user.id);
+      }
+
       if (uploadedPaths.length > 0) {
         await supabase
           .from("print_project_files")
@@ -1418,6 +1763,138 @@ export default function PrintLibraryPage() {
       );
     } finally {
       setUploading(false);
+    }
+  }
+
+  function startNewVersion(file: PrintProjectFileRow) {
+    clearFeedback();
+
+    if (viewerMigrationMissing) {
+      setError("Bitte zuerst supabase/print_library_v17_2.sql ausführen.");
+      return;
+    }
+
+    setVersionTarget(file);
+    versionInputRef.current?.click();
+  }
+
+  async function uploadNewVersion(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+
+    if (!file || !user || !selectedProject || !versionTarget) {
+      return;
+    }
+
+    const extension = extensionOf(file.name);
+    if (extension !== versionTarget.file_type) {
+      setError(
+        `Die neue Version muss ebenfalls eine .${versionTarget.file_type}-Datei sein.`,
+      );
+      setVersionTarget(null);
+      return;
+    }
+
+    if (file.size > MAX_PRINT_FILE_SIZE) {
+      setError("Die neue Version ist größer als 100 MB.");
+      setVersionTarget(null);
+      return;
+    }
+
+    if (!versionTarget.version_group_id) {
+      setError("Für diese Datei fehlt die Versionsgruppe. Bitte die V17.2-Migration erneut ausführen.");
+      setVersionTarget(null);
+      return;
+    }
+
+    const nextVersion =
+      Math.max(
+        0,
+        ...projectFiles
+          .filter(
+            (entry) =>
+              entry.version_group_id === versionTarget.version_group_id,
+          )
+          .map((entry) => Number(entry.version_number) || 1),
+      ) + 1;
+    const storagePath = `${user.id}/${selectedProject.id}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+
+    setUploading(true);
+    try {
+      const uploadResult = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(storagePath, file, {
+          cacheControl: "3600",
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+
+      if (uploadResult.error) {
+        throw uploadResult.error;
+      }
+
+      const insertResult = await supabase
+        .from("print_project_files")
+        .insert({
+          user_id: user.id,
+          project_id: selectedProject.id,
+          storage_path: storagePath,
+          file_name: file.name,
+          file_type: extension,
+          mime_type: file.type || "application/octet-stream",
+          size_bytes: file.size,
+          is_preview: false,
+          relative_path: file.name,
+          source_modified_at:
+            file.lastModified > 0
+              ? new Date(file.lastModified).toISOString()
+              : null,
+          source_kind: "upload",
+          version_group_id: versionTarget.version_group_id,
+          version_number: nextVersion,
+          version_note: `Version ${nextVersion}`,
+        })
+        .select("*")
+        .single();
+
+      if (insertResult.error) {
+        await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+        throw insertResult.error;
+      }
+
+      const newRow = insertResult.data as PrintProjectFileRow;
+      let previewPath: string | null = null;
+
+      try {
+        previewPath = await analyzeLocalModel(file, newRow);
+      } catch {
+        // Die Version bleibt nutzbar und kann später im Viewer analysiert werden.
+      }
+
+      if (
+        previewPath &&
+        (selectedProject.cover_path === versionTarget.generated_preview_path ||
+          !selectedProject.cover_path)
+      ) {
+        await supabase
+          .from("print_projects")
+          .update({ cover_path: previewPath })
+          .eq("id", selectedProject.id)
+          .eq("user_id", user.id);
+      }
+
+      setMessage(`Version V${nextVersion} wurde hochgeladen.`);
+      await loadProjectFiles(selectedProject);
+      await loadProjects();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Die neue Version konnte nicht hochgeladen werden.",
+      );
+    } finally {
+      setUploading(false);
+      setVersionTarget(null);
     }
   }
 
@@ -1437,13 +1914,21 @@ export default function PrintLibraryPage() {
   }
 
   async function setCover(file: PrintProjectFileRow) {
-    if (!user || !selectedProject || !PREVIEW_IMAGE_EXTENSIONS.has(file.file_type)) {
+    if (!user || !selectedProject) {
+      return;
+    }
+
+    const coverPath = PREVIEW_IMAGE_EXTENSIONS.has(file.file_type)
+      ? file.storage_path
+      : file.generated_preview_path;
+
+    if (!coverPath) {
       return;
     }
 
     const result = await supabase
       .from("print_projects")
-      .update({ cover_path: file.storage_path })
+      .update({ cover_path: coverPath })
       .eq("id", selectedProject.id)
       .eq("user_id", user.id);
 
@@ -1468,9 +1953,13 @@ export default function PrintLibraryPage() {
     clearFeedback();
     setBusy(true);
 
+    const storagePaths = [
+      file.storage_path,
+      file.generated_preview_path,
+    ].filter((path): path is string => Boolean(path));
     const storageResult = await supabase.storage
       .from(STORAGE_BUCKET)
-      .remove([file.storage_path]);
+      .remove(storagePaths);
 
     if (storageResult.error) {
       setError(storageResult.error.message);
@@ -1490,15 +1979,31 @@ export default function PrintLibraryPage() {
       return;
     }
 
-    if (selectedProject.cover_path === file.storage_path) {
+    if (
+      selectedProject.cover_path === file.storage_path ||
+      selectedProject.cover_path === file.generated_preview_path
+    ) {
       const nextCover = projectFiles.find(
-        (entry) => entry.id !== file.id && PREVIEW_IMAGE_EXTENSIONS.has(entry.file_type),
+        (entry) =>
+          entry.id !== file.id &&
+          (PREVIEW_IMAGE_EXTENSIONS.has(entry.file_type) ||
+            Boolean(entry.generated_preview_path)),
       );
+      const nextCoverPath = nextCover
+        ? PREVIEW_IMAGE_EXTENSIONS.has(nextCover.file_type)
+          ? nextCover.storage_path
+          : nextCover.generated_preview_path
+        : null;
       await supabase
         .from("print_projects")
-        .update({ cover_path: nextCover?.storage_path ?? null })
+        .update({ cover_path: nextCoverPath })
         .eq("id", selectedProject.id)
         .eq("user_id", user.id);
+    }
+
+    if (viewerFile?.id === file.id) {
+      setViewerFile(null);
+      setViewerUrl("");
     }
 
     setMessage("Datei wurde gelöscht.");
@@ -1524,7 +2029,11 @@ export default function PrintLibraryPage() {
     setBusy(true);
     const filesResult = await supabase
       .from("print_project_files")
-      .select("storage_path")
+      .select(
+        viewerMigrationMissing
+          ? "storage_path"
+          : "storage_path,generated_preview_path",
+      )
       .eq("project_id", project.id)
       .eq("user_id", user.id);
 
@@ -1534,7 +2043,15 @@ export default function PrintLibraryPage() {
       return;
     }
 
-    const paths = (filesResult.data ?? []).map((file) => file.storage_path);
+    const projectStorageRows = (filesResult.data ?? []) as Array<{
+      storage_path: string;
+      generated_preview_path?: string | null;
+    }>;
+    const paths = projectStorageRows.flatMap((file) =>
+      [file.storage_path, file.generated_preview_path].filter(
+        (path): path is string => Boolean(path),
+      ),
+    );
     if (paths.length > 0) {
       const removeResult = await supabase.storage.from(STORAGE_BUCKET).remove(paths);
       if (removeResult.error) {
@@ -1639,6 +2156,17 @@ export default function PrintLibraryPage() {
                 Führe einmal <code>supabase/print_library_v17_1.sql</code> im
                 Supabase SQL Editor aus. Die vorhandene Druckbibliothek bleibt
                 dabei erhalten.
+              </p>
+            </section>
+          )}
+
+          {viewerMigrationMissing && (
+            <section className={styles.migrationState}>
+              <strong>V17.2-Migration erforderlich</strong>
+              <p>
+                Führe einmal <code>supabase/print_library_v17_2.sql</code> im
+                Supabase SQL Editor aus. Danach stehen 3D-Metadaten, automatische
+                Vorschaubilder und Versionierung zur Verfügung.
               </p>
             </section>
           )}
@@ -2269,6 +2797,8 @@ export default function PrintLibraryPage() {
                 onClick={() => {
                   setSelectedProject(null);
                   setProjectFiles([]);
+                  setViewerFile(null);
+                  setViewerUrl("");
                 }}
               >
                 ×
@@ -2283,6 +2813,13 @@ export default function PrintLibraryPage() {
                 multiple
                 accept={PRINT_LIBRARY_ACCEPT}
                 onChange={(event) => void uploadFiles(event)}
+              />
+              <input
+                ref={versionInputRef}
+                className={styles.hiddenInput}
+                type="file"
+                accept={versionTarget ? `.${versionTarget.file_type}` : PRINT_LIBRARY_ACCEPT}
+                onChange={(event) => void uploadNewVersion(event)}
               />
               <button
                 className="primary-button"
@@ -2303,55 +2840,128 @@ export default function PrintLibraryPage() {
               <span>Maximal 100 MB pro Datei</span>
             </div>
 
+            {viewerFile && viewerUrl && (
+              <section className={styles.viewerSection}>
+                <header className={styles.viewerHeader}>
+                  <div>
+                    <span>3D-VORSCHAU · V{viewerFile.version_number || 1}</span>
+                    <h3>{viewerFile.file_name}</h3>
+                  </div>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => {
+                      setViewerFile(null);
+                      setViewerUrl("");
+                      void loadProjects();
+                    }}
+                  >
+                    Viewer schließen
+                  </button>
+                </header>
+                <ModelViewer
+                  sourceUrl={viewerUrl}
+                  extension={viewerFile.file_type}
+                  fileName={viewerFile.file_name}
+                  initialMetadata={metadataFromFile(viewerFile)}
+                  analyzeOnLoad={
+                    !metadataFromFile(viewerFile) ||
+                    !viewerFile.generated_preview_path
+                  }
+                  onAnalyzed={viewerMigrationMissing ? undefined : saveViewerAnalysis}
+                />
+                {viewerSaving && (
+                  <p className={styles.viewerSaving}>Metadaten werden gespeichert …</p>
+                )}
+              </section>
+            )}
+
             <div className={styles.fileList}>
               {projectFiles.length === 0 ? (
                 <div className={styles.emptyState}>
                   Dieses Projekt enthält noch keine Dateien.
                 </div>
               ) : (
-                projectFiles.map((file) => (
-                  <article className={styles.fileRow} key={file.id}>
-                    <div className={styles.fileIcon}>{file.file_type.toUpperCase()}</div>
-                    <div className={styles.fileInfo}>
-                      <strong>{file.file_name}</strong>
-                      <span>
-                        {fileKind(file)} · {formatBytes(file.size_bytes)} ·{" "}
-                        {formatDate(file.created_at)}
-                      </span>
-                      {file.relative_path && file.relative_path !== file.file_name && (
-                        <small title={file.relative_path}>
-                          {file.relative_path}
-                        </small>
-                      )}
-                    </div>
-                    <div className={styles.fileActions}>
-                      {PREVIEW_IMAGE_EXTENSIONS.has(file.file_type) && (
+                projectFiles.map((file) => {
+                  const modelMetadata = metadataFromFile(file);
+                  const canSetCover =
+                    PREVIEW_IMAGE_EXTENSIONS.has(file.file_type) ||
+                    Boolean(file.generated_preview_path);
+
+                  return (
+                    <article className={styles.fileRow} key={file.id}>
+                      <div className={styles.fileIcon}>{file.file_type.toUpperCase()}</div>
+                      <div className={styles.fileInfo}>
+                        <div className={styles.fileTitleLine}>
+                          <strong>{file.file_name}</strong>
+                          <span className={styles.versionBadge}>V{file.version_number || 1}</span>
+                        </div>
+                        <span>
+                          {fileKind(file)} · {formatBytes(file.size_bytes)} ·{" "}
+                          {formatDate(file.created_at)}
+                        </span>
+                        {modelMetadata && (
+                          <small>
+                            {modelMetadata.widthMm.toLocaleString("de-DE", { maximumFractionDigits: 1 })} ×{" "}
+                            {modelMetadata.depthMm.toLocaleString("de-DE", { maximumFractionDigits: 1 })} ×{" "}
+                            {modelMetadata.heightMm.toLocaleString("de-DE", { maximumFractionDigits: 1 })} mm ·{" "}
+                            {modelMetadata.triangleCount.toLocaleString("de-DE")} Dreiecke
+                          </small>
+                        )}
+                        {file.relative_path && file.relative_path !== file.file_name && (
+                          <small title={file.relative_path}>
+                            {file.relative_path}
+                          </small>
+                        )}
+                      </div>
+                      <div className={styles.fileActions}>
+                        {isViewableModelExtension(file.file_type) && (
+                          <>
+                            <button
+                              className="primary-button"
+                              type="button"
+                              onClick={() => void openModelViewer(file)}
+                            >
+                              3D öffnen
+                            </button>
+                            <button
+                              className="secondary-button"
+                              type="button"
+                              disabled={viewerMigrationMissing || uploading}
+                              onClick={() => startNewVersion(file)}
+                            >
+                              Neue Version
+                            </button>
+                          </>
+                        )}
+                        {canSetCover && (
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => void setCover(file)}
+                          >
+                            Als Vorschau
+                          </button>
+                        )}
                         <button
                           className="secondary-button"
                           type="button"
-                          onClick={() => void setCover(file)}
+                          onClick={() => void downloadFile(file)}
                         >
-                          Als Vorschau
+                          Download
                         </button>
-                      )}
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => void downloadFile(file)}
-                      >
-                        Download
-                      </button>
-                      <button
-                        className="delete-button"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void deleteFile(file)}
-                      >
-                        Löschen
-                      </button>
-                    </div>
-                  </article>
-                ))
+                        <button
+                          className="delete-button"
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void deleteFile(file)}
+                        >
+                          Löschen
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })
               )}
             </div>
           </section>

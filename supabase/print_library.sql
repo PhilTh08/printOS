@@ -1,4 +1,4 @@
--- Philamentix Hub V17.1 – Druckbibliothek mit lokalem Ordner-Scanner
+-- Philamentix Hub V17.2 – Druckbibliothek mit Ordner-Scanner und 3D-Viewer
 -- Einmal vollständig im Supabase SQL Editor ausführen.
 
 begin;
@@ -32,6 +32,16 @@ create table if not exists public.print_project_files (
   source_modified_at timestamptz,
   source_kind text not null default 'upload'
     check (source_kind in ('upload', 'folder_scan')),
+  generated_preview_path text,
+  model_width_mm double precision check (model_width_mm is null or model_width_mm >= 0),
+  model_depth_mm double precision check (model_depth_mm is null or model_depth_mm >= 0),
+  model_height_mm double precision check (model_height_mm is null or model_height_mm >= 0),
+  model_volume_mm3 double precision check (model_volume_mm3 is null or model_volume_mm3 >= 0),
+  triangle_count bigint check (triangle_count is null or triangle_count >= 0),
+  metadata_extracted_at timestamptz,
+  version_group_id uuid not null default gen_random_uuid(),
+  version_number integer not null default 1 check (version_number >= 1),
+  version_note text not null default '' check (char_length(version_note) <= 500),
   created_at timestamptz not null default now()
 );
 
@@ -45,6 +55,8 @@ create index if not exists print_project_files_user_idx
   on public.print_project_files(user_id);
 create index if not exists print_project_files_relative_path_idx
   on public.print_project_files(user_id, project_id, relative_path);
+create index if not exists print_project_files_version_group_idx
+  on public.print_project_files(user_id, project_id, version_group_id, version_number desc);
 
 alter table public.print_projects enable row level security;
 alter table public.print_project_files enable row level security;

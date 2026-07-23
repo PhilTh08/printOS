@@ -195,6 +195,21 @@ export const PRINT_FORMAT_GROUPS: PrintFormatGroup[] = [
         label: "Markdown",
         defaultEnabled: false,
       },
+      {
+        extension: "mp4",
+        label: "MP4-Video",
+        defaultEnabled: false,
+      },
+      {
+        extension: "webm",
+        label: "WebM-Video",
+        defaultEnabled: false,
+      },
+      {
+        extension: "mov",
+        label: "MOV-Video",
+        defaultEnabled: false,
+      },
     ],
   },
   {
