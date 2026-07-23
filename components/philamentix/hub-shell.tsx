@@ -30,12 +30,17 @@ const navigation = [
     ],
   },
   {
-    title: "Aufträge",
+    title: "Produktion",
     items: [
       {
         href: "/auftraege",
         icon: "▧",
         label: "Aufträge",
+      },
+      {
+        href: "/druckbibliothek",
+        icon: "◇",
+        label: "Druckbibliothek",
       },
     ],
   },
@@ -223,7 +228,9 @@ export function HubShell({
                   (item.href === "/filamente" &&
                     pathname.startsWith("/filamente/")) ||
                   (item.href === "/admin" &&
-                    pathname.startsWith("/admin"));
+                    pathname.startsWith("/admin")) ||
+                  (item.href === "/druckbibliothek" &&
+                    pathname.startsWith("/druckbibliothek"));
 
                 return (
                   <Link

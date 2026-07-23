@@ -613,22 +613,23 @@ Keine neue SQL-Migration erforderlich. Die Servervariable
 `SUPABASE_SECRET_KEY` aus dem Adminsystem wird auch für die Kontolöschung
 verwendet.
 
-## V16.2 – Demo-Modus vor der Anmeldung
+## V17.0 – Druckbibliothek
 
-Die Startseite zeigt vor dem Anmeldeformular eine Auswahl:
+Neue Route:
 
-- **Demo starten** öffnet `/demo`
-- **Anmelden oder registrieren** öffnet das bestehende Auth-Formular
+`/druckbibliothek`
 
-Die Demo verwendet ausschließlich vorbereitete React-Zustände im Browser.
-Sie liest und schreibt keine Supabase-Daten. Enthalten sind:
+V17.0 ergänzt eine private Projekt- und Dateibibliothek mit Ordnern, Tags,
+Favoriten, Suche, Bildvorschauen sowie Upload und Download. Vor der ersten
+Nutzung einmal `supabase/print_library.sql` ausführen.
 
-- Dashboard mit Beispielkennzahlen
-- Filamentbestand
-- lokale Ein- und Auslagerungen
-- Beispielaufträge mit Statuswechsel
-- lokales Aktivitätsprotokoll
-- Zurücksetzen auf den Ausgangszustand
-- direkter Wechsel zur echten Anmeldung
+Die hochgeladenen Dateien liegen in einem privaten Supabase-Storage-Bucket.
+Sowohl Tabellen als auch Storage-Objekte sind über RLS auf die angemeldete
+`user_id` begrenzt.
 
-Für V16.2 ist keine Supabase-Migration und keine neue Umgebungsvariable nötig.
+## V17.0.1 – Demo-Modus entfernt
+
+Der Hub besitzt keinen Gast- oder Demo-Modus mehr. Alle geschützten Seiten
+benötigen eine gültige Supabase-Sitzung. Dashboard-Einstellungen werden nicht
+mehr unter einem gemeinsamen `guest`-Schlüssel gespeichert. Die veraltete
+statische Design-Demo wurde aus dem Paket entfernt.

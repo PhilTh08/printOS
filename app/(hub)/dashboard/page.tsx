@@ -369,20 +369,17 @@ export default function DashboardPage() {
   );
   const saveRevisionRef = useRef(0);
 
-  const storageKey = `philamentix-dashboard-widgets-${
-    user?.id ?? "guest"
-  }`;
+  const storageKey = user
+    ? `philamentix-dashboard-widgets-${user.id}`
+    : null;
 
   const loadWidgetSettings = useCallback(
     async (manualReload = false) => {
-      if (!user) {
-        setActiveWidgets(
-          readLocalWidgetSettings(storageKey),
-        );
-        setSettingsLoaded(true);
-        setSyncState("local");
+      if (!user || !storageKey) {
+        setSettingsLoaded(false);
+        setSyncState("loading");
         setSyncMessage(
-          "Widget-Einstellungen werden nur lokal gespeichert.",
+          "Anmeldung wird geprüft.",
         );
         return;
       }
@@ -512,18 +509,14 @@ export default function DashboardPage() {
       return;
     }
 
+    if (!user || !storageKey) {
+      return;
+    }
+
     window.localStorage.setItem(
       storageKey,
       JSON.stringify(activeWidgets),
     );
-
-    if (!user) {
-      setSyncState("local");
-      setSyncMessage(
-        "Widget-Einstellungen werden nur lokal gespeichert.",
-      );
-      return;
-    }
 
     if (saveTimerRef.current !== null) {
       window.clearTimeout(

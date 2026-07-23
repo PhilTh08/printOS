@@ -15,8 +15,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [authMode, setAuthMode] =
     useState<AuthMode>("login");
-  const [showLogin, setShowLogin] =
-    useState(false);
   const [signupName, setSignupName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,14 +38,6 @@ export default function LoginPage() {
     useState("");
 
   useEffect(() => {
-    if (
-      new URLSearchParams(
-        window.location.search,
-      ).get("login") === "1"
-    ) {
-      setShowLogin(true);
-    }
-
     let active = true;
 
     void supabase.auth.getSession().then(({ data }) => {
@@ -279,62 +269,6 @@ export default function LoginPage() {
     }
   }
 
-  if (!showLogin && !isPasswordRecovery) {
-    return (
-      <main className="entry-screen">
-        <section className="entry-card">
-          <div className="entry-brand">
-            <div className="entry-logo">
-              Philamentix<span>Hub</span>
-            </div>
-            <p>FILAMENT MANAGEMENT // V16.2</p>
-          </div>
-
-          <div className="entry-copy">
-            <span className="entry-kicker">
-              Filamentlager kennenlernen
-            </span>
-            <h1>
-              Erst ausprobieren.<br />
-              Dann anmelden.
-            </h1>
-            <p>
-              Starte eine lokale Demo mit vorbereiteten
-              Filamenten und Aufträgen. Deine Testaktionen
-              werden nicht an Supabase übertragen.
-            </p>
-          </div>
-
-          <div className="entry-actions">
-            <button
-              className="entry-demo-button"
-              type="button"
-              onClick={() => router.push("/demo")}
-            >
-              <span>Demo starten</span>
-              <small>Ohne Account · lokale Beispieldaten</small>
-            </button>
-
-            <button
-              className="entry-login-button"
-              type="button"
-              onClick={() => setShowLogin(true)}
-            >
-              <span>Anmelden oder registrieren</span>
-              <small>Eigenes Lager dauerhaft verwalten</small>
-            </button>
-          </div>
-
-          <div className="entry-features">
-            <span>✓ Bestände buchen</span>
-            <span>✓ Aufträge testen</span>
-            <span>✓ Jederzeit zurücksetzen</span>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
   if (isPasswordRecovery) {
     return (
       <main className="login-screen">
@@ -478,18 +412,6 @@ export default function LoginPage() {
             Philamentix<span>Hub</span>
           </div>
           <p>FILAMENT MANAGEMENT</p>
-          <button
-            className="login-entry-back"
-            type="button"
-            onClick={() => {
-              setShowLogin(false);
-              setAuthMode("login");
-              setLoginError("");
-              setAuthMessage("");
-            }}
-          >
-            ← Zurück zur Auswahl
-          </button>
         </div>
 
         {authMode !== "forgot" ? (

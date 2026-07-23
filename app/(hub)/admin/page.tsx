@@ -182,109 +182,6 @@ function orderTitle(
   return `Auftrag ${index + 1}`;
 }
 
-
-type AdminOrderStatus =
-  | "open"
-  | "in_progress"
-  | "completed"
-  | "cancelled";
-
-function adminOrderStatus(
-  order: Record<string, unknown>,
-): AdminOrderStatus {
-  const value = order.status;
-
-  if (
-    value === "in_progress" ||
-    value === "completed" ||
-    value === "cancelled"
-  ) {
-    return value;
-  }
-
-  return "open";
-}
-
-function adminOrderDueDate(
-  order: Record<string, unknown>,
-): string | null {
-  const value =
-    order.due_date ?? order.dueDate;
-
-  return typeof value === "string" &&
-    value.trim()
-    ? value
-    : null;
-}
-
-function adminOrderIsOverdue(
-  order: Record<string, unknown>,
-): boolean {
-  const status = adminOrderStatus(order);
-  const dueDate = adminOrderDueDate(order);
-
-  if (
-    !dueDate ||
-    status === "completed" ||
-    status === "cancelled"
-  ) {
-    return false;
-  }
-
-  const date = new Date(
-    dueDate.includes("T")
-      ? dueDate
-      : `${dueDate}T23:59:59`,
-  );
-
-  return (
-    !Number.isNaN(date.getTime()) &&
-    date.getTime() < Date.now()
-  );
-}
-
-type AdminOrderSummary = {
-  open: number;
-  inProgress: number;
-  overdue: number;
-  completed: number;
-};
-
-function adminOrderSummary(
-  orders: Record<string, unknown>[],
-): AdminOrderSummary {
-  return orders.reduce<AdminOrderSummary>(
-    (summary, order) => {
-      const status =
-        adminOrderStatus(order);
-
-      if (status === "open") {
-        summary.open += 1;
-      } else if (
-        status === "in_progress"
-      ) {
-        summary.inProgress += 1;
-      } else if (
-        status === "completed"
-      ) {
-        summary.completed += 1;
-      }
-
-      if (adminOrderIsOverdue(order)) {
-        summary.overdue += 1;
-      }
-
-      return summary;
-    },
-    {
-      open: 0,
-      inProgress: 0,
-      overdue: 0,
-      completed: 0,
-    },
-  );
-}
-
 export default function AdminPage() {
   const {
     isAdmin,
@@ -577,12 +474,6 @@ export default function AdminPage() {
   const adminCount = users.filter(
     (user) => user.isAdmin,
   ).length;
-  const selectedOrderSummary = useMemo(
-    () => adminOrderSummary(
-      detail?.orders ?? [],
-    ),
-    [detail?.orders],
-  );
   const onlineCount = users.filter(
     (user) => user.online,
   ).length;
@@ -1187,58 +1078,6 @@ export default function AdminPage() {
 
               {activeTab === "orders" && (
                 <div className={styles.tabContent}>
-                  {detail.ordersAvailable && (
-                    <section
-                      className={
-                        styles.orderSummaryGrid
-                      }
-                      aria-label="Auftragsübersicht des Kunden"
-                    >
-                      <article>
-                        <span>Offen</span>
-                        <strong>
-                          {selectedOrderSummary.open}
-                        </strong>
-                        <small>
-                          Noch nicht begonnen
-                        </small>
-                      </article>
-                      <article>
-                        <span>In Arbeit</span>
-                        <strong>
-                          {selectedOrderSummary.inProgress}
-                        </strong>
-                        <small>
-                          Aktive Aufträge
-                        </small>
-                      </article>
-                      <article>
-                        <span>Überfällig</span>
-                        <strong
-                          className={
-                            selectedOrderSummary.overdue > 0
-                              ? styles.orderSummaryDanger
-                              : ""
-                          }
-                        >
-                          {selectedOrderSummary.overdue}
-                        </strong>
-                        <small>
-                          Termin überschritten
-                        </small>
-                      </article>
-                      <article>
-                        <span>Erledigt</span>
-                        <strong>
-                          {selectedOrderSummary.completed}
-                        </strong>
-                        <small>
-                          Abgeschlossene Aufträge
-                        </small>
-                      </article>
-                    </section>
-                  )}
-
                   {!detail.ordersAvailable ? (
                     <div className={styles.featurePending}>
                       <strong>
