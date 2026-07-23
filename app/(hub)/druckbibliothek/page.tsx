@@ -105,6 +105,19 @@ function isSetupMissing(error: unknown): boolean {
   );
 }
 
+function errorMessage(error: unknown): string {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("message" in error)
+  ) {
+    return "";
+  }
+
+  const message = error.message;
+  return typeof message === "string" ? message : "";
+}
+
 function isScannerMigrationMissing(
   error: unknown,
 ): boolean {
@@ -112,22 +125,13 @@ function isScannerMigrationMissing(
     return true;
   }
 
-  if (
-    typeof error !== "object" ||
-    error === null ||
-    !("message" in error) ||
-    typeof error.message !== "string"
-  ) {
-    return false;
-  }
+  const message = errorMessage(error);
 
   return [
     "relative_path",
     "source_modified_at",
     "source_kind",
-  ].some((column) =>
-    error.message.includes(column),
-  );
+  ].some((column) => message.includes(column));
 }
 
 function parseTags(value: string): string[] {
@@ -1433,7 +1437,7 @@ export default function PrintLibraryPage() {
   }
 
   async function setCover(file: PrintProjectFileRow) {
-    if (!user || !selectedProject || !PREVIEW_PREVIEW_IMAGE_EXTENSIONS.has(file.file_type)) {
+    if (!user || !selectedProject || !PREVIEW_IMAGE_EXTENSIONS.has(file.file_type)) {
       return;
     }
 
