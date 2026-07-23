@@ -1288,18 +1288,21 @@ export default function PrintLibraryPage() {
       targetProjectIdForRollback = targetProject.id;
       originalCoverPathForRollback = targetProject.cover_path;
 
-      const existingResult = await supabase
-        .from("print_project_files")
-        .select(
-          viewerMigrationMissing
-            ? "id,storage_path,file_name,size_bytes,relative_path,source_modified_at"
-            : "id,storage_path,file_name,size_bytes,relative_path,source_modified_at,generated_preview_path",
-        )
-        .eq("user_id", user.id)
-        .eq(
-          "project_id",
-          targetProject.id,
-        );
+      const existingResult = viewerMigrationMissing
+        ? await supabase
+            .from("print_project_files")
+            .select(
+              "id,storage_path,file_name,size_bytes,relative_path,source_modified_at",
+            )
+            .eq("user_id", user.id)
+            .eq("project_id", targetProject.id)
+        : await supabase
+            .from("print_project_files")
+            .select(
+              "id,storage_path,file_name,size_bytes,relative_path,source_modified_at,generated_preview_path",
+            )
+            .eq("user_id", user.id)
+            .eq("project_id", targetProject.id);
 
       if (existingResult.error) {
         throw existingResult.error;
@@ -2027,15 +2030,17 @@ export default function PrintLibraryPage() {
 
     clearFeedback();
     setBusy(true);
-    const filesResult = await supabase
-      .from("print_project_files")
-      .select(
-        viewerMigrationMissing
-          ? "storage_path"
-          : "storage_path,generated_preview_path",
-      )
-      .eq("project_id", project.id)
-      .eq("user_id", user.id);
+    const filesResult = viewerMigrationMissing
+      ? await supabase
+          .from("print_project_files")
+          .select("storage_path")
+          .eq("project_id", project.id)
+          .eq("user_id", user.id)
+      : await supabase
+          .from("print_project_files")
+          .select("storage_path,generated_preview_path")
+          .eq("project_id", project.id)
+          .eq("user_id", user.id);
 
     if (filesResult.error) {
       setError(filesResult.error.message);
