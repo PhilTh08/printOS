@@ -11,35 +11,32 @@ import {
 } from "react";
 
 import { useHub } from "@/components/philamentix/hub-provider";
+import {
+  ALL_PRINT_EXTENSIONS,
+  DEFAULT_SCAN_EXTENSIONS,
+  MAX_PRINT_FILE_SIZE,
+  MAX_SCAN_IMPORT_FILES,
+  MAX_SCAN_IMPORT_SIZE,
+  PREVIEW_IMAGE_EXTENSIONS,
+  PRINT_FORMAT_GROUPS,
+  PRINT_LIBRARY_ACCEPT,
+  type DirectoryScanResult,
+  type DirectorySelectableFile,
+  type ScannedPrintFile,
+  extensionOf,
+  fileKindForExtension,
+  formatLabelForExtension,
+  safeFileName,
+  scanDirectoryFiles,
+} from "@/components/philamentix/print-library-scanner";
 import { supabase } from "@/lib/supabase";
 
 import styles from "./page.module.css";
 
 const STORAGE_BUCKET = "print-library";
-const MAX_FILE_SIZE = 100 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set([
-  "stl",
-  "3mf",
-  "obj",
-  "gcode",
-  "bgcode",
-  "step",
-  "stp",
-  "zip",
-  "png",
-  "jpg",
-  "jpeg",
-  "webp",
-  "pdf",
-  "txt",
-  "md",
-]);
-const IMAGE_EXTENSIONS = new Set([
-  "png",
-  "jpg",
-  "jpeg",
-  "webp",
-]);
+const SCAN_FORMAT_STORAGE_KEY =
+  "philamentix.print-library.scan-formats.v1";
+const SCAN_RESULTS_PER_PAGE = 200;
 
 type PrintProjectRow = {
   id: string;
@@ -64,6 +61,9 @@ type PrintProjectFileRow = {
   mime_type: string;
   size_bytes: number;
   is_preview: boolean;
+  relative_path: string;
+  source_modified_at: string | null;
+  source_kind: "upload" | "folder_scan";
   created_at: string;
 };
 
@@ -100,25 +100,34 @@ function errorCode(error: unknown): string {
 }
 
 function isSetupMissing(error: unknown): boolean {
-  return ["42P01", "PGRST204", "PGRST205"].includes(
+  return ["42P01", "PGRST205"].includes(
     errorCode(error),
   );
 }
 
-function extensionOf(fileName: string): string {
-  const parts = fileName.toLowerCase().split(".");
-  return parts.length > 1 ? parts.at(-1) ?? "" : "";
-}
+function isScannerMigrationMissing(
+  error: unknown,
+): boolean {
+  if (errorCode(error) === "PGRST204") {
+    return true;
+  }
 
-function safeFileName(fileName: string): string {
-  const normalized = fileName
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^[-.]+|[-.]+$/g, "");
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("message" in error) ||
+    typeof error.message !== "string"
+  ) {
+    return false;
+  }
 
-  return normalized.slice(0, 180) || "datei";
+  return [
+    "relative_path",
+    "source_modified_at",
+    "source_kind",
+  ].some((column) =>
+    error.message.includes(column),
+  );
 }
 
 function parseTags(value: string): string[] {
@@ -164,30 +173,13 @@ function formatDate(value: string): string {
 }
 
 function fileKind(file: PrintProjectFileRow): string {
-  const type = file.file_type.toUpperCase();
-
-  if (IMAGE_EXTENSIONS.has(file.file_type)) {
-    return "Bild";
-  }
-
-  if (["stl", "3mf", "obj", "step", "stp"].includes(file.file_type)) {
-    return "3D-Modell";
-  }
-
-  if (["gcode", "bgcode"].includes(file.file_type)) {
-    return "Druckdatei";
-  }
-
-  if (file.file_type === "zip") {
-    return "Archiv";
-  }
-
-  return type || "Datei";
+  return fileKindForExtension(file.file_type);
 }
 
 export default function PrintLibraryPage() {
   const { user } = useHub();
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [projects, setProjects] = useState<PrintProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<PrintProject | null>(
     null,
@@ -203,6 +195,29 @@ export default function PrintLibraryPage() {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [setupMissing, setSetupMissing] = useState(false);
+  const [migrationMissing, setMigrationMissing] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanResult, setScanResult] = useState<DirectoryScanResult | null>(null);
+  const [scanSearch, setScanSearch] = useState("");
+  const [scanFormatFilter, setScanFormatFilter] = useState("all");
+  const [scanPage, setScanPage] = useState(1);
+  const [scanSelectedIds, setScanSelectedIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [enabledScanExtensions, setEnabledScanExtensions] = useState<Set<string>>(
+    new Set(DEFAULT_SCAN_EXTENSIONS),
+  );
+  const [scanTargetMode, setScanTargetMode] = useState<"new" | "existing">(
+    "new",
+  );
+  const [scanProjectName, setScanProjectName] = useState("");
+  const [scanTargetProjectId, setScanTargetProjectId] = useState("");
+  const [scanImporting, setScanImporting] = useState(false);
+  const [scanProgress, setScanProgress] = useState<{
+    current: number;
+    total: number;
+    fileName: string;
+  } | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -210,6 +225,59 @@ export default function PrintLibraryPage() {
     setMessage("");
     setError("");
   }, []);
+
+  useEffect(() => {
+    const folderInput = folderInputRef.current;
+
+    if (folderInput) {
+      folderInput.setAttribute("webkitdirectory", "");
+      folderInput.setAttribute("directory", "");
+    }
+
+    try {
+      const stored = window.localStorage.getItem(
+        SCAN_FORMAT_STORAGE_KEY,
+      );
+
+      if (!stored) {
+        return;
+      }
+
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+
+      const valid = parsed.filter(
+        (extension): extension is string =>
+          typeof extension === "string" &&
+          ALL_PRINT_EXTENSIONS.has(extension),
+      );
+
+      if (valid.length > 0) {
+        setEnabledScanExtensions(
+          new Set(valid),
+        );
+      }
+    } catch {
+      window.localStorage.removeItem(
+        SCAN_FORMAT_STORAGE_KEY,
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SCAN_FORMAT_STORAGE_KEY,
+        JSON.stringify(
+          [...enabledScanExtensions].sort(),
+        ),
+      );
+    } catch {
+      // Die Formatauswahl funktioniert auch ohne lokalen Speicher.
+    }
+  }, [enabledScanExtensions]);
 
   const loadProjects = useCallback(async () => {
     if (!user) {
@@ -221,17 +289,11 @@ export default function PrintLibraryPage() {
     setLoading(true);
     setError("");
 
-    const [projectResult, fileResult] = await Promise.all([
-      supabase
-        .from("print_projects")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false }),
-      supabase
-        .from("print_project_files")
-        .select("project_id,size_bytes")
-        .eq("user_id", user.id),
-    ]);
+    const projectResult = await supabase
+      .from("print_projects")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
 
     if (projectResult.error) {
       if (isSetupMissing(projectResult.error)) {
@@ -246,49 +308,125 @@ export default function PrintLibraryPage() {
       return;
     }
 
-    if (fileResult.error && !isSetupMissing(fileResult.error)) {
-      setError(fileResult.error.message);
-      setLoading(false);
-      return;
+    let fileRows: Array<{
+      project_id: string;
+      size_bytes: number;
+    }> = [];
+
+    const fileResult = await supabase
+      .from("print_project_files")
+      .select(
+        "project_id,size_bytes,relative_path,source_kind",
+      )
+      .eq("user_id", user.id);
+
+    if (fileResult.error) {
+      if (
+        isScannerMigrationMissing(
+          fileResult.error,
+        )
+      ) {
+        setMigrationMissing(true);
+        const fallbackResult = await supabase
+          .from("print_project_files")
+          .select("project_id,size_bytes")
+          .eq("user_id", user.id);
+
+        if (fallbackResult.error) {
+          setError(
+            fallbackResult.error.message,
+          );
+          setLoading(false);
+          return;
+        }
+
+        fileRows = fallbackResult.data ?? [];
+      } else if (
+        isSetupMissing(fileResult.error)
+      ) {
+        setSetupMissing(true);
+        setProjects([]);
+        setLoading(false);
+        return;
+      } else {
+        setError(fileResult.error.message);
+        setLoading(false);
+        return;
+      }
+    } else {
+      setMigrationMissing(false);
+      fileRows = fileResult.data ?? [];
     }
 
-    const countByProject = new Map<string, { count: number; size: number }>();
-    for (const file of fileResult.data ?? []) {
-      const current = countByProject.get(file.project_id) ?? {
-        count: 0,
-        size: 0,
-      };
+    const countByProject = new Map<
+      string,
+      { count: number; size: number }
+    >();
+
+    for (const file of fileRows) {
+      const current =
+        countByProject.get(
+          file.project_id,
+        ) ?? {
+          count: 0,
+          size: 0,
+        };
       current.count += 1;
-      current.size += Number(file.size_bytes) || 0;
-      countByProject.set(file.project_id, current);
+      current.size +=
+        Number(file.size_bytes) || 0;
+      countByProject.set(
+        file.project_id,
+        current,
+      );
     }
 
-    const rows = (projectResult.data ?? []) as PrintProjectRow[];
+    const rows =
+      (projectResult.data ?? []) as PrintProjectRow[];
     const coverPaths = rows
       .map((row) => row.cover_path)
-      .filter((value): value is string => Boolean(value));
-    const signedByPath = new Map<string, string>();
+      .filter(
+        (value): value is string =>
+          Boolean(value),
+      );
+    const signedByPath =
+      new Map<string, string>();
 
     if (coverPaths.length > 0) {
-      const signedResult = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUrls(coverPaths, 60 * 60);
+      const signedResult =
+        await supabase.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrls(
+            coverPaths,
+            60 * 60,
+          );
 
-      for (const signed of signedResult.data ?? []) {
-        if (signed.path && signed.signedUrl) {
-          signedByPath.set(signed.path, signed.signedUrl);
+      for (
+        const signed of
+        signedResult.data ?? []
+      ) {
+        if (
+          signed.path &&
+          signed.signedUrl
+        ) {
+          signedByPath.set(
+            signed.path,
+            signed.signedUrl,
+          );
         }
       }
     }
 
     const mapped = rows.map((row) => {
-      const count = countByProject.get(row.id);
+      const count =
+        countByProject.get(row.id);
       return {
         ...row,
         fileCount: count?.count ?? 0,
         totalSize: count?.size ?? 0,
         coverUrl: row.cover_path
-          ? signedByPath.get(row.cover_path) ?? null
+          ? signedByPath.get(
+              row.cover_path,
+            ) ?? null
           : null,
       };
     });
@@ -297,7 +435,10 @@ export default function PrintLibraryPage() {
     setProjects(mapped);
     setSelectedProject((current) =>
       current
-        ? mapped.find((project) => project.id === current.id) ?? null
+        ? mapped.find(
+            (project) =>
+              project.id === current.id,
+          ) ?? null
         : null,
     );
     setLoading(false);
@@ -368,6 +509,112 @@ export default function PrintLibraryPage() {
         .includes(needle);
     });
   }, [favoriteOnly, folderFilter, projects, search]);
+
+  const filteredScannedFiles = useMemo(() => {
+    if (!scanResult) {
+      return [];
+    }
+
+    const needle = scanSearch
+      .trim()
+      .toLocaleLowerCase("de");
+
+    return scanResult.files.filter((file) => {
+      if (
+        !enabledScanExtensions.has(
+          file.extension,
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        scanFormatFilter !== "all" &&
+        file.extension !== scanFormatFilter
+      ) {
+        return false;
+      }
+
+      if (!needle) {
+        return true;
+      }
+
+      return file.relativePath
+        .toLocaleLowerCase("de")
+        .includes(needle);
+    });
+  }, [
+    enabledScanExtensions,
+    scanFormatFilter,
+    scanResult,
+    scanSearch,
+  ]);
+
+  const scanTotalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredScannedFiles.length /
+        SCAN_RESULTS_PER_PAGE,
+    ),
+  );
+
+  const visibleScannedFiles = useMemo(() => {
+    const safePage = Math.min(
+      scanPage,
+      scanTotalPages,
+    );
+    const startIndex =
+      (safePage - 1) *
+      SCAN_RESULTS_PER_PAGE;
+
+    return filteredScannedFiles.slice(
+      startIndex,
+      startIndex + SCAN_RESULTS_PER_PAGE,
+    );
+  }, [
+    filteredScannedFiles,
+    scanPage,
+    scanTotalPages,
+  ]);
+
+  useEffect(() => {
+    setScanPage(1);
+  }, [
+    enabledScanExtensions,
+    scanFormatFilter,
+    scanResult,
+    scanSearch,
+  ]);
+
+  const selectedScannedFiles = useMemo(
+    () =>
+      scanResult?.files.filter(
+        (file) =>
+          scanSelectedIds.has(file.id) &&
+          file.status === "ready",
+      ) ?? [],
+    [scanResult, scanSelectedIds],
+  );
+
+  const selectedScannedSize =
+    selectedScannedFiles.reduce(
+      (sum, file) => sum + file.size,
+      0,
+    );
+
+  const scanFormatOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          scanResult?.files.map(
+            (file) => file.extension,
+          ) ?? [],
+        ),
+      ).sort((first, second) =>
+        first.localeCompare(second, "de"),
+      ),
+    [scanResult],
+  );
 
   const totalFiles = projects.reduce(
     (sum, project) => sum + project.fileCount,
@@ -469,6 +716,603 @@ export default function PrintLibraryPage() {
     await loadProjects();
   }
 
+  function openScanner(
+    targetProjectId = "",
+  ) {
+    clearFeedback();
+    setScannerOpen(true);
+    setScanResult(null);
+    setScanSearch("");
+    setScanFormatFilter("all");
+    setScanPage(1);
+    setScanSelectedIds(new Set());
+    setScanProjectName("");
+    setScanProgress(null);
+
+    if (targetProjectId) {
+      setScanTargetMode("existing");
+      setScanTargetProjectId(
+        targetProjectId,
+      );
+    } else {
+      setScanTargetMode("new");
+      setScanTargetProjectId(
+        projects[0]?.id ?? "",
+      );
+    }
+  }
+
+  function closeScanner() {
+    if (scanImporting) {
+      return;
+    }
+
+    setScannerOpen(false);
+    setScanResult(null);
+    setScanSelectedIds(new Set());
+    setScanProgress(null);
+  }
+
+  function chooseLocalFolder() {
+    folderInputRef.current?.click();
+  }
+
+  function handleDirectorySelection(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const files = Array.from(
+      event.target.files ?? [],
+    ) as DirectorySelectableFile[];
+    event.target.value = "";
+    clearFeedback();
+
+    if (files.length === 0) {
+      return;
+    }
+
+    try {
+      const result =
+        scanDirectoryFiles(files);
+      const selectedIds = new Set(
+        result.files
+          .filter(
+            (file) =>
+              file.status === "ready" &&
+              enabledScanExtensions.has(
+                file.extension,
+              ),
+          )
+          .map((file) => file.id),
+      );
+
+      setScanResult(result);
+      setScanProjectName(
+        result.rootName ===
+          "Lokaler Ordner"
+          ? "Importierter Ordner"
+          : result.rootName,
+      );
+      setScanSelectedIds(selectedIds);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Der Ordner konnte nicht durchsucht werden.",
+      );
+    }
+  }
+
+  function toggleScanExtension(
+    extension: string,
+  ) {
+    setEnabledScanExtensions((current) => {
+      const next = new Set(current);
+      const enable = !next.has(extension);
+
+      if (enable) {
+        next.add(extension);
+      } else {
+        next.delete(extension);
+      }
+
+      setScanSelectedIds((selected) => {
+        const nextSelected =
+          new Set(selected);
+
+        for (
+          const file of
+          scanResult?.files ?? []
+        ) {
+          if (
+            file.extension !== extension ||
+            file.status !== "ready"
+          ) {
+            continue;
+          }
+
+          if (enable) {
+            nextSelected.add(file.id);
+          } else {
+            nextSelected.delete(file.id);
+          }
+        }
+
+        return nextSelected;
+      });
+
+      return next;
+    });
+  }
+
+  function toggleScannedFile(
+    file: ScannedPrintFile,
+  ) {
+    if (file.status !== "ready") {
+      return;
+    }
+
+    setScanSelectedIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(file.id)) {
+        next.delete(file.id);
+      } else {
+        next.add(file.id);
+      }
+
+      return next;
+    });
+  }
+
+  function selectVisibleScannedFiles() {
+    setScanSelectedIds((current) => {
+      const next = new Set(current);
+
+      for (const file of visibleScannedFiles) {
+        if (file.status === "ready") {
+          next.add(file.id);
+        }
+      }
+
+      return next;
+    });
+  }
+
+  function clearScannedSelection() {
+    setScanSelectedIds(new Set());
+  }
+
+  async function importScannedFiles() {
+    if (
+      !user ||
+      !scanResult ||
+      selectedScannedFiles.length === 0
+    ) {
+      setError(
+        "Bitte mindestens eine gültige Datei auswählen.",
+      );
+      return;
+    }
+
+    if (migrationMissing) {
+      setError(
+        "Bitte zuerst supabase/print_library_v17_1.sql ausführen.",
+      );
+      return;
+    }
+
+    if (
+      selectedScannedFiles.length >
+      MAX_SCAN_IMPORT_FILES
+    ) {
+      setError(
+        `Pro Import sind maximal ${MAX_SCAN_IMPORT_FILES} Dateien erlaubt.`,
+      );
+      return;
+    }
+
+    if (
+      selectedScannedSize >
+      MAX_SCAN_IMPORT_SIZE
+    ) {
+      setError(
+        "Die ausgewählten Dateien sind zusammen größer als 1 GB.",
+      );
+      return;
+    }
+
+    if (
+      scanTargetMode === "new" &&
+      !scanProjectName.trim()
+    ) {
+      setError(
+        "Bitte einen Projektnamen für den Import angeben.",
+      );
+      return;
+    }
+
+    if (
+      scanTargetMode === "existing" &&
+      !scanTargetProjectId
+    ) {
+      setError(
+        "Bitte ein vorhandenes Zielprojekt auswählen.",
+      );
+      return;
+    }
+
+    const uniqueByRelativePath = new Map<
+      string,
+      ScannedPrintFile
+    >();
+    let duplicateInputPaths = 0;
+
+    for (const file of selectedScannedFiles) {
+      const key = file.relativePath
+        .toLocaleLowerCase("de");
+
+      if (uniqueByRelativePath.has(key)) {
+        duplicateInputPaths += 1;
+        continue;
+      }
+
+      uniqueByRelativePath.set(key, file);
+    }
+
+    const importCandidates =
+      [...uniqueByRelativePath.values()];
+
+    clearFeedback();
+    setScanImporting(true);
+    setScanProgress({
+      current: 0,
+      total: importCandidates.length,
+      fileName: "Import wird vorbereitet …",
+    });
+
+    const uploadedPaths: string[] = [];
+    let createdProjectId: string | null =
+      null;
+
+    try {
+      let targetProject:
+        | PrintProjectRow
+        | PrintProject;
+
+      if (scanTargetMode === "new") {
+        const createResult = await supabase
+          .from("print_projects")
+          .insert({
+            user_id: user.id,
+            name: scanProjectName.trim(),
+            folder: "Ordnerscan",
+            description:
+              `Lokal aus „${scanResult.rootName}“ importiert.`,
+            tags: ["Ordnerscan"],
+            favorite: false,
+          })
+          .select("*")
+          .single();
+
+        if (createResult.error) {
+          throw createResult.error;
+        }
+
+        targetProject =
+          createResult.data as PrintProjectRow;
+        createdProjectId = targetProject.id;
+      } else {
+        const found = projects.find(
+          (project) =>
+            project.id ===
+            scanTargetProjectId,
+        );
+
+        if (!found) {
+          throw new Error(
+            "Das ausgewählte Zielprojekt wurde nicht gefunden.",
+          );
+        }
+
+        targetProject = found;
+      }
+
+      const existingResult = await supabase
+        .from("print_project_files")
+        .select(
+          "id,storage_path,file_name,size_bytes,relative_path,source_modified_at",
+        )
+        .eq("user_id", user.id)
+        .eq(
+          "project_id",
+          targetProject.id,
+        );
+
+      if (existingResult.error) {
+        throw existingResult.error;
+      }
+
+      const existingByPath = new Map<
+        string,
+        {
+          id: string;
+          storage_path: string;
+          file_name: string;
+          size_bytes: number;
+          relative_path: string;
+          source_modified_at: string | null;
+        }
+      >();
+
+      for (
+        const existing of
+        existingResult.data ?? []
+      ) {
+        const key =
+          existing.relative_path
+            ?.trim()
+            .toLocaleLowerCase("de");
+
+        if (key) {
+          existingByPath.set(
+            key,
+            existing,
+          );
+        }
+      }
+
+      const replacements: Array<{
+        oldId: string;
+        oldPath: string;
+        newPath: string;
+      }> = [];
+      let skippedDuplicates =
+        duplicateInputPaths;
+      let firstPreviewPath: string | null =
+        null;
+      let importedCount = 0;
+
+      for (
+        let index = 0;
+        index < importCandidates.length;
+        index += 1
+      ) {
+        const scanned =
+          importCandidates[index];
+        setScanProgress({
+          current: index + 1,
+          total:
+            importCandidates.length,
+          fileName:
+            scanned.relativePath,
+        });
+
+        const existing =
+          existingByPath.get(
+            scanned.relativePath
+              .toLocaleLowerCase("de"),
+          );
+        const existingModified =
+          existing?.source_modified_at
+            ? new Date(
+                existing.source_modified_at,
+              ).getTime()
+            : 0;
+
+        if (
+          existing &&
+          Number(existing.size_bytes) ===
+            scanned.size &&
+          existingModified ===
+            scanned.lastModified
+        ) {
+          skippedDuplicates += 1;
+          continue;
+        }
+
+        const storagePath =
+          `${user.id}/${targetProject.id}/${crypto.randomUUID()}-${safeFileName(scanned.name)}`;
+        const uploadResult =
+          await supabase.storage
+            .from(STORAGE_BUCKET)
+            .upload(
+              storagePath,
+              scanned.file,
+              {
+                cacheControl: "3600",
+                contentType:
+                  scanned.file.type ||
+                  "application/octet-stream",
+                upsert: false,
+              },
+            );
+
+        if (uploadResult.error) {
+          throw uploadResult.error;
+        }
+
+        uploadedPaths.push(storagePath);
+        const isPreview =
+          PREVIEW_IMAGE_EXTENSIONS.has(
+            scanned.extension,
+          );
+        const metadataResult =
+          await supabase
+            .from("print_project_files")
+            .insert({
+              user_id: user.id,
+              project_id:
+                targetProject.id,
+              storage_path: storagePath,
+              file_name: scanned.name,
+              file_type:
+                scanned.extension,
+              mime_type:
+                scanned.file.type ||
+                "application/octet-stream",
+              size_bytes: scanned.size,
+              is_preview: isPreview,
+              relative_path:
+                scanned.relativePath,
+              source_modified_at:
+                scanned.lastModified > 0
+                  ? new Date(
+                      scanned.lastModified,
+                    ).toISOString()
+                  : null,
+              source_kind:
+                "folder_scan",
+            });
+
+        if (metadataResult.error) {
+          throw metadataResult.error;
+        }
+
+        importedCount += 1;
+
+        if (
+          isPreview &&
+          !firstPreviewPath
+        ) {
+          firstPreviewPath = storagePath;
+        }
+
+        if (existing) {
+          replacements.push({
+            oldId: existing.id,
+            oldPath:
+              existing.storage_path,
+            newPath: storagePath,
+          });
+        }
+      }
+
+      if (
+        !targetProject.cover_path &&
+        firstPreviewPath
+      ) {
+        const coverResult = await supabase
+          .from("print_projects")
+          .update({
+            cover_path: firstPreviewPath,
+          })
+          .eq("id", targetProject.id)
+          .eq("user_id", user.id);
+
+        if (coverResult.error) {
+          throw coverResult.error;
+        }
+      }
+
+      let cleanupWarning = false;
+
+      if (replacements.length > 0) {
+        const oldIds = replacements.map(
+          (replacement) =>
+            replacement.oldId,
+        );
+        const oldCoverReplacement =
+          replacements.find(
+            (replacement) =>
+              replacement.oldPath ===
+              targetProject.cover_path,
+          );
+
+        const deleteOldResult =
+          await supabase
+            .from("print_project_files")
+            .delete()
+            .eq("user_id", user.id)
+            .in("id", oldIds);
+
+        if (deleteOldResult.error) {
+          throw deleteOldResult.error;
+        }
+
+        let keepOldCoverPath = false;
+        if (oldCoverReplacement) {
+          const coverResult = await supabase
+            .from("print_projects")
+            .update({
+              cover_path:
+                oldCoverReplacement.newPath,
+            })
+            .eq("id", targetProject.id)
+            .eq("user_id", user.id);
+
+          if (coverResult.error) {
+            keepOldCoverPath = true;
+            cleanupWarning = true;
+          }
+        }
+
+        const removableOldPaths =
+          replacements
+            .map(
+              (replacement) =>
+                replacement.oldPath,
+            )
+            .filter(
+              (oldPath) =>
+                !keepOldCoverPath ||
+                oldPath !==
+                  oldCoverReplacement?.oldPath,
+            );
+
+        if (removableOldPaths.length > 0) {
+          const removeOldResult =
+            await supabase.storage
+              .from(STORAGE_BUCKET)
+              .remove(removableOldPaths);
+
+          if (removeOldResult.error) {
+            cleanupWarning = true;
+          }
+        }
+      }
+
+      setMessage(
+        `${importedCount} Datei${importedCount === 1 ? "" : "en"} importiert${skippedDuplicates > 0 ? `, ${skippedDuplicates} unveränderte Duplikate übersprungen` : ""}${cleanupWarning ? "; ältere Storage-Dateien konnten teilweise nicht automatisch bereinigt werden" : ""}.`,
+      );
+      setScannerOpen(false);
+      setScanResult(null);
+      setScanSelectedIds(new Set());
+      setScanProgress(null);
+      await loadProjects();
+    } catch (caughtError) {
+      if (uploadedPaths.length > 0) {
+        await supabase
+          .from("print_project_files")
+          .delete()
+          .eq("user_id", user.id)
+          .in(
+            "storage_path",
+            uploadedPaths,
+          );
+        await supabase.storage
+          .from(STORAGE_BUCKET)
+          .remove(uploadedPaths);
+      }
+
+      if (createdProjectId) {
+        await supabase
+          .from("print_projects")
+          .delete()
+          .eq("id", createdProjectId)
+          .eq("user_id", user.id);
+      }
+
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Der Ordnerimport ist fehlgeschlagen.",
+      );
+    } finally {
+      setScanImporting(false);
+      setScanProgress(null);
+    }
+  }
+
   async function uploadFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
@@ -480,13 +1324,13 @@ export default function PrintLibraryPage() {
     clearFeedback();
     const invalidFile = files.find((file) => {
       const extension = extensionOf(file.name);
-      return !ALLOWED_EXTENSIONS.has(extension) || file.size > MAX_FILE_SIZE;
+      return !ALL_PRINT_EXTENSIONS.has(extension) || file.size > MAX_PRINT_FILE_SIZE;
     });
 
     if (invalidFile) {
       const extension = extensionOf(invalidFile.name);
       setError(
-        invalidFile.size > MAX_FILE_SIZE
+        invalidFile.size > MAX_PRINT_FILE_SIZE
           ? `„${invalidFile.name}“ ist größer als 100 MB.`
           : `Der Dateityp .${extension || "?"} wird noch nicht unterstützt.`,
       );
@@ -513,7 +1357,7 @@ export default function PrintLibraryPage() {
         }
         uploadedPaths.push(storagePath);
 
-        const isImage = IMAGE_EXTENSIONS.has(extension);
+        const isImage = PREVIEW_IMAGE_EXTENSIONS.has(extension);
         const metadataResult = await supabase
           .from("print_project_files")
           .insert({
@@ -525,6 +1369,12 @@ export default function PrintLibraryPage() {
             mime_type: file.type || "application/octet-stream",
             size_bytes: file.size,
             is_preview: isImage,
+            relative_path: file.name,
+            source_modified_at:
+              file.lastModified > 0
+                ? new Date(file.lastModified).toISOString()
+                : null,
+            source_kind: "upload",
           });
 
         if (metadataResult.error) {
@@ -583,7 +1433,7 @@ export default function PrintLibraryPage() {
   }
 
   async function setCover(file: PrintProjectFileRow) {
-    if (!user || !selectedProject || !IMAGE_EXTENSIONS.has(file.file_type)) {
+    if (!user || !selectedProject || !PREVIEW_PREVIEW_IMAGE_EXTENSIONS.has(file.file_type)) {
       return;
     }
 
@@ -638,7 +1488,7 @@ export default function PrintLibraryPage() {
 
     if (selectedProject.cover_path === file.storage_path) {
       const nextCover = projectFiles.find(
-        (entry) => entry.id !== file.id && IMAGE_EXTENSIONS.has(entry.file_type),
+        (entry) => entry.id !== file.id && PREVIEW_IMAGE_EXTENSIONS.has(entry.file_type),
       );
       await supabase
         .from("print_projects")
@@ -719,6 +1569,26 @@ export default function PrintLibraryPage() {
           <p>Modelle, Druckdateien, Bilder und Notizen an einem Ort verwalten</p>
         </div>
         <div className={styles.headerActions}>
+          <input
+            ref={folderInputRef}
+            className={styles.hiddenInput}
+            type="file"
+            multiple
+            onChange={handleDirectorySelection}
+          />
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={
+              loading ||
+              busy ||
+              setupMissing ||
+              migrationMissing
+            }
+            onClick={() => openScanner()}
+          >
+            Ordner scannen
+          </button>
           <button
             className="secondary-button"
             type="button"
@@ -758,6 +1628,17 @@ export default function PrintLibraryPage() {
         </section>
       ) : (
         <>
+          {migrationMissing && (
+            <section className={styles.migrationState}>
+              <strong>V17.1-Migration erforderlich</strong>
+              <p>
+                Führe einmal <code>supabase/print_library_v17_1.sql</code> im
+                Supabase SQL Editor aus. Die vorhandene Druckbibliothek bleibt
+                dabei erhalten.
+              </p>
+            </section>
+          )}
+
           {formOpen && (
             <section className={styles.formPanel}>
               <div className={styles.formHeader}>
@@ -986,6 +1867,389 @@ export default function PrintLibraryPage() {
         </>
       )}
 
+      {scannerOpen && (
+        <div
+          className={styles.scannerBackdrop}
+          role="presentation"
+        >
+          <section
+            className={styles.scannerPanel}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Lokalen Druckordner scannen"
+          >
+            <header className={styles.scannerHeader}>
+              <div>
+                <span>LOKALER ORDNER-SCAN</span>
+                <h2>Druckdateien finden</h2>
+                <p>
+                  Philamentix prüft die ausgewählten Dateien zuerst nur lokal.
+                  Erst beim Import werden markierte Dateien hochgeladen.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Scanner schließen"
+                disabled={scanImporting}
+                onClick={closeScanner}
+              >
+                ×
+              </button>
+            </header>
+
+            <div className={styles.scannerBody}>
+              <section className={styles.scanSourcePanel}>
+                <div>
+                  <strong>
+                    {scanResult
+                      ? scanResult.rootName
+                      : "Noch kein Ordner ausgewählt"}
+                  </strong>
+                  <p>
+                    Der Browser benötigt eine bewusste Ordnerauswahl. Ein
+                    automatischer Zugriff auf andere Computerordner findet
+                    nicht statt.
+                  </p>
+                </div>
+                <button
+                  className="primary-button"
+                  type="button"
+                  disabled={scanImporting}
+                  onClick={chooseLocalFolder}
+                >
+                  {scanResult
+                    ? "Anderen Ordner wählen"
+                    : "Ordner auswählen"}
+                </button>
+              </section>
+
+              <section className={styles.formatPanel}>
+                <div className={styles.scanSectionHeading}>
+                  <div>
+                    <span>Formate</span>
+                    <h3>Wonach soll gesucht werden?</h3>
+                  </div>
+                  <small>
+                    Die Auswahl wird nur in diesem Browser gespeichert.
+                  </small>
+                </div>
+
+                <div className={styles.formatGroups}>
+                  {PRINT_FORMAT_GROUPS.map((group) => (
+                    <article className={styles.formatGroup} key={group.id}>
+                      <div>
+                        <strong>{group.label}</strong>
+                        <p>{group.description}</p>
+                      </div>
+                      <div className={styles.formatChips}>
+                        {group.formats.map((format) => {
+                          const active = enabledScanExtensions.has(
+                            format.extension,
+                          );
+                          const resultCount =
+                            scanResult?.files.filter(
+                              (file) =>
+                                file.extension === format.extension,
+                            ).length ?? 0;
+
+                          return (
+                            <button
+                              className={active ? styles.formatChipActive : ""}
+                              type="button"
+                              aria-pressed={active}
+                              key={format.extension}
+                              onClick={() =>
+                                toggleScanExtension(format.extension)
+                              }
+                            >
+                              {format.label}
+                              {scanResult && <small>{resultCount}</small>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              {scanResult && (
+                <>
+                  <section className={styles.scanStats}>
+                    <article>
+                      <span>Ordnerinhalt</span>
+                      <strong>{scanResult.totalEntries}</strong>
+                      <small>alle gefundenen Dateien</small>
+                    </article>
+                    <article>
+                      <span>Bekannte Formate</span>
+                      <strong>{scanResult.files.length}</strong>
+                      <small>{formatBytes(scanResult.recognizedSize)}</small>
+                    </article>
+                    <article>
+                      <span>Nicht unterstützt</span>
+                      <strong>{scanResult.unsupportedEntries}</strong>
+                      <small>werden nicht hochgeladen</small>
+                    </article>
+                    <article>
+                      <span>Nicht importierbar</span>
+                      <strong>
+                        {scanResult.tooLargeEntries +
+                          scanResult.pathTooLongEntries}
+                      </strong>
+                      <small>zu groß oder Pfad zu lang</small>
+                    </article>
+                  </section>
+
+                  {scanResult.ignoredFiles.length > 0 && (
+                    <details className={styles.ignoredPanel}>
+                      <summary>
+                        <span>Ignorierte Dateien anzeigen</span>
+                        <strong>{scanResult.ignoredFiles.length}</strong>
+                      </summary>
+                      <div className={styles.ignoredList}>
+                        {scanResult.ignoredFiles.slice(0, 500).map((file) => (
+                          <div className={styles.ignoredRow} key={file.id}>
+                            <span className={styles.ignoredType}>
+                              {file.extension
+                                ? `.${file.extension}`
+                                : "ohne Endung"}
+                            </span>
+                            <span className={styles.ignoredPath}>
+                              <strong>{file.name}</strong>
+                              <small>{file.relativePath}</small>
+                            </span>
+                            <span>{formatBytes(file.size)}</span>
+                            <span>Nicht unterstützt</span>
+                          </div>
+                        ))}
+                        {scanResult.ignoredFiles.length > 500 && (
+                          <p className={styles.ignoredLimit}>
+                            Weitere {scanResult.ignoredFiles.length - 500} ignorierte
+                            Dateien werden aus Leistungsgründen nicht einzeln
+                            dargestellt.
+                          </p>
+                        )}
+                      </div>
+                    </details>
+                  )}
+
+                  <section className={styles.scanToolbar}>
+                    <input
+                      type="search"
+                      value={scanSearch}
+                      placeholder="Dateiname oder Pfad durchsuchen …"
+                      onChange={(event) => setScanSearch(event.target.value)}
+                    />
+                    <select
+                      value={scanFormatFilter}
+                      onChange={(event) =>
+                        setScanFormatFilter(event.target.value)
+                      }
+                    >
+                      <option value="all">Alle aktivierten Formate</option>
+                      {scanFormatOptions.map((extension) => (
+                        <option value={extension} key={extension}>
+                          {formatLabelForExtension(extension)}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={selectVisibleScannedFiles}>
+                      Sichtbare auswählen
+                    </button>
+                    <button type="button" onClick={clearScannedSelection}>
+                      Auswahl leeren
+                    </button>
+                  </section>
+
+                  <section className={styles.scanFileList}>
+                    {visibleScannedFiles.length === 0 ? (
+                      <div className={styles.emptyState}>
+                        Für die aktuelle Format- und Suchauswahl wurden keine
+                        Dateien gefunden.
+                      </div>
+                    ) : (
+                      visibleScannedFiles.map((file) => (
+                        <label
+                          className={`${styles.scanFileRow} ${
+                            file.status !== "ready"
+                              ? styles.scanFileRowInvalid
+                              : ""
+                          }`}
+                          key={file.id}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={file.status !== "ready"}
+                            checked={scanSelectedIds.has(file.id)}
+                            onChange={() => toggleScannedFile(file)}
+                          />
+                          <span className={styles.scanFormatMark}>
+                            {formatLabelForExtension(file.extension)}
+                          </span>
+                          <span className={styles.scanFilePath}>
+                            <strong>{file.name}</strong>
+                            <small>{file.relativePath}</small>
+                          </span>
+                          <span className={styles.scanFileSize}>
+                            {formatBytes(file.size)}
+                          </span>
+                          <span className={styles.scanFileStatus}>
+                            {file.status === "ready"
+                              ? "Bereit"
+                              : file.status === "too_large"
+                                ? "Über 100 MB"
+                                : "Pfad zu lang"}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </section>
+
+                  {filteredScannedFiles.length > SCAN_RESULTS_PER_PAGE && (
+                    <nav
+                      className={styles.scanPagination}
+                      aria-label="Scanergebnisse"
+                    >
+                      <button
+                        type="button"
+                        disabled={scanPage <= 1}
+                        onClick={() =>
+                          setScanPage((current) => Math.max(1, current - 1))
+                        }
+                      >
+                        ← Zurück
+                      </button>
+                      <span>
+                        Seite {Math.min(scanPage, scanTotalPages)} von{" "}
+                        {scanTotalPages} · {filteredScannedFiles.length} Treffer
+                      </span>
+                      <button
+                        type="button"
+                        disabled={scanPage >= scanTotalPages}
+                        onClick={() =>
+                          setScanPage((current) =>
+                            Math.min(scanTotalPages, current + 1),
+                          )
+                        }
+                      >
+                        Weiter →
+                      </button>
+                    </nav>
+                  )}
+
+                  <section className={styles.scanImportPanel}>
+                    <div className={styles.scanSectionHeading}>
+                      <div>
+                        <span>Import</span>
+                        <h3>Ziel in der Druckbibliothek</h3>
+                      </div>
+                      <small>
+                        {selectedScannedFiles.length} Dateien · {formatBytes(
+                          selectedScannedSize,
+                        )}
+                      </small>
+                    </div>
+
+                    <div className={styles.scanTargetChoice}>
+                      <label>
+                        <input
+                          type="radio"
+                          name="scan-target"
+                          value="new"
+                          checked={scanTargetMode === "new"}
+                          onChange={() => setScanTargetMode("new")}
+                        />
+                        Neues Projekt anlegen
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="scan-target"
+                          value="existing"
+                          checked={scanTargetMode === "existing"}
+                          disabled={projects.length === 0}
+                          onChange={() => setScanTargetMode("existing")}
+                        />
+                        Vorhandenes Projekt verwenden
+                      </label>
+                    </div>
+
+                    {scanTargetMode === "new" ? (
+                      <label className={styles.scanTargetField}>
+                        <span>Projektname</span>
+                        <input
+                          maxLength={200}
+                          value={scanProjectName}
+                          onChange={(event) =>
+                            setScanProjectName(event.target.value)
+                          }
+                        />
+                      </label>
+                    ) : (
+                      <label className={styles.scanTargetField}>
+                        <span>Zielprojekt</span>
+                        <select
+                          value={scanTargetProjectId}
+                          onChange={(event) =>
+                            setScanTargetProjectId(event.target.value)
+                          }
+                        >
+                          <option value="">Projekt auswählen</option>
+                          {projects.map((project) => (
+                            <option value={project.id} key={project.id}>
+                              {project.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
+                    {scanProgress && (
+                      <div className={styles.scanProgress}>
+                        <div>
+                          <span>
+                            Datei {scanProgress.current} von {scanProgress.total}
+                          </span>
+                          <strong>{scanProgress.fileName}</strong>
+                        </div>
+                        <progress
+                          max={scanProgress.total}
+                          value={scanProgress.current}
+                        />
+                      </div>
+                    )}
+
+                    <div className={styles.scanImportActions}>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        disabled={scanImporting}
+                        onClick={closeScanner}
+                      >
+                        Abbrechen
+                      </button>
+                      <button
+                        className="primary-button"
+                        type="button"
+                        disabled={
+                          scanImporting || selectedScannedFiles.length === 0
+                        }
+                        onClick={() => void importScannedFiles()}
+                      >
+                        {scanImporting
+                          ? "Import läuft …"
+                          : "Auswahl importieren"}
+                      </button>
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
       {selectedProject && (
         <div className={styles.detailBackdrop} role="presentation">
           <section className={styles.detailPanel} role="dialog" aria-modal="true">
@@ -1013,16 +2277,24 @@ export default function PrintLibraryPage() {
                 className={styles.hiddenInput}
                 type="file"
                 multiple
-                accept=".stl,.3mf,.obj,.gcode,.bgcode,.step,.stp,.zip,.png,.jpg,.jpeg,.webp,.pdf,.txt,.md"
+                accept={PRINT_LIBRARY_ACCEPT}
                 onChange={(event) => void uploadFiles(event)}
               />
               <button
                 className="primary-button"
                 type="button"
-                disabled={uploading}
+                disabled={uploading || migrationMissing}
                 onClick={() => uploadInputRef.current?.click()}
               >
                 {uploading ? "Upload läuft …" : "+ Dateien hochladen"}
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={uploading || migrationMissing}
+                onClick={() => openScanner(selectedProject.id)}
+              >
+                Ordner in dieses Projekt scannen
               </button>
               <span>Maximal 100 MB pro Datei</span>
             </div>
@@ -1042,9 +2314,14 @@ export default function PrintLibraryPage() {
                         {fileKind(file)} · {formatBytes(file.size_bytes)} ·{" "}
                         {formatDate(file.created_at)}
                       </span>
+                      {file.relative_path && file.relative_path !== file.file_name && (
+                        <small title={file.relative_path}>
+                          {file.relative_path}
+                        </small>
+                      )}
                     </div>
                     <div className={styles.fileActions}>
-                      {IMAGE_EXTENSIONS.has(file.file_type) && (
+                      {PREVIEW_IMAGE_EXTENSIONS.has(file.file_type) && (
                         <button
                           className="secondary-button"
                           type="button"

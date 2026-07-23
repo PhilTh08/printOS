@@ -633,3 +633,20 @@ Der Hub besitzt keinen Gast- oder Demo-Modus mehr. Alle geschützten Seiten
 benötigen eine gültige Supabase-Sitzung. Dashboard-Einstellungen werden nicht
 mehr unter einem gemeinsamen `guest`-Schlüssel gespeichert. Die veraltete
 statische Design-Demo wurde aus dem Paket entfernt.
+
+
+## V17.1 – Lokaler Ordner-Scanner
+
+Die Druckbibliothek kann jetzt einen bewusst ausgewählten lokalen Ordner
+rekursiv nach 3D-Modellen, Druckdateien, CAD-Quellen, Referenzen und Archiven
+durchsuchen. Die Treffer werden vor dem Upload angezeigt und können einzeln
+ausgewählt werden.
+
+Für bestehende V17.0-Installationen einmal ausführen:
+
+`supabase/print_library_v17_1.sql`
+
+Der Scan selbst bleibt lokal. Nur ausgewählte Dateien werden in Supabase
+hochgeladen. Relative Pfade und Änderungszeitpunkte werden gespeichert, damit
+unveränderte Dateien bei einem späteren Scan übersprungen und geänderte Dateien
+erkannt werden können.

@@ -1,4 +1,4 @@
--- Philamentix Hub V17.0 – Druckbibliothek
+-- Philamentix Hub V17.1 – Druckbibliothek mit lokalem Ordner-Scanner
 -- Einmal vollständig im Supabase SQL Editor ausführen.
 
 begin;
@@ -28,6 +28,10 @@ create table if not exists public.print_project_files (
   mime_type text not null default 'application/octet-stream',
   size_bytes bigint not null default 0 check (size_bytes >= 0),
   is_preview boolean not null default false,
+  relative_path text not null default '' check (char_length(relative_path) <= 1000),
+  source_modified_at timestamptz,
+  source_kind text not null default 'upload'
+    check (source_kind in ('upload', 'folder_scan')),
   created_at timestamptz not null default now()
 );
 
@@ -39,6 +43,8 @@ create index if not exists print_project_files_project_idx
   on public.print_project_files(project_id, created_at desc);
 create index if not exists print_project_files_user_idx
   on public.print_project_files(user_id);
+create index if not exists print_project_files_relative_path_idx
+  on public.print_project_files(user_id, project_id, relative_path);
 
 alter table public.print_projects enable row level security;
 alter table public.print_project_files enable row level security;
