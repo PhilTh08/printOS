@@ -166,6 +166,12 @@ type AdminTab =
   | "logs"
   | "audit";
 
+type AdminSection =
+  | "users"
+  | "release"
+  | "maintenance"
+  | "system";
+
 function formatDate(value: string | null): string {
   if (!value) {
     return "–";
@@ -271,6 +277,8 @@ export default function AdminPage() {
     useState<MaintenanceTarget>("global");
   const [maintenanceMessage, setMaintenanceMessage] =
     useState(DEFAULT_MAINTENANCE_MESSAGE);
+  const [adminSection, setAdminSection] =
+    useState<AdminSection>("users");
   const [activeTab, setActiveTab] =
     useState<AdminTab>("filaments");
   const [search, setSearch] = useState("");
@@ -485,6 +493,29 @@ export default function AdminPage() {
     },
     [adminFetch],
   );
+
+  useEffect(() => {
+    const savedSection = window.localStorage.getItem(
+      "philamentix-admin-section",
+    );
+
+    if (
+      savedSection === "users" ||
+      savedSection === "release" ||
+      savedSection === "maintenance" ||
+      savedSection === "system"
+    ) {
+      setAdminSection(savedSection);
+    }
+  }, []);
+
+  function changeAdminSection(section: AdminSection) {
+    setAdminSection(section);
+    window.localStorage.setItem(
+      "philamentix-admin-section",
+      section,
+    );
+  }
 
   useEffect(() => {
     if (!adminRoleReady || !isAdmin) {
@@ -1212,6 +1243,39 @@ export default function AdminPage() {
         </div>
       )}
 
+      <nav
+        className={styles.adminSectionNav}
+        aria-label="Adminbereiche"
+      >
+        {([
+          ["users", "Benutzer"],
+          ["release", "Release"],
+          ["maintenance", "Wartung"],
+          ["system", "System"],
+        ] as Array<[AdminSection, string]>).map(
+          ([section, label]) => (
+            <button
+              type="button"
+              key={section}
+              className={
+                adminSection === section
+                  ? styles.adminSectionActive
+                  : ""
+              }
+              aria-pressed={adminSection === section}
+              onClick={() => changeAdminSection(section)}
+            >
+              {label}
+              {section === "maintenance" &&
+                maintenanceActiveCount > 0 && (
+                  <span>{maintenanceActiveCount}</span>
+                )}
+            </button>
+          ),
+        )}
+      </nav>
+
+      {adminSection === "release" && (
       <section className={styles.releaseManager}>
         <div className={styles.releaseManagerHeading}>
           <div>
@@ -1456,7 +1520,9 @@ export default function AdminPage() {
           </form>
         )}
       </section>
+      )}
 
+      {adminSection === "maintenance" && (
       <section className={styles.maintenanceManager}>
         <div className={styles.maintenanceHeading}>
           <div>
@@ -1502,16 +1568,34 @@ export default function AdminPage() {
                       ? styles.maintenanceTargetActive
                       : ""
                   }
-                  disabled={!selectedUserId}
+                  disabled={users.length === 0}
                   onClick={() => setMaintenanceTarget("selected")}
                 >
-                  Ausgewählter Account
+                  Einzelner Account
                 </button>
               </div>
 
               <div className={styles.maintenanceTargetName}>
                 <span>Ziel</span>
-                <strong>{maintenanceTargetLabel}</strong>
+                {maintenanceTarget === "selected" ? (
+                  <select
+                    className={styles.maintenanceAccountSelect}
+                    value={selectedUserId}
+                    onChange={(event) => {
+                      setSelectedUserId(event.target.value);
+                      setEditingFilament(null);
+                    }}
+                  >
+                    {users.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.displayName || account.email}
+                        {account.isAdmin ? " · Admin" : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <strong>{maintenanceTargetLabel}</strong>
+                )}
                 {maintenanceTarget === "selected" && selectedAccount && (
                   <small>{selectedAccount.email}</small>
                 )}
@@ -1669,6 +1753,31 @@ export default function AdminPage() {
           </>
         )}
       </section>
+      )}
+
+      {adminSection === "system" && (
+        <>
+          <section className={styles.systemOverview}>
+            <div>
+              <span>Systemübersicht</span>
+              <h2>Hub-Status</h2>
+              <p>
+                Schneller Überblick über Nutzer, Release, Wartung und
+                Online-Status.
+              </p>
+            </div>
+            <div className={styles.systemStatusPills}>
+              <span data-ok={releaseLoaded}>
+                Release {releaseLoading ? "lädt" : releaseLoaded ? "bereit" : "Setup"}
+              </span>
+              <span data-ok={maintenanceLoaded}>
+                Wartung {maintenanceLoading ? "lädt" : maintenanceLoaded ? "bereit" : "Setup"}
+              </span>
+              <span data-ok={presenceAvailable === true}>
+                Presence {presenceAvailable === null ? "lädt" : presenceAvailable ? "bereit" : "Setup"}
+              </span>
+            </div>
+          </section>
 
       <section className={styles.statsGrid}>
         <article>
@@ -1704,7 +1813,10 @@ export default function AdminPage() {
           <small>zuletzt geladen</small>
         </article>
       </section>
+        </>
+      )}
 
+      {adminSection === "users" && (
       <section className={styles.workspace}>
         <aside className={styles.userPanel}>
           <div className={styles.panelHeading}>
@@ -2239,6 +2351,7 @@ export default function AdminPage() {
           )}
         </div>
       </section>
+      )}
 
       {editingFilament && (
         <div className={styles.modalBackdrop}>
