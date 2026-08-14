@@ -13,6 +13,12 @@ import {
 import { supabase } from "@/lib/supabase";
 
 import {
+  resolveMaintenance,
+  type MaintenanceArea,
+  type MaintenanceRule,
+} from "./maintenance";
+
+import {
   filamentFormToRow,
   rowToFilament,
   rowToLog,
@@ -47,6 +53,11 @@ type PreferenceSyncState =
   | "error";
 
 export type ReleaseAudience = "public" | "beta";
+export type RollMessageSpeed =
+  | "fast"
+  | "normal"
+  | "slow"
+  | "very_slow";
 
 export type ReleaseInfo = {
   audience: ReleaseAudience;
@@ -54,6 +65,7 @@ export type ReleaseInfo = {
   version: string;
   message: string;
   messageEnabled: boolean;
+  rollMessageSpeed: RollMessageSpeed;
   betaTester: boolean;
   betaReleaseEnabled: boolean;
   setupAvailable: boolean;
@@ -65,6 +77,7 @@ const DEFAULT_RELEASE_INFO: ReleaseInfo = {
   version: "1.0",
   message: "",
   messageEnabled: false,
+  rollMessageSpeed: "normal",
   betaTester: false,
   betaReleaseEnabled: false,
   setupAvailable: false,
@@ -123,6 +136,12 @@ type HubContextValue = {
   releaseReady: boolean;
   refreshReleaseInfo: () => Promise<void>;
   hasReleaseAccess: (requiredVersion: string) => boolean;
+  maintenanceRules: MaintenanceRule[];
+  maintenanceReady: boolean;
+  maintenanceSetupAvailable: boolean;
+  refreshMaintenance: () => Promise<void>;
+  isAreaInMaintenance: (area: MaintenanceArea) => boolean;
+  maintenanceMessageForArea: (area: MaintenanceArea) => string;
   filamentImageMode: FilamentImageMode;
   filamentDefaults: FilamentDefaults;
   preferenceSyncState: PreferenceSyncState;
@@ -356,6 +375,12 @@ export function HubProvider({
     useState<ReleaseInfo>(DEFAULT_RELEASE_INFO);
   const [releaseReady, setReleaseReady] =
     useState(false);
+  const [maintenanceRules, setMaintenanceRules] =
+    useState<MaintenanceRule[]>([]);
+  const [maintenanceReady, setMaintenanceReady] =
+    useState(false);
+  const [maintenanceSetupAvailable, setMaintenanceSetupAvailable] =
+    useState(false);
   const [filaments, setFilaments] = useState<
     Filament[]
   >([]);
@@ -438,7 +463,7 @@ export function HubProvider({
           supabase
             .from("app_release_state")
             .select(
-              "public_channel,public_version,public_message,public_message_enabled,beta_channel,beta_version,beta_message,beta_message_enabled,beta_release_enabled",
+              "public_channel,public_version,public_message,public_message_enabled,roll_message_speed,beta_channel,beta_version,beta_message,beta_message_enabled,beta_release_enabled",
             )
             .eq("id", 1)
             .maybeSingle(),
@@ -517,6 +542,16 @@ export function HubProvider({
         messageEnabled: useBeta
           ? Boolean(state.beta_message_enabled)
           : Boolean(state.public_message_enabled),
+        rollMessageSpeed: [
+          "fast",
+          "normal",
+          "slow",
+          "very_slow",
+        ].includes(String(state.roll_message_speed))
+          ? (String(
+              state.roll_message_speed,
+            ) as RollMessageSpeed)
+          : "normal",
         betaTester,
         betaReleaseEnabled: Boolean(
           state.beta_release_enabled,
@@ -548,6 +583,92 @@ export function HubProvider({
         requiredVersion,
       ),
     [releaseInfo.version],
+  );
+
+  const loadMaintenanceForUser = useCallback(
+    async (userId: string) => {
+      const { data, error: maintenanceError } =
+        await supabase
+          .from("maintenance_rules")
+          .select(
+            "id,scope,user_id,area,mode,message,enabled,updated_at",
+          )
+          .eq("enabled", true);
+
+      if (maintenanceError) {
+        const code = maintenanceError.code ?? "";
+        const setupMissing =
+          code === "42P01" ||
+          code === "PGRST204" ||
+          code === "PGRST205";
+
+        if (!setupMissing) {
+          console.warn(
+            "Wartungsregeln konnten nicht geladen werden:",
+            maintenanceError.message,
+          );
+        }
+
+        setMaintenanceRules([]);
+        setMaintenanceSetupAvailable(false);
+        setMaintenanceReady(true);
+        return;
+      }
+
+      const rules = (data ?? []).filter((row) => {
+        const scope = String(row.scope);
+        return (
+          scope === "global" ||
+          (scope === "user" && String(row.user_id) === userId)
+        );
+      }) as MaintenanceRule[];
+
+      setMaintenanceRules(rules);
+      setMaintenanceSetupAvailable(true);
+      setMaintenanceReady(true);
+    },
+    [],
+  );
+
+  const refreshMaintenance = useCallback(async () => {
+    if (!user) {
+      setMaintenanceRules([]);
+      setMaintenanceSetupAvailable(false);
+      setMaintenanceReady(true);
+      return;
+    }
+
+    await loadMaintenanceForUser(user.id);
+  }, [loadMaintenanceForUser, user]);
+
+  const isAreaInMaintenance = useCallback(
+    (area: MaintenanceArea) => {
+      if (!user || isAdmin) {
+        return false;
+      }
+
+      return resolveMaintenance(
+        maintenanceRules,
+        user.id,
+        area,
+      ).blocked;
+    },
+    [isAdmin, maintenanceRules, user],
+  );
+
+  const maintenanceMessageForArea = useCallback(
+    (area: MaintenanceArea) => {
+      if (!user || isAdmin) {
+        return "";
+      }
+
+      return resolveMaintenance(
+        maintenanceRules,
+        user.id,
+        area,
+      ).message;
+    },
+    [isAdmin, maintenanceRules, user],
   );
 
   useEffect(() => {
@@ -655,6 +776,72 @@ export function HubProvider({
       );
     };
   }, [authReady, user, loadReleaseInfoForUser]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
+    if (!user) {
+      setMaintenanceRules([]);
+      setMaintenanceSetupAvailable(false);
+      setMaintenanceReady(true);
+      return;
+    }
+
+    let active = true;
+    setMaintenanceReady(false);
+
+    const load = async () => {
+      if (!active) {
+        return;
+      }
+
+      await loadMaintenanceForUser(user.id);
+    };
+
+    void load();
+
+    const intervalId = window.setInterval(() => {
+      void load();
+    }, 30_000);
+
+    const channel = supabase
+      .channel(`maintenance-control-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "maintenance_rules",
+        },
+        () => {
+          void load();
+        },
+      )
+      .subscribe();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility,
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      void supabase.removeChannel(channel);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility,
+      );
+    };
+  }, [authReady, user, loadMaintenanceForUser]);
 
   useEffect(() => {
     if (!authReady) {
@@ -1823,6 +2010,12 @@ export function HubProvider({
       releaseReady,
       refreshReleaseInfo,
       hasReleaseAccess,
+      maintenanceRules,
+      maintenanceReady,
+      maintenanceSetupAvailable,
+      refreshMaintenance,
+      isAreaInMaintenance,
+      maintenanceMessageForArea,
       filamentImageMode,
       filamentDefaults,
       preferenceSyncState,
@@ -1855,6 +2048,12 @@ export function HubProvider({
       releaseReady,
       refreshReleaseInfo,
       hasReleaseAccess,
+      maintenanceRules,
+      maintenanceReady,
+      maintenanceSetupAvailable,
+      refreshMaintenance,
+      isAreaInMaintenance,
+      maintenanceMessageForArea,
       filamentImageMode,
       filamentDefaults,
       preferenceSyncState,

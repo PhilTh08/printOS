@@ -996,7 +996,8 @@
 }
 
 .releaseFields input,
-.releaseFields textarea {
+.releaseFields textarea,
+.releaseFields select {
   width: 100%;
   padding: 9px 10px;
   color: var(--text);
@@ -1013,12 +1014,17 @@
 }
 
 .releaseFields input:focus,
-.releaseFields textarea:focus {
+.releaseFields textarea:focus,
+.releaseFields select:focus {
   border-color: var(--blue);
 }
 
 .releaseMessageField {
   grid-column: 1 / -1;
+}
+
+.releaseSpeedField {
+  max-width: 220px;
 }
 
 .releaseToggle {
@@ -1144,6 +1150,10 @@
     grid-column: auto;
   }
 
+  .releaseSpeedField {
+    max-width: none;
+  }
+
   .releaseActions {
     align-items: stretch;
     flex-direction: column;
@@ -1152,5 +1162,402 @@
   .releaseActions button,
   .betaAccessButton {
     width: 100%;
+  }
+}
+
+/* V17.2.6 – Maintenance Control */
+.maintenanceManager {
+  margin-bottom: 18px;
+  padding: 20px;
+  border: 1px solid rgba(245, 166, 35, 0.2);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(245, 166, 35, 0.035), transparent 32%),
+    rgba(15, 21, 25, 0.88);
+}
+
+.maintenanceHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.maintenanceHeading > div:first-child > span,
+.maintenanceSummary > span,
+.maintenanceTargetName > span {
+  color: #8c999f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.maintenanceHeading h2 {
+  margin: 4px 0 5px;
+  font-size: 22px;
+}
+
+.maintenanceHeading p {
+  max-width: 720px;
+  margin: 0;
+  color: #8e9aa1;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.maintenanceSummary {
+  min-width: 165px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  border-radius: 10px;
+  background: rgba(245, 166, 35, 0.05);
+  text-align: right;
+}
+
+.maintenanceSummary strong {
+  display: block;
+  margin: 3px 0;
+  color: #f5b642;
+  font-size: 24px;
+}
+
+.maintenanceSummary small {
+  color: #738087;
+  font-size: 10px;
+}
+
+.maintenanceTargetBar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.maintenanceTargetSwitch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #2c363c;
+  border-radius: 9px;
+  background: #0d1215;
+}
+
+.maintenanceTargetSwitch button,
+.maintenanceChoices button,
+.maintenanceBulkActions button {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #aeb8bd;
+  cursor: pointer;
+}
+
+.maintenanceTargetSwitch button {
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.maintenanceTargetSwitch button:disabled,
+.maintenanceChoices button:disabled,
+.maintenanceBulkActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.maintenanceTargetSwitch .maintenanceTargetActive {
+  border-color: rgba(245, 166, 35, 0.27);
+  background: rgba(245, 166, 35, 0.1);
+  color: #f2f5f6;
+}
+
+.maintenanceTargetName {
+  display: flex;
+  min-width: 220px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 8px 11px;
+  border: 1px solid #263138;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.maintenanceTargetName strong {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.maintenanceTargetName small {
+  color: #718087;
+  font-size: 10px;
+}
+
+.maintenanceAdminBypass {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(85, 167, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(85, 167, 255, 0.055);
+  color: #9cadb5;
+  font-size: 12px;
+}
+
+.maintenanceAdminBypass strong {
+  color: #7db8ff;
+  white-space: nowrap;
+}
+
+.maintenanceControls {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 13px;
+}
+
+.maintenanceMessage {
+  display: grid;
+  gap: 6px;
+  color: #8c999f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.maintenanceMessage input {
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 11px;
+  border: 1px solid #2d383e;
+  border-radius: 8px;
+  outline: none;
+  background: #0d1215;
+  color: #e8edef;
+}
+
+.maintenanceMessage input:focus {
+  border-color: rgba(245, 166, 35, 0.45);
+}
+
+.maintenanceBulkActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.maintenanceBulkActions button {
+  min-height: 38px;
+  padding: 8px 11px;
+  border-color: #303a40;
+  background: #151c20;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.maintenanceBulkActions button:hover:not(:disabled) {
+  border-color: #48545b;
+  color: #fff;
+}
+
+.maintenanceBulkActions .maintenanceDangerButton {
+  border-color: rgba(255, 107, 107, 0.3);
+  background: rgba(255, 107, 107, 0.075);
+  color: #ff8b8b;
+}
+
+.maintenanceBulkActions .maintenanceOpenButton {
+  border-color: rgba(57, 217, 138, 0.25);
+  background: rgba(57, 217, 138, 0.06);
+  color: #65dfa1;
+}
+
+.maintenanceAreaList {
+  overflow: hidden;
+  border: 1px solid #28333a;
+  border-radius: 10px;
+  background: rgba(8, 12, 14, 0.42);
+}
+
+.maintenanceAreaRow {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 11px 12px;
+  border-bottom: 1px solid #222d33;
+}
+
+.maintenanceAreaRow:last-child {
+  border-bottom: 0;
+}
+
+.maintenanceAreaInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.maintenanceAreaInfo > div {
+  display: grid;
+  gap: 2px;
+}
+
+.maintenanceAreaInfo strong {
+  font-size: 12px;
+}
+
+.maintenanceAreaInfo small {
+  color: #718087;
+  font-size: 10px;
+}
+
+.maintenanceEffectiveOpen,
+.maintenanceEffectiveClosed {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.maintenanceEffectiveOpen {
+  border: 1px solid rgba(57, 217, 138, 0.22);
+  background: rgba(57, 217, 138, 0.055);
+  color: #69dda4;
+}
+
+.maintenanceEffectiveClosed {
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  background: rgba(245, 166, 35, 0.07);
+  color: #f5b642;
+}
+
+.maintenanceChoices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(68px, auto));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #2a343a;
+  border-radius: 8px;
+  background: #0d1215;
+}
+
+.maintenanceChoices button {
+  padding: 7px 9px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.maintenanceChoices .maintenanceChoiceActive {
+  border-color: #465158;
+  background: #20292e;
+  color: #f1f4f5;
+  opacity: 1;
+}
+
+.maintenanceChoices .maintenanceChoiceDanger {
+  border-color: rgba(245, 166, 35, 0.32);
+  background: rgba(245, 166, 35, 0.09);
+  color: #f5b642;
+}
+
+.maintenanceHint {
+  margin: 10px 2px 0;
+  color: #758188;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.maintenanceHint strong {
+  color: #a7b2b8;
+}
+
+@media (max-width: 900px) {
+  .maintenanceHeading,
+  .maintenanceTargetBar {
+    flex-direction: column;
+  }
+
+  .maintenanceSummary,
+  .maintenanceTargetName {
+    min-width: 0;
+    width: 100%;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .maintenanceControls,
+  .maintenanceAreaRow {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenanceBulkActions {
+    justify-content: flex-start;
+  }
+
+  .maintenanceAreaInfo {
+    align-items: flex-start;
+  }
+
+  .maintenanceChoices {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .maintenanceManager {
+    padding: 14px;
+  }
+
+  .maintenanceTargetSwitch {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .maintenanceAreaInfo {
+    flex-direction: column;
+  }
+}
+
+.maintenanceMessageGroup {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 7px;
+  align-items: end;
+}
+
+.maintenanceMessageSave {
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid #303a40;
+  border-radius: 7px;
+  background: #151c20;
+  color: #b8c2c7;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.maintenanceMessageSave:hover:not(:disabled) {
+  border-color: rgba(245, 166, 35, 0.38);
+  color: #fff;
+}
+
+.maintenanceMessageSave:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 620px) {
+  .maintenanceMessageGroup {
+    grid-template-columns: 1fr;
   }
 }

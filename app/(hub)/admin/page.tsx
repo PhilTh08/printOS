@@ -10,6 +10,14 @@ import {
 
 import { useHub } from "@/components/philamentix/hub-provider";
 import { supabase } from "@/lib/supabase";
+import {
+  DEFAULT_MAINTENANCE_MESSAGE,
+  MAINTENANCE_AREAS,
+  resolveMaintenance,
+  type MaintenanceArea,
+  type MaintenanceMode,
+  type MaintenanceRule,
+} from "@/components/philamentix/maintenance";
 
 import styles from "./page.module.css";
 
@@ -68,12 +76,19 @@ type AdminAudit = {
   error_message: string | null;
 };
 
+type RollMessageSpeed =
+  | "fast"
+  | "normal"
+  | "slow"
+  | "very_slow";
+
 type AdminReleaseConfig = {
   id: number;
   public_channel: string;
   public_version: string;
   public_message: string;
   public_message_enabled: boolean;
+  roll_message_speed?: RollMessageSpeed;
   beta_channel: string;
   beta_version: string;
   beta_message: string;
@@ -82,11 +97,15 @@ type AdminReleaseConfig = {
   updated_at: string;
 };
 
+type MaintenanceTarget = "global" | "selected";
+type MaintenanceChoice = MaintenanceMode | "inherit";
+
 type ReleaseForm = {
   publicChannel: string;
   publicVersion: string;
   publicMessage: string;
   publicMessageEnabled: boolean;
+  rollMessageSpeed: RollMessageSpeed;
   betaChannel: string;
   betaVersion: string;
   betaMessage: string;
@@ -99,6 +118,7 @@ const EMPTY_RELEASE_FORM: ReleaseForm = {
   publicVersion: "1.0",
   publicMessage: "",
   publicMessageEnabled: false,
+  rollMessageSpeed: "normal",
   betaChannel: "BETA",
   betaVersion: "",
   betaMessage: "",
@@ -241,6 +261,16 @@ export default function AdminPage() {
     useState(false);
   const [releaseLoading, setReleaseLoading] =
     useState(false);
+  const [maintenanceRules, setMaintenanceRules] =
+    useState<MaintenanceRule[]>([]);
+  const [maintenanceLoaded, setMaintenanceLoaded] =
+    useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] =
+    useState(false);
+  const [maintenanceTarget, setMaintenanceTarget] =
+    useState<MaintenanceTarget>("global");
+  const [maintenanceMessage, setMaintenanceMessage] =
+    useState(DEFAULT_MAINTENANCE_MESSAGE);
   const [activeTab, setActiveTab] =
     useState<AdminTab>("filaments");
   const [search, setSearch] = useState("");
@@ -332,6 +362,8 @@ export default function AdminPage() {
         publicMessage: release.public_message,
         publicMessageEnabled:
           release.public_message_enabled,
+        rollMessageSpeed:
+          release.roll_message_speed ?? "normal",
         betaChannel: release.beta_channel,
         betaVersion: release.beta_version,
         betaMessage: release.beta_message,
@@ -343,6 +375,20 @@ export default function AdminPage() {
       setReleaseLoaded(true);
     } finally {
       setReleaseLoading(false);
+    }
+  }, [adminFetch]);
+
+  const loadMaintenance = useCallback(async () => {
+    setMaintenanceLoading(true);
+
+    try {
+      const result = await adminFetch<{
+        rules: MaintenanceRule[];
+      }>("/api/admin/maintenance");
+      setMaintenanceRules(result.rules ?? []);
+      setMaintenanceLoaded(true);
+    } finally {
+      setMaintenanceLoading(false);
     }
   }, [adminFetch]);
 
@@ -449,6 +495,7 @@ export default function AdminPage() {
       loadUsers(),
       loadAudit(),
       loadRelease(),
+      loadMaintenance(),
     ]).catch(
       (caughtError) => {
         setError(
@@ -463,6 +510,7 @@ export default function AdminPage() {
     isAdmin,
     loadAudit,
     loadRelease,
+    loadMaintenance,
     loadUsers,
   ]);
 
@@ -513,6 +561,32 @@ export default function AdminPage() {
     isAdmin,
     selectedUserId,
     loadUserDetail,
+  ]);
+
+  useEffect(() => {
+    const targetRule = maintenanceRules.find((rule) => {
+      if (rule.mode !== "maintenance") {
+        return false;
+      }
+
+      if (maintenanceTarget === "global") {
+        return rule.scope === "global" && rule.user_id === null;
+      }
+
+      return (
+        rule.scope === "user" &&
+        rule.user_id === selectedUserId
+      );
+    });
+
+    setMaintenanceMessage(
+      targetRule?.message?.trim() ||
+        DEFAULT_MAINTENANCE_MESSAGE,
+    );
+  }, [
+    maintenanceRules,
+    maintenanceTarget,
+    selectedUserId,
   ]);
 
   const filteredUsers = useMemo(() => {
@@ -566,6 +640,74 @@ export default function AdminPage() {
       (account) =>
         account.id === selectedUserId,
     ) ?? null;
+  const maintenanceTargetUserId =
+    maintenanceTarget === "selected"
+      ? selectedUserId
+      : "";
+  const maintenanceTargetLabel =
+    maintenanceTarget === "global"
+      ? "Alle Accounts"
+      : selectedAccount?.displayName ||
+        selectedAccount?.email ||
+        "Kein Account ausgewählt";
+  const maintenanceTargetIsAdmin = Boolean(
+    maintenanceTarget === "selected" &&
+      selectedAccount?.isAdmin,
+  );
+  const maintenanceActiveCount = maintenanceRules.filter(
+    (rule) => rule.enabled && rule.mode === "maintenance",
+  ).length;
+  const maintenanceTargetRuleCount = maintenanceRules.filter(
+    (rule) =>
+      rule.enabled &&
+      rule.mode === "maintenance" &&
+      (maintenanceTarget === "global"
+        ? rule.scope === "global" && rule.user_id === null
+        : rule.scope === "user" &&
+          rule.user_id === maintenanceTargetUserId),
+  ).length;
+
+  function directMaintenanceRule(
+    area: MaintenanceArea,
+  ): MaintenanceRule | null {
+    return (
+      maintenanceRules.find((rule) => {
+        if (rule.area !== area) {
+          return false;
+        }
+
+        if (maintenanceTarget === "global") {
+          return (
+            rule.scope === "global" &&
+            rule.user_id === null
+          );
+        }
+
+        return (
+          rule.scope === "user" &&
+          rule.user_id === maintenanceTargetUserId
+        );
+      }) ?? null
+    );
+  }
+
+  function directMaintenanceChoice(
+    area: MaintenanceArea,
+  ): MaintenanceChoice {
+    return directMaintenanceRule(area)?.mode ?? "inherit";
+  }
+
+  function effectiveMaintenanceForTarget(
+    area: MaintenanceArea,
+  ) {
+    return resolveMaintenance(
+      maintenanceRules,
+      maintenanceTarget === "selected"
+        ? maintenanceTargetUserId
+        : "__global_preview__",
+      area,
+    );
+  }
 
   async function reloadEverything() {
     await Promise.all([
@@ -575,6 +717,7 @@ export default function AdminPage() {
         : Promise.resolve(),
       loadAudit(),
       loadRelease(),
+      loadMaintenance(),
     ]);
   }
 
@@ -667,6 +810,137 @@ export default function AdminPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function updateMaintenance(
+    payload: Record<string, unknown>,
+    successMessage: string,
+  ) {
+    if (
+      maintenanceTarget === "selected" &&
+      !maintenanceTargetUserId
+    ) {
+      setError("Wähle zuerst einen Account aus.");
+      return;
+    }
+
+    if (maintenanceTargetIsAdmin) {
+      setError(
+        "Adminaccounts besitzen absichtlich einen Wartungs-Bypass, damit du dich nicht aussperren kannst.",
+      );
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const result = await adminFetch<{
+        rules: MaintenanceRule[];
+      }>("/api/admin/maintenance", {
+        method: "PATCH",
+        body: JSON.stringify({
+          targetType:
+            maintenanceTarget === "global"
+              ? "global"
+              : "user",
+          userId:
+            maintenanceTarget === "selected"
+              ? maintenanceTargetUserId
+              : undefined,
+          message: maintenanceMessage,
+          ...payload,
+        }),
+      });
+
+      setMaintenanceRules(result.rules ?? []);
+      setMaintenanceLoaded(true);
+      setMessage(successMessage);
+      await loadAudit();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Wartungsmodus konnte nicht geändert werden.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveMaintenanceMessage() {
+    await updateMaintenance(
+      { action: "updateMessage" },
+      `Wartungshinweis für ${maintenanceTargetLabel} wurde aktualisiert.`,
+    );
+  }
+
+  async function setMaintenanceArea(
+    area: MaintenanceArea,
+    mode: MaintenanceChoice,
+  ) {
+    await updateMaintenance(
+      {
+        action: "setArea",
+        area,
+        mode,
+      },
+      `${
+        MAINTENANCE_AREAS.find((entry) => entry.id === area)?.label ?? area
+      } wurde für ${maintenanceTargetLabel} aktualisiert.`,
+    );
+  }
+
+  async function setEntireHubMaintenance(
+    mode: MaintenanceMode,
+  ) {
+    const isGlobal = maintenanceTarget === "global";
+    const actionText =
+      mode === "maintenance"
+        ? "in Wartung setzen"
+        : "vollständig freigeben";
+
+    if (
+      !window.confirm(
+        `${maintenanceTargetLabel} wirklich ${actionText}?${
+          isGlobal && mode === "maintenance"
+            ? " Adminaccounts bleiben erreichbar."
+            : ""
+        }`,
+      )
+    ) {
+      return;
+    }
+
+    await updateMaintenance(
+      {
+        action: "setAll",
+        mode,
+      },
+      mode === "maintenance"
+        ? `${maintenanceTargetLabel}: gesamter Hub ist jetzt im Wartungsmodus.`
+        : `${maintenanceTargetLabel}: gesamter Hub ist jetzt freigegeben.`,
+    );
+  }
+
+  async function clearMaintenanceOverrides() {
+    if (
+      !window.confirm(
+        maintenanceTarget === "global"
+          ? "Alle globalen Wartungsregeln entfernen? Ohne globale Regeln sind Bereiche standardmäßig offen."
+          : `Alle accountbezogenen Wartungsregeln für ${maintenanceTargetLabel} entfernen? Danach gelten wieder die globalen Regeln.`,
+      )
+    ) {
+      return;
+    }
+
+    await updateMaintenance(
+      { action: "clearTarget" },
+      maintenanceTarget === "global"
+        ? "Alle globalen Wartungsregeln wurden entfernt."
+        : `${maintenanceTargetLabel} erbt wieder vollständig die globalen Wartungsregeln.`,
+    );
   }
 
   async function toggleBetaTester() {
@@ -1045,6 +1319,24 @@ export default function AdminPage() {
                     placeholder="z. B. Neue Druckbibliothek ist jetzt verfügbar!"
                   />
                 </label>
+                <label className={styles.releaseSpeedField}>
+                  Geschwindigkeit · Public & Beta
+                  <select
+                    value={releaseForm.rollMessageSpeed}
+                    onChange={(event) =>
+                      setReleaseField(
+                        "rollMessageSpeed",
+                        event.target.value as RollMessageSpeed,
+                      )
+                    }
+                    title="Gilt für Public- und Beta-Roll-Messages"
+                  >
+                    <option value="fast">Schnell · 18 s</option>
+                    <option value="normal">Normal · 26 s</option>
+                    <option value="slow">Langsam · 34 s</option>
+                    <option value="very_slow">Sehr langsam · 45 s</option>
+                  </select>
+                </label>
               </div>
             </article>
 
@@ -1162,6 +1454,219 @@ export default function AdminPage() {
               </button>
             </div>
           </form>
+        )}
+      </section>
+
+      <section className={styles.maintenanceManager}>
+        <div className={styles.maintenanceHeading}>
+          <div>
+            <span>Maintenance Control</span>
+            <h2>Wartungsmodus</h2>
+            <p>
+              Bereiche global oder nur für einzelne Accounts sperren.
+              Account-Regeln haben Vorrang vor globalen Regeln.
+            </p>
+          </div>
+          <div className={styles.maintenanceSummary}>
+            <span>AKTIVE WARTUNGEN</span>
+            <strong>{maintenanceActiveCount}</strong>
+            <small>Adminaccounts haben immer Bypass</small>
+          </div>
+        </div>
+
+        {!maintenanceLoaded && !maintenanceLoading ? (
+          <div className={styles.releaseSetupWarning}>
+            Wartungs-Control-Center noch nicht eingerichtet. Führe
+            <code>supabase/maintenance_control_v17_2_6.sql</code>
+            einmal im Supabase SQL Editor aus.
+          </div>
+        ) : (
+          <>
+            <div className={styles.maintenanceTargetBar}>
+              <div className={styles.maintenanceTargetSwitch}>
+                <button
+                  type="button"
+                  className={
+                    maintenanceTarget === "global"
+                      ? styles.maintenanceTargetActive
+                      : ""
+                  }
+                  onClick={() => setMaintenanceTarget("global")}
+                >
+                  Alle Accounts
+                </button>
+                <button
+                  type="button"
+                  className={
+                    maintenanceTarget === "selected"
+                      ? styles.maintenanceTargetActive
+                      : ""
+                  }
+                  disabled={!selectedUserId}
+                  onClick={() => setMaintenanceTarget("selected")}
+                >
+                  Ausgewählter Account
+                </button>
+              </div>
+
+              <div className={styles.maintenanceTargetName}>
+                <span>Ziel</span>
+                <strong>{maintenanceTargetLabel}</strong>
+                {maintenanceTarget === "selected" && selectedAccount && (
+                  <small>{selectedAccount.email}</small>
+                )}
+              </div>
+            </div>
+
+            {maintenanceTargetIsAdmin && (
+              <div className={styles.maintenanceAdminBypass}>
+                <strong>Admin-Bypass aktiv</strong>
+                Dieser Account kann absichtlich nicht in Wartung
+                gesperrt werden. So bleibt das Control-Center immer
+                erreichbar.
+              </div>
+            )}
+
+            <div className={styles.maintenanceControls}>
+              <div className={styles.maintenanceMessageGroup}>
+                <label className={styles.maintenanceMessage}>
+                  Wartungshinweis
+                  <input
+                    value={maintenanceMessage}
+                    maxLength={500}
+                    disabled={maintenanceTargetIsAdmin}
+                    onChange={(event) =>
+                      setMaintenanceMessage(event.target.value)
+                    }
+                    placeholder={DEFAULT_MAINTENANCE_MESSAGE}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={styles.maintenanceMessageSave}
+                  disabled={
+                    saving ||
+                    maintenanceTargetIsAdmin ||
+                    maintenanceTargetRuleCount === 0
+                  }
+                  onClick={() => void saveMaintenanceMessage()}
+                >
+                  Hinweis übernehmen
+                </button>
+              </div>
+
+              <div className={styles.maintenanceBulkActions}>
+                <button
+                  type="button"
+                  className={styles.maintenanceDangerButton}
+                  disabled={saving || maintenanceTargetIsAdmin}
+                  onClick={() =>
+                    void setEntireHubMaintenance("maintenance")
+                  }
+                >
+                  Gesamten Hub · Wartung
+                </button>
+                <button
+                  type="button"
+                  className={styles.maintenanceOpenButton}
+                  disabled={saving || maintenanceTargetIsAdmin}
+                  onClick={() =>
+                    void setEntireHubMaintenance("available")
+                  }
+                >
+                  Gesamten Hub · Offen
+                </button>
+                <button
+                  type="button"
+                  disabled={saving || maintenanceTargetIsAdmin}
+                  onClick={() =>
+                    void clearMaintenanceOverrides()
+                  }
+                >
+                  Overrides entfernen
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.maintenanceAreaList}>
+              {MAINTENANCE_AREAS.filter(
+                (area) => area.id !== "all",
+              ).map((area) => {
+                const directChoice = directMaintenanceChoice(area.id);
+                const effective = effectiveMaintenanceForTarget(area.id);
+
+                return (
+                  <article
+                    className={styles.maintenanceAreaRow}
+                    key={area.id}
+                  >
+                    <div className={styles.maintenanceAreaInfo}>
+                      <div>
+                        <strong>{area.label}</strong>
+                        <small>{area.description}</small>
+                      </div>
+                      <span
+                        className={
+                          effective.blocked
+                            ? styles.maintenanceEffectiveClosed
+                            : styles.maintenanceEffectiveOpen
+                        }
+                      >
+                        {effective.blocked
+                          ? "Effektiv: Wartung"
+                          : "Effektiv: Offen"}
+                      </span>
+                    </div>
+
+                    <div className={styles.maintenanceChoices}>
+                      {([
+                        ["inherit", "Erben"],
+                        ["available", "Offen"],
+                        ["maintenance", "Wartung"],
+                      ] as Array<[MaintenanceChoice, string]>).map(
+                        ([choice, label]) => (
+                          <button
+                            type="button"
+                            key={choice}
+                            className={`${
+                              directChoice === choice
+                                ? styles.maintenanceChoiceActive
+                                : ""
+                            } ${
+                              choice === "maintenance" &&
+                              directChoice === choice
+                                ? styles.maintenanceChoiceDanger
+                                : ""
+                            }`}
+                            disabled={
+                              saving ||
+                              maintenanceTargetIsAdmin ||
+                              directChoice === choice
+                            }
+                            onClick={() =>
+                              void setMaintenanceArea(
+                                area.id,
+                                choice,
+                              )
+                            }
+                          >
+                            {label}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <p className={styles.maintenanceHint}>
+              <strong>Erben</strong> = keine eigene Regel. Bei einem
+              Account greifen dann die globalen Regeln. <strong>Offen</strong>
+              kann einen Account gezielt von einer globalen Wartung
+              ausnehmen.
+            </p>
+          </>
         )}
       </section>
 

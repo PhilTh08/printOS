@@ -11,6 +11,10 @@ import {
 } from "react";
 
 import { useHub } from "./hub-provider";
+import {
+  MAINTENANCE_AREAS,
+  maintenanceAreaForPathname,
+} from "./maintenance";
 
 const navigation = [
   {
@@ -84,7 +88,11 @@ export function HubShell({
     error,
     displayName,
     isAdmin,
+    adminRoleReady,
     releaseInfo,
+    maintenanceReady,
+    isAreaInMaintenance,
+    maintenanceMessageForArea,
     filaments,
     signOut,
   } = useHub();
@@ -96,6 +104,22 @@ export function HubShell({
     (filament) =>
       filament.stock <= filament.minimumStock,
   ).length;
+  const currentMaintenanceArea =
+    maintenanceAreaForPathname(pathname);
+  const currentAreaMeta = MAINTENANCE_AREAS.find(
+    (area) => area.id === currentMaintenanceArea,
+  );
+  const currentAreaBlocked = Boolean(
+    adminRoleReady &&
+      maintenanceReady &&
+      !isAdmin &&
+      currentMaintenanceArea &&
+      isAreaInMaintenance(currentMaintenanceArea),
+  );
+  const currentMaintenanceMessage =
+    currentMaintenanceArea
+      ? maintenanceMessageForArea(currentMaintenanceArea)
+      : "";
 
   useEffect(() => {
     if (authReady && !user) {
@@ -234,6 +258,7 @@ export function HubShell({
               }`}
               title={releaseInfo.message}
               aria-label={`Systemmeldung: ${releaseInfo.message}`}
+              data-roll-speed={releaseInfo.rollMessageSpeed}
             >
               <span className="sidebar-roll-message-text">
                 {releaseInfo.message}
@@ -254,6 +279,15 @@ export function HubShell({
                     pathname.startsWith("/admin")) ||
                   (item.href === "/druckbibliothek" &&
                     pathname.startsWith("/druckbibliothek"));
+                const itemMaintenanceArea =
+                  maintenanceAreaForPathname(item.href);
+                const itemInMaintenance = Boolean(
+                  adminRoleReady &&
+                    !isAdmin &&
+                    maintenanceReady &&
+                    itemMaintenanceArea &&
+                    isAreaInMaintenance(itemMaintenanceArea),
+                );
 
                 return (
                   <Link
@@ -261,12 +295,26 @@ export function HubShell({
                     href={item.href}
                     className={`nav-button nav-button-link ${
                       active ? "active" : ""
+                    } ${
+                      itemInMaintenance
+                        ? "nav-button-maintenance"
+                        : ""
                     }`}
+                    title={
+                      itemInMaintenance
+                        ? `${item.label} befindet sich im Wartungsmodus`
+                        : undefined
+                    }
                   >
                     <span>{item.icon}</span>
                     <span className="nav-item-label">
                       {item.label}
                     </span>
+                    {itemInMaintenance && (
+                      <span className="nav-maintenance-badge">
+                        WARTUNG
+                      </span>
+                    )}
                     {item.href === "/nachbestellen" &&
                       reorderCount > 0 && (
                         <span className="nav-alert-badge">
@@ -322,7 +370,37 @@ export function HubShell({
           </div>
         )}
 
-        <div className="route-page">{children}</div>
+        <div className="route-page">
+          {currentAreaBlocked ? (
+            <section className="maintenance-screen">
+              <div className="maintenance-screen-icon">⚙</div>
+              <span className="maintenance-screen-kicker">
+                WARTUNGSMODUS
+              </span>
+              <h1>
+                {currentAreaMeta?.label ?? "Dieser Bereich"} ist
+                vorübergehend nicht verfügbar
+              </h1>
+              <p>
+                {currentMaintenanceMessage ||
+                  "Dieser Bereich wird gerade gewartet. Bitte versuche es später erneut."}
+              </p>
+              <div className="maintenance-screen-status">
+                <i />
+                Deine Daten bleiben unverändert gespeichert.
+              </div>
+              <button
+                type="button"
+                className="maintenance-signout-button"
+                onClick={() => void handleSignOut()}
+              >
+                Abmelden
+              </button>
+            </section>
+          ) : (
+            children
+          )}
+        </div>
       </main>
     </div>
   );
