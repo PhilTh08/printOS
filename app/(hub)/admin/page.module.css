@@ -1796,3 +1796,198 @@
     justify-content: flex-start;
   }
 }
+
+/* V18.4.1 – Beta Version Selector & safe downgrade */
+.betaVersionControl {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px;
+  background:
+    linear-gradient(180deg, rgba(85, 167, 255, 0.035), transparent 55%),
+    rgba(4, 12, 16, 0.56);
+  border: 1px solid rgba(85, 167, 255, 0.16);
+  border-radius: 8px;
+}
+
+.betaVersionControlHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.betaVersionControlHeading > div:first-child {
+  min-width: 0;
+}
+
+.betaVersionControlHeading > div:first-child > span,
+.betaVersionControlHeading > div:first-child > small {
+  display: block;
+}
+
+.betaVersionControlHeading > div:first-child > span {
+  color: #cbe3ff;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.betaVersionControlHeading > div:first-child > small {
+  max-width: 480px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.betaVersionState {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 2px;
+  min-width: 76px;
+  padding: 7px 9px;
+  background: rgba(85, 167, 255, 0.07);
+  border: 1px solid rgba(85, 167, 255, 0.22);
+  border-radius: 7px;
+}
+
+.betaVersionState span {
+  color: #91bde9;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.betaVersionState strong {
+  color: #e3f1ff;
+  font-size: 14px;
+}
+
+.betaVersionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 7px;
+}
+
+.betaVersionOption {
+  min-width: 0;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  background: #071014;
+  border: 1px solid #2b3940;
+  border-radius: 7px;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.betaVersionOption:hover {
+  transform: translateY(-1px);
+  background: rgba(85, 167, 255, 0.045);
+  border-color: rgba(85, 167, 255, 0.38);
+}
+
+.betaVersionOptionSelected {
+  background: rgba(85, 167, 255, 0.09);
+  border-color: var(--blue);
+  box-shadow: inset 0 0 0 1px rgba(85, 167, 255, 0.12);
+}
+
+.betaVersionOption > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.betaVersionOption > div > strong {
+  color: #dceeff;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.betaVersionOption > span,
+.betaVersionOption > small,
+.betaVersionOption > em {
+  display: block;
+}
+
+.betaVersionOption > span {
+  margin-top: 6px;
+  color: #c3d3db;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.betaVersionOption > small {
+  min-height: 30px;
+  margin-top: 3px;
+  color: #74848c;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.betaVersionOption > em {
+  margin-top: 7px;
+  color: #91bde9;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.betaVersionActiveBadge {
+  padding: 3px 5px;
+  color: #a9ffd2;
+  background: rgba(57, 217, 138, 0.08);
+  border: 1px solid rgba(57, 217, 138, 0.25);
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.betaDataSafetyNotice {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  color: #9ab0bb;
+  background: rgba(57, 217, 138, 0.035);
+  border: 1px solid rgba(57, 217, 138, 0.14);
+  border-radius: 7px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.betaDataSafetyNotice strong {
+  color: #a9ffd2;
+  font-size: 10px;
+}
+
+@media (max-width: 520px) {
+  .betaVersionControlHeading {
+    flex-direction: column;
+  }
+
+  .betaVersionState {
+    width: 100%;
+    justify-items: start;
+  }
+
+  .betaVersionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .betaVersionOption > small {
+    min-height: 0;
+  }
+}

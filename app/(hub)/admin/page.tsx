@@ -126,6 +126,61 @@ const EMPTY_RELEASE_FORM: ReleaseForm = {
   betaReleaseEnabled: false,
 };
 
+type BetaVersionOption = {
+  version: string;
+  title: string;
+  description: string;
+};
+
+const BETA_VERSION_OPTIONS: BetaVersionOption[] = [
+  {
+    version: "18.0",
+    title: "Produktionszentrum",
+    description: "Produktionsboard, Jobs und Grundworkflow",
+  },
+  {
+    version: "18.1",
+    title: "Drucker-Flotte",
+    description: "Maschinenpark, Druckstunden und Wartung",
+  },
+  {
+    version: "18.2",
+    title: "Material & Smart Queue",
+    description: "Reservierungen, Verfügbarkeit und Produktionsplanung",
+  },
+  {
+    version: "18.3",
+    title: "Qualitätskontrolle",
+    description: "QS-Checklisten, Fehlergründe und Nachdrucke",
+  },
+  {
+    version: "18.4",
+    title: "Etiketten & QR",
+    description: "Produktionsetiketten, QR-Scan und Druckhistorie",
+  },
+];
+
+function compareReleaseVersions(left: string, right: string): number {
+  const a = left
+    .trim()
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+  const b = right
+    .trim()
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+  const length = Math.max(a.length, b.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const av = a[index] ?? 0;
+    const bv = b[index] ?? 0;
+    if (av > bv) return 1;
+    if (av < bv) return -1;
+  }
+
+  return 0;
+}
+
 type UserDetail = {
   user: {
     id: string;
@@ -263,6 +318,8 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<AdminAudit[]>([]);
   const [releaseForm, setReleaseForm] =
     useState<ReleaseForm>(EMPTY_RELEASE_FORM);
+  const [savedBetaVersion, setSavedBetaVersion] =
+    useState("");
   const [releaseLoaded, setReleaseLoaded] =
     useState(false);
   const [releaseLoading, setReleaseLoading] =
@@ -380,6 +437,7 @@ export default function AdminPage() {
         betaReleaseEnabled:
           release.beta_release_enabled,
       });
+      setSavedBetaVersion(release.beta_version);
       setReleaseLoaded(true);
     } finally {
       setReleaseLoading(false);
@@ -771,6 +829,26 @@ export default function AdminPage() {
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    const nextBetaVersion = releaseForm.betaVersion.trim();
+    const previousBetaVersion = savedBetaVersion.trim();
+    const isDowngrade =
+      nextBetaVersion &&
+      previousBetaVersion &&
+      compareReleaseVersions(
+        nextBetaVersion,
+        previousBetaVersion,
+      ) < 0;
+
+    if (
+      isDowngrade &&
+      !window.confirm(
+        `Beta von ${previousBetaVersion} auf ${nextBetaVersion} downgraden?\n\nNeuere Beta-Module werden nur ausgeblendet. Bereits gespeicherte Daten bleiben erhalten und erscheinen wieder, sobald du auf eine höhere Beta-Version wechselst.`,
+      )
+    ) {
+      return;
+    }
+
     setSaving(true);
     setError("");
     setMessage("");
@@ -803,16 +881,26 @@ export default function AdminPage() {
   }
 
   async function publishBetaRelease() {
-    if (!releaseForm.betaVersion.trim()) {
+    const selectedBetaVersion = releaseForm.betaVersion.trim();
+    const activeBetaVersion = savedBetaVersion.trim();
+
+    if (!selectedBetaVersion) {
       setError(
-        "Trage zuerst eine Beta-Version ein.",
+        "Wähle zuerst eine Beta-Version aus.",
+      );
+      return;
+    }
+
+    if (selectedBetaVersion !== activeBetaVersion) {
+      setError(
+        "Speichere die gewählte Beta-Version zuerst, bevor du sie als Public veröffentlichst.",
       );
       return;
     }
 
     if (
       !window.confirm(
-        `Beta ${releaseForm.betaVersion} wirklich für alle Nutzer veröffentlichen?`,
+        `Beta ${activeBetaVersion} wirklich für alle Nutzer veröffentlichen?`,
       )
     ) {
       return;
@@ -830,7 +918,7 @@ export default function AdminPage() {
         }),
       });
       setMessage(
-        `Beta ${releaseForm.betaVersion} wurde als Public-Version veröffentlicht.`,
+        `Beta ${activeBetaVersion} wurde als Public-Version veröffentlicht.`,
       );
       await Promise.all([
         loadRelease(),
@@ -1456,20 +1544,89 @@ export default function AdminPage() {
                     placeholder="BETA"
                   />
                 </label>
-                <label>
-                  Version
-                  <input
-                    value={releaseForm.betaVersion}
-                    maxLength={40}
-                    onChange={(event) =>
-                      setReleaseField(
-                        "betaVersion",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="3.4"
-                  />
-                </label>
+                <div className={styles.betaVersionControl}>
+                  <div className={styles.betaVersionControlHeading}>
+                    <div>
+                      <span>Beta-Version auswählen</span>
+                      <small>
+                        Wechsel jederzeit zwischen den vorhandenen
+                        Beta-Stufen. Ein Downgrade blendet neuere
+                        Funktionen nur aus.
+                      </small>
+                    </div>
+                    <div className={styles.betaVersionState}>
+                      <span>Aktiv</span>
+                      <strong>
+                        {savedBetaVersion.trim() || "—"}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className={styles.betaVersionGrid}>
+                    {BETA_VERSION_OPTIONS.map((option) => {
+                      const selected =
+                        releaseForm.betaVersion === option.version;
+                      const active =
+                        savedBetaVersion === option.version;
+                      const direction = savedBetaVersion.trim()
+                        ? compareReleaseVersions(
+                            option.version,
+                            savedBetaVersion,
+                          )
+                        : 0;
+
+                      return (
+                        <button
+                          key={option.version}
+                          type="button"
+                          className={`${styles.betaVersionOption} ${
+                            selected
+                              ? styles.betaVersionOptionSelected
+                              : ""
+                          }`}
+                          onClick={() =>
+                            setReleaseField(
+                              "betaVersion",
+                              option.version,
+                            )
+                          }
+                        >
+                          <div>
+                            <strong>{option.version}</strong>
+                            {active && (
+                              <span
+                                className={styles.betaVersionActiveBadge}
+                              >
+                                AKTIV
+                              </span>
+                            )}
+                          </div>
+                          <span>{option.title}</span>
+                          <small>{option.description}</small>
+                          {!active && savedBetaVersion.trim() && (
+                            <em>
+                              {direction < 0
+                                ? "↩ Downgrade"
+                                : direction > 0
+                                  ? "↑ Upgrade"
+                                  : "Auswählen"}
+                            </em>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className={styles.betaDataSafetyNotice}>
+                    <strong>Datensicherer Versionswechsel</strong>
+                    <span>
+                      Beim Downgrade werden keine Produktions-,
+                      Drucker-, QS-, Material- oder Etikettendaten
+                      gelöscht. Die höheren Module werden nur über
+                      das Release-Gating ausgeblendet.
+                    </span>
+                  </div>
+                </div>
                 <label className={styles.releaseMessageField}>
                   Beta Roll-Message
                   <textarea
@@ -1517,7 +1674,9 @@ export default function AdminPage() {
                 disabled={
                   saving ||
                   releaseLoading ||
-                  !releaseForm.betaVersion.trim()
+                  !releaseForm.betaVersion.trim() ||
+                  releaseForm.betaVersion.trim() !==
+                    savedBetaVersion.trim()
                 }
                 onClick={() =>
                   void publishBetaRelease()
