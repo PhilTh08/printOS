@@ -235,9 +235,8 @@ export function HubShell({
               title={releaseInfo.message}
               aria-label={`Systemmeldung: ${releaseInfo.message}`}
             >
-              <div className="sidebar-roll-message-track">
-                <span>{releaseInfo.message}</span>
-                <span aria-hidden="true">
+              <div className="sidebar-roll-message-viewport">
+                <span className="sidebar-roll-message-text">
                   {releaseInfo.message}
                 </span>
               </div>

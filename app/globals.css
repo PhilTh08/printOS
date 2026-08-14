@@ -4813,6 +4813,7 @@ small,
 .sidebar-roll-message {
   position: relative;
   width: 100%;
+  min-width: 0;
   margin-top: 14px;
   overflow: hidden;
   color: #ffd99a;
@@ -4821,6 +4822,7 @@ small,
   border-radius: 7px;
   font-size: 11px;
   font-weight: 850;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
@@ -4828,7 +4830,7 @@ small,
   position: absolute;
   inset: 0 auto 0 0;
   z-index: 2;
-  width: 24px;
+  width: 20px;
   content: "";
   pointer-events: none;
   background: linear-gradient(90deg, #10161a, transparent);
@@ -4838,7 +4840,7 @@ small,
   position: absolute;
   inset: 0 0 0 auto;
   z-index: 2;
-  width: 24px;
+  width: 20px;
   content: "";
   pointer-events: none;
   background: linear-gradient(270deg, #10161a, transparent);
@@ -4850,17 +4852,23 @@ small,
   border-color: rgba(85, 167, 255, 0.28);
 }
 
-.sidebar-roll-message-track {
-  display: flex;
-  width: max-content;
-  min-width: 100%;
-  gap: 42px;
+.sidebar-roll-message-viewport {
+  width: 100%;
+  overflow: hidden;
   padding: 8px 0;
-  animation: philamentixRollMessage 16s linear infinite;
 }
 
-.sidebar-roll-message-track span {
-  padding-left: 18px;
+.sidebar-roll-message-text {
+  display: inline-block;
+  min-width: max-content;
+  padding-left: 100%;
+  padding-right: 28px;
+  will-change: transform;
+  animation: philamentixRollMessage 14s linear infinite;
+}
+
+.sidebar-roll-message:hover .sidebar-roll-message-text {
+  animation-play-state: paused;
 }
 
 @keyframes philamentixRollMessage {
@@ -4869,17 +4877,32 @@ small,
   }
 
   to {
-    transform: translateX(calc(-50% - 21px));
+    transform: translateX(-100%);
+  }
+}
+
+@media (min-width: 721px) {
+  .sidebar-roll-message {
+    max-width: 100%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-roll-message-track {
-    width: auto;
-    animation: none;
+  .sidebar-roll-message {
+    white-space: normal;
   }
 
-  .sidebar-roll-message-track span:nth-child(2) {
-    display: none;
+  .sidebar-roll-message-viewport {
+    overflow: visible;
+    padding: 8px 12px;
+  }
+
+  .sidebar-roll-message-text {
+    min-width: 0;
+    padding: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    animation: none;
+    transform: none;
   }
 }
