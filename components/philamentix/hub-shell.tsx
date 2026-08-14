@@ -92,6 +92,7 @@ export function HubShell({
     releaseInfo,
     maintenanceReady,
     isAreaInMaintenance,
+    isAreaHidden,
     maintenanceMessageForArea,
     filaments,
     signOut,
@@ -115,6 +116,13 @@ export function HubShell({
       !isAdmin &&
       currentMaintenanceArea &&
       isAreaInMaintenance(currentMaintenanceArea),
+  );
+  const currentAreaHidden = Boolean(
+    adminRoleReady &&
+      maintenanceReady &&
+      !isAdmin &&
+      currentMaintenanceArea &&
+      isAreaHidden(currentMaintenanceArea),
   );
   const currentMaintenanceMessage =
     currentMaintenanceArea
@@ -267,67 +275,85 @@ export function HubShell({
           )}
 
         <nav>
-          {visibleNavigation.map((group) => (
-            <div key={group.title}>
-              <p className="nav-title">{group.title}</p>
-              {group.items.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  (item.href === "/filamente" &&
-                    pathname.startsWith("/filamente/")) ||
-                  (item.href === "/admin" &&
-                    pathname.startsWith("/admin")) ||
-                  (item.href === "/druckbibliothek" &&
-                    pathname.startsWith("/druckbibliothek"));
-                const itemMaintenanceArea =
-                  maintenanceAreaForPathname(item.href);
-                const itemInMaintenance = Boolean(
-                  adminRoleReady &&
-                    !isAdmin &&
-                    maintenanceReady &&
-                    itemMaintenanceArea &&
-                    isAreaInMaintenance(itemMaintenanceArea),
-                );
+          {visibleNavigation.map((group) => {
+            const visibleItems = group.items.filter((item) => {
+              const area = maintenanceAreaForPathname(item.href);
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`nav-button nav-button-link ${
-                      active ? "active" : ""
-                    } ${
-                      itemInMaintenance
-                        ? "nav-button-maintenance"
-                        : ""
-                    }`}
-                    title={
-                      itemInMaintenance
-                        ? `${item.label} befindet sich im Wartungsmodus`
-                        : undefined
-                    }
-                  >
-                    <span>{item.icon}</span>
-                    <span className="nav-item-label">
-                      {item.label}
-                    </span>
-                    {itemInMaintenance && (
-                      <span className="nav-maintenance-badge">
-                        WARTUNG
+              return !(
+                adminRoleReady &&
+                !isAdmin &&
+                maintenanceReady &&
+                area &&
+                isAreaHidden(area)
+              );
+            });
+
+            if (visibleItems.length === 0) {
+              return null;
+            }
+
+            return (
+              <div key={group.title}>
+                <p className="nav-title">{group.title}</p>
+                {visibleItems.map((item) => {
+                  const active =
+                    pathname === item.href ||
+                    (item.href === "/filamente" &&
+                      pathname.startsWith("/filamente/")) ||
+                    (item.href === "/admin" &&
+                      pathname.startsWith("/admin")) ||
+                    (item.href === "/druckbibliothek" &&
+                      pathname.startsWith("/druckbibliothek"));
+                  const itemMaintenanceArea =
+                    maintenanceAreaForPathname(item.href);
+                  const itemInMaintenance = Boolean(
+                    adminRoleReady &&
+                      !isAdmin &&
+                      maintenanceReady &&
+                      itemMaintenanceArea &&
+                      isAreaInMaintenance(itemMaintenanceArea),
+                  );
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`nav-button nav-button-link ${
+                        active ? "active" : ""
+                      } ${
+                        itemInMaintenance
+                          ? "nav-button-maintenance"
+                          : ""
+                      }`}
+                      title={
+                        itemInMaintenance
+                          ? `${item.label} befindet sich im Wartungsmodus`
+                          : undefined
+                      }
+                    >
+                      <span>{item.icon}</span>
+                      <span className="nav-item-label">
+                        {item.label}
                       </span>
-                    )}
-                    {item.href === "/nachbestellen" &&
-                      reorderCount > 0 && (
-                        <span className="nav-alert-badge">
-                          {reorderCount > 99
-                            ? "99+"
-                            : reorderCount}
+                      {itemInMaintenance && (
+                        <span className="nav-maintenance-badge">
+                          WARTUNG
                         </span>
                       )}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+                      {item.href === "/nachbestellen" &&
+                        reorderCount > 0 && (
+                          <span className="nav-alert-badge">
+                            {reorderCount > 99
+                              ? "99+"
+                              : reorderCount}
+                          </span>
+                        )}
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
 
         </nav>
 
@@ -371,7 +397,26 @@ export function HubShell({
         )}
 
         <div className="route-page">
-          {currentAreaBlocked ? (
+          {currentAreaHidden ? (
+            <section className="maintenance-screen maintenance-screen-hidden">
+              <div className="maintenance-screen-icon">◌</div>
+              <span className="maintenance-screen-kicker">
+                BEREICH AUSGEBLENDET
+              </span>
+              <h1>
+                {currentAreaMeta?.label ?? "Dieser Bereich"} ist für
+                deinen Account aktuell nicht freigeschaltet
+              </h1>
+              <p>
+                Dieser Bereich wurde durch die Administration ausgeblendet.
+                Der Inhalt wird für deinen Account nicht geladen.
+              </p>
+              <div className="maintenance-screen-status">
+                <i />
+                Andere freigegebene Bereiche kannst du normal weiter nutzen.
+              </div>
+            </section>
+          ) : currentAreaBlocked ? (
             <section className="maintenance-screen">
               <div className="maintenance-screen-icon">⚙</div>
               <span className="maintenance-screen-kicker">

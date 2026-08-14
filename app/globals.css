@@ -5042,3 +5042,26 @@ small,
   border-color: rgba(245, 166, 35, 0.34);
   color: #fff;
 }
+
+/* V17.2.8 – ausgeblendete Bereiche */
+.maintenance-screen-hidden {
+  border-color: rgba(139, 118, 255, 0.3);
+  background:
+    linear-gradient(180deg, rgba(139, 118, 255, 0.05), transparent 38%),
+    rgba(16, 22, 26, 0.94);
+}
+
+.maintenance-screen-hidden .maintenance-screen-icon {
+  border-color: rgba(139, 118, 255, 0.38);
+  background: rgba(139, 118, 255, 0.08);
+  color: #b9adff;
+}
+
+.maintenance-screen-hidden .maintenance-screen-kicker {
+  color: #b9adff;
+}
+
+.maintenance-screen-hidden .maintenance-screen-status i {
+  background: #9585ff;
+  box-shadow: 0 0 12px rgba(149, 133, 255, 0.5);
+}

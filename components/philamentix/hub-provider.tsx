@@ -141,6 +141,7 @@ type HubContextValue = {
   maintenanceSetupAvailable: boolean;
   refreshMaintenance: () => Promise<void>;
   isAreaInMaintenance: (area: MaintenanceArea) => boolean;
+  isAreaHidden: (area: MaintenanceArea) => boolean;
   maintenanceMessageForArea: (area: MaintenanceArea) => string;
   filamentImageMode: FilamentImageMode;
   filamentDefaults: FilamentDefaults;
@@ -652,6 +653,21 @@ export function HubProvider({
         user.id,
         area,
       ).blocked;
+    },
+    [isAdmin, maintenanceRules, user],
+  );
+
+  const isAreaHidden = useCallback(
+    (area: MaintenanceArea) => {
+      if (!user || isAdmin) {
+        return false;
+      }
+
+      return resolveMaintenance(
+        maintenanceRules,
+        user.id,
+        area,
+      ).hidden;
     },
     [isAdmin, maintenanceRules, user],
   );
@@ -2015,6 +2031,7 @@ export function HubProvider({
       maintenanceSetupAvailable,
       refreshMaintenance,
       isAreaInMaintenance,
+      isAreaHidden,
       maintenanceMessageForArea,
       filamentImageMode,
       filamentDefaults,
@@ -2053,6 +2070,7 @@ export function HubProvider({
       maintenanceSetupAvailable,
       refreshMaintenance,
       isAreaInMaintenance,
+      isAreaHidden,
       maintenanceMessageForArea,
       filamentImageMode,
       filamentDefaults,

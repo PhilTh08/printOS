@@ -688,6 +688,11 @@ export default function AdminPage() {
   const maintenanceActiveCount = maintenanceRules.filter(
     (rule) => rule.enabled && rule.mode === "maintenance",
   ).length;
+  const hiddenActiveCount = maintenanceRules.filter(
+    (rule) => rule.enabled && rule.mode === "hidden",
+  ).length;
+  const restrictedAreaCount =
+    maintenanceActiveCount + hiddenActiveCount;
   const maintenanceTargetRuleCount = maintenanceRules.filter(
     (rule) =>
       rule.enabled &&
@@ -930,12 +935,14 @@ export default function AdminPage() {
     const actionText =
       mode === "maintenance"
         ? "in Wartung setzen"
-        : "vollständig freigeben";
+        : mode === "hidden"
+          ? "vollständig ausblenden"
+          : "vollständig freigeben";
 
     if (
       !window.confirm(
         `${maintenanceTargetLabel} wirklich ${actionText}?${
-          isGlobal && mode === "maintenance"
+          isGlobal && mode !== "available"
             ? " Adminaccounts bleiben erreichbar."
             : ""
         }`,
@@ -951,7 +958,9 @@ export default function AdminPage() {
       },
       mode === "maintenance"
         ? `${maintenanceTargetLabel}: gesamter Hub ist jetzt im Wartungsmodus.`
-        : `${maintenanceTargetLabel}: gesamter Hub ist jetzt freigegeben.`,
+        : mode === "hidden"
+          ? `${maintenanceTargetLabel}: gesamter Hub ist jetzt ausgeblendet.`
+          : `${maintenanceTargetLabel}: gesamter Hub ist jetzt freigegeben.`,
     );
   }
 
@@ -1267,8 +1276,8 @@ export default function AdminPage() {
             >
               {label}
               {section === "maintenance" &&
-                maintenanceActiveCount > 0 && (
-                  <span>{maintenanceActiveCount}</span>
+                restrictedAreaCount > 0 && (
+                  <span>{restrictedAreaCount}</span>
                 )}
             </button>
           ),
@@ -1529,14 +1538,15 @@ export default function AdminPage() {
             <span>Maintenance Control</span>
             <h2>Wartungsmodus</h2>
             <p>
-              Bereiche global oder nur für einzelne Accounts sperren.
-              Account-Regeln haben Vorrang vor globalen Regeln.
+              Bereiche global oder nur für einzelne Accounts öffnen,
+              warten oder vollständig ausblenden. Account-Regeln haben
+              Vorrang vor globalen Regeln.
             </p>
           </div>
           <div className={styles.maintenanceSummary}>
-            <span>AKTIVE WARTUNGEN</span>
-            <strong>{maintenanceActiveCount}</strong>
-            <small>Adminaccounts haben immer Bypass</small>
+            <span>AKTIVE EINSCHRÄNKUNGEN</span>
+            <strong>{restrictedAreaCount}</strong>
+            <small>Wartung {maintenanceActiveCount} · Ausgeblendet {hiddenActiveCount}</small>
           </div>
         </div>
 
@@ -1662,6 +1672,16 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="button"
+                  className={styles.maintenanceHiddenButton}
+                  disabled={saving || maintenanceTargetIsAdmin}
+                  onClick={() =>
+                    void setEntireHubMaintenance("hidden")
+                  }
+                >
+                  Gesamten Hub · Ausblenden
+                </button>
+                <button
+                  type="button"
                   disabled={saving || maintenanceTargetIsAdmin}
                   onClick={() =>
                     void clearMaintenanceOverrides()
@@ -1691,14 +1711,18 @@ export default function AdminPage() {
                       </div>
                       <span
                         className={
-                          effective.blocked
-                            ? styles.maintenanceEffectiveClosed
-                            : styles.maintenanceEffectiveOpen
+                          effective.hidden
+                            ? styles.maintenanceEffectiveHidden
+                            : effective.blocked
+                              ? styles.maintenanceEffectiveClosed
+                              : styles.maintenanceEffectiveOpen
                         }
                       >
-                        {effective.blocked
-                          ? "Effektiv: Wartung"
-                          : "Effektiv: Offen"}
+                        {effective.hidden
+                          ? "Effektiv: Ausgeblendet"
+                          : effective.blocked
+                            ? "Effektiv: Wartung"
+                            : "Effektiv: Offen"}
                       </span>
                     </div>
 
@@ -1707,6 +1731,7 @@ export default function AdminPage() {
                         ["inherit", "Erben"],
                         ["available", "Offen"],
                         ["maintenance", "Wartung"],
+                        ["hidden", "Ausblenden"],
                       ] as Array<[MaintenanceChoice, string]>).map(
                         ([choice, label]) => (
                           <button
@@ -1720,7 +1745,10 @@ export default function AdminPage() {
                               choice === "maintenance" &&
                               directChoice === choice
                                 ? styles.maintenanceChoiceDanger
-                                : ""
+                                : choice === "hidden" &&
+                                    directChoice === choice
+                                  ? styles.maintenanceChoiceHidden
+                                  : ""
                             }`}
                             disabled={
                               saving ||
@@ -1747,8 +1775,9 @@ export default function AdminPage() {
             <p className={styles.maintenanceHint}>
               <strong>Erben</strong> = keine eigene Regel. Bei einem
               Account greifen dann die globalen Regeln. <strong>Offen</strong>
-              kann einen Account gezielt von einer globalen Wartung
-              ausnehmen.
+              überschreibt Wartung oder Ausblenden. <strong>Ausgeblendet</strong>
+              entfernt den Bereich aus der Sidebar und sperrt auch direkten
+              Zugriff auf die Seite.
             </p>
           </>
         )}

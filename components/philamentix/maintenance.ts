@@ -11,7 +11,7 @@ export type MaintenanceArea =
   | "profile"
   | "settings";
 
-export type MaintenanceMode = "maintenance" | "available";
+export type MaintenanceMode = "maintenance" | "available" | "hidden";
 export type MaintenanceScope = "global" | "user";
 
 export type MaintenanceRule = {
@@ -155,6 +155,7 @@ export function maintenanceAreaForPathname(
 
 export type MaintenanceResolution = {
   blocked: boolean;
+  hidden: boolean;
   mode: MaintenanceMode | null;
   message: string;
   source: "user-area" | "user-all" | "global-area" | "global-all" | "none";
@@ -215,6 +216,7 @@ export function resolveMaintenance(
   if (!winner?.rule) {
     return {
       blocked: false,
+      hidden: false,
       mode: null,
       message: "",
       source: "none",
@@ -224,6 +226,7 @@ export function resolveMaintenance(
 
   return {
     blocked: winner.rule.mode === "maintenance",
+    hidden: winner.rule.mode === "hidden",
     mode: winner.rule.mode,
     message:
       winner.rule.mode === "maintenance"

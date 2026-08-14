@@ -57,7 +57,7 @@
 
 .workspace {
   display: grid;
-  grid-template-columns: 285px minmax(0, 1fr);
+  grid-template-columns: 310px minmax(0, 1fr);
   min-height: 650px;
   overflow: hidden;
   background: #080e12;
@@ -140,6 +140,10 @@
   border: 1px solid transparent;
   border-radius: 7px;
   text-align: left;
+}
+
+.userItem > div {
+  min-width: 0;
 }
 
 .userItem:hover,
@@ -237,9 +241,15 @@
 
 .userHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 15px;
+  flex-wrap: wrap;
+  gap: 14px 18px;
+}
+
+.userHeader > div:first-child {
+  flex: 1 1 360px;
+  min-width: 0;
 }
 
 .userHeader > div:first-child > span {
@@ -253,18 +263,24 @@
 .userHeader h2 {
   margin-top: 4px;
   font-size: 20px;
+  overflow-wrap: anywhere;
 }
 
 .userHeader p {
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.55;
 }
 
 .accountActions {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-width: 100%;
 }
 
 .activeBadge,
@@ -660,7 +676,18 @@
   }
 
   .workspace {
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .userHeader {
+    flex-direction: column;
+  }
+
+  .accountActions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 
@@ -1378,6 +1405,12 @@
   color: #65dfa1;
 }
 
+.maintenanceBulkActions .maintenanceHiddenButton {
+  border-color: rgba(139, 118, 255, 0.3);
+  background: rgba(139, 118, 255, 0.075);
+  color: #b9adff;
+}
+
 .maintenanceAreaList {
   overflow: hidden;
   border: 1px solid #28333a;
@@ -1407,6 +1440,7 @@
 
 .maintenanceAreaInfo > div {
   display: grid;
+  min-width: 0;
   gap: 2px;
 }
 
@@ -1417,10 +1451,13 @@
 .maintenanceAreaInfo small {
   color: #718087;
   font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .maintenanceEffectiveOpen,
-.maintenanceEffectiveClosed {
+.maintenanceEffectiveClosed,
+.maintenanceEffectiveHidden {
   flex: 0 0 auto;
   padding: 4px 7px;
   border-radius: 999px;
@@ -1440,9 +1477,16 @@
   color: #f5b642;
 }
 
+.maintenanceEffectiveHidden {
+  border: 1px solid rgba(139, 118, 255, 0.3);
+  background: rgba(139, 118, 255, 0.08);
+  color: #b7aaff;
+}
+
 .maintenanceChoices {
   display: grid;
-  grid-template-columns: repeat(3, minmax(68px, auto));
+  min-width: 340px;
+  grid-template-columns: repeat(4, minmax(76px, 1fr));
   gap: 3px;
   padding: 3px;
   border: 1px solid #2a343a;
@@ -1469,6 +1513,12 @@
   color: #f5b642;
 }
 
+.maintenanceChoices .maintenanceChoiceHidden {
+  border-color: rgba(139, 118, 255, 0.34);
+  background: rgba(139, 118, 255, 0.1);
+  color: #c0b6ff;
+}
+
 .maintenanceHint {
   margin: 10px 2px 0;
   color: #758188;
@@ -1478,6 +1528,17 @@
 
 .maintenanceHint strong {
   color: #a7b2b8;
+}
+
+@media (max-width: 1120px) {
+  .maintenanceAreaRow {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenanceChoices {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 @media (max-width: 900px) {
@@ -1508,7 +1569,13 @@
   }
 
   .maintenanceChoices {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .maintenanceChoices {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

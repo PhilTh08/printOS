@@ -77,7 +77,11 @@ function cleanMessage(value: unknown): string {
 }
 
 function cleanMode(value: unknown): MaintenanceMode {
-  if (value !== "maintenance" && value !== "available") {
+  if (
+    value !== "maintenance" &&
+    value !== "available" &&
+    value !== "hidden"
+  ) {
     throw new AdminApiError(
       400,
       "Wartungsstatus ist ungültig.",
@@ -321,11 +325,15 @@ export async function PATCH(request: NextRequest) {
       auditAction =
         mode === "maintenance"
           ? "maintenance.target.lock_all"
-          : "maintenance.target.open_all";
+          : mode === "hidden"
+            ? "maintenance.target.hide_all"
+            : "maintenance.target.open_all";
       reason =
         mode === "maintenance"
           ? "Gesamten Hub für Wartung gesperrt"
-          : "Gesamten Hub für Ziel explizit freigegeben";
+          : mode === "hidden"
+            ? "Gesamten Hub für Ziel ausgeblendet"
+            : "Gesamten Hub für Ziel explizit freigegeben";
       details = { ...details, area: "all", mode };
     } else {
       let deleteQuery = context.adminClient
