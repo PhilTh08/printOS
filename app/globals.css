@@ -4796,7 +4796,7 @@ small,
   border-color: rgba(245, 166, 35, 0.45);
 }
 
-/* V17.2.2 – globale Release-Anzeige & Roll-Message */
+/* V17.2.2.2 – globale Release-Anzeige & robuster Desktop-Rolltext */
 .sidebar-beta-tester-badge {
   display: inline-flex;
   margin-top: 7px;
@@ -4812,57 +4812,63 @@ small,
 
 .sidebar-roll-message {
   position: relative;
+  display: block;
   width: 100%;
-  min-width: 0;
-  margin-top: 14px;
+  height: 36px;
+  min-height: 36px;
+  flex: 0 0 36px;
+  margin: 14px 0 0;
   overflow: hidden;
   color: #ffd99a;
   background: rgba(245, 166, 35, 0.07);
-  border: 1px solid rgba(245, 166, 35, 0.24);
+  border: 1px solid rgba(245, 166, 35, 0.32);
   border-radius: 7px;
   font-size: 11px;
   font-weight: 850;
-  line-height: 1.35;
+  line-height: 34px;
   white-space: nowrap;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+
+.sidebar-roll-message::before,
+.sidebar-roll-message::after {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  z-index: 2;
+  width: 18px;
+  content: "";
+  pointer-events: none;
 }
 
 .sidebar-roll-message::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  z-index: 2;
-  width: 20px;
-  content: "";
-  pointer-events: none;
-  background: linear-gradient(90deg, #10161a, transparent);
+  left: 0;
+  background: linear-gradient(90deg, #10161a 10%, transparent);
 }
 
 .sidebar-roll-message::after {
-  position: absolute;
-  inset: 0 0 0 auto;
-  z-index: 2;
-  width: 20px;
-  content: "";
-  pointer-events: none;
-  background: linear-gradient(270deg, #10161a, transparent);
+  right: 0;
+  background: linear-gradient(270deg, #10161a 10%, transparent);
 }
 
 .sidebar-roll-message-beta {
   color: #c8e2ff;
   background: rgba(85, 167, 255, 0.075);
-  border-color: rgba(85, 167, 255, 0.28);
-}
-
-.sidebar-roll-message-viewport {
-  width: 100%;
-  overflow: hidden;
-  padding: 8px 0;
+  border-color: rgba(85, 167, 255, 0.32);
 }
 
 .sidebar-roll-message-text {
-  display: inline-block;
-  min-width: max-content;
-  padding-left: 100%;
-  padding-right: 28px;
+  position: absolute;
+  top: 0;
+  left: 100%;
+  z-index: 1;
+  display: block;
+  width: max-content;
+  max-width: none;
+  padding: 0 24px 0 12px;
+  line-height: 34px;
+  white-space: nowrap;
   will-change: transform;
   animation: philamentixRollMessage 14s linear infinite;
 }
@@ -4877,29 +4883,29 @@ small,
   }
 
   to {
-    transform: translateX(-100%);
-  }
-}
-
-@media (min-width: 721px) {
-  .sidebar-roll-message {
-    max-width: 100%;
+    transform: translateX(calc(-100% - 100%));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar-roll-message {
+    height: auto;
+    min-height: 36px;
+    padding: 8px 12px;
+    line-height: 1.35;
     white-space: normal;
   }
 
-  .sidebar-roll-message-viewport {
-    overflow: visible;
-    padding: 8px 12px;
+  .sidebar-roll-message::before,
+  .sidebar-roll-message::after {
+    display: none;
   }
 
   .sidebar-roll-message-text {
-    min-width: 0;
+    position: static;
+    width: auto;
     padding: 0;
+    line-height: 1.35;
     white-space: normal;
     overflow-wrap: anywhere;
     animation: none;
