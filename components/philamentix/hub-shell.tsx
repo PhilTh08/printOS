@@ -46,6 +46,11 @@ const navigation = [
         icon: "◇",
         label: "Druckbibliothek",
       },
+      {
+        href: "/produktion",
+        icon: "▦",
+        label: "Produktion",
+      },
     ],
   },
   {
@@ -90,6 +95,8 @@ export function HubShell({
     isAdmin,
     adminRoleReady,
     releaseInfo,
+    releaseReady,
+    hasReleaseAccess,
     maintenanceReady,
     isAreaInMaintenance,
     isAreaHidden,
@@ -277,6 +284,13 @@ export function HubShell({
         <nav>
           {visibleNavigation.map((group) => {
             const visibleItems = group.items.filter((item) => {
+              if (
+                item.href === "/produktion" &&
+                (!releaseReady || !hasReleaseAccess("18.0"))
+              ) {
+                return false;
+              }
+
               const area = maintenanceAreaForPathname(item.href);
 
               return !(

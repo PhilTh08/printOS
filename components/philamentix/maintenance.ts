@@ -8,6 +8,7 @@ export type MaintenanceArea =
   | "logs"
   | "orders"
   | "print_library"
+  | "production"
   | "profile"
   | "settings";
 
@@ -89,6 +90,12 @@ export const MAINTENANCE_AREAS: ReadonlyArray<{
     description: "Modelle, Dateien und Projekte.",
   },
   {
+    id: "production",
+    label: "Produktionszentrum",
+    shortLabel: "Produktion",
+    description: "Produktionsboard, Druckjobs und Maschinenzuordnung.",
+  },
+  {
     id: "profile",
     label: "Profil & Sicherheit",
     shortLabel: "Profil",
@@ -140,6 +147,9 @@ export function maintenanceAreaForPathname(
   ) {
     return "print_library";
   }
+  if (pathname === "/produktion" || pathname.startsWith("/produktion/")) {
+    return "production";
+  }
   if (pathname === "/profil" || pathname.startsWith("/profil/")) {
     return "profile";
   }
@@ -169,51 +179,39 @@ export function resolveMaintenance(
 ): MaintenanceResolution {
   const enabledRules = rules.filter((rule) => rule.enabled !== false);
 
-  const findRule = (
-    scope: MaintenanceScope,
-    ruleArea: MaintenanceArea,
-  ) =>
-    enabledRules.find(
-      (rule) =>
-        rule.scope === scope &&
-        rule.area === ruleArea &&
-        (scope === "global"
-          ? rule.user_id === null
-          : rule.user_id === userId),
-    ) ?? null;
+  const applicable = enabledRules
+    .filter((rule) => {
+      const appliesToUser =
+        rule.scope === "global" ||
+        (rule.scope === "user" && rule.user_id === userId);
+      const appliesToArea = rule.area === area || rule.area === "all";
 
-  const candidates: Array<{
-    rule: MaintenanceRule | null;
-    source: MaintenanceResolution["source"];
-  }> = [];
+      return appliesToUser && appliesToArea;
+    })
+    .map((rule) => {
+      const updatedAt = Date.parse(rule.updated_at ?? "") || 0;
+      const specificity =
+        rule.scope === "user" && rule.area === area
+          ? 4
+          : rule.scope === "global" && rule.area === area
+            ? 3
+            : rule.scope === "user" && rule.area === "all"
+              ? 2
+              : 1;
 
-  candidates.push({
-    rule: findRule("user", area),
-    source: "user-area",
-  });
+      return { rule, updatedAt, specificity };
+    })
+    .sort((left, right) => {
+      if (right.updatedAt !== left.updatedAt) {
+        return right.updatedAt - left.updatedAt;
+      }
 
-  if (area !== "all") {
-    candidates.push({
-      rule: findRule("user", "all"),
-      source: "user-all",
+      return right.specificity - left.specificity;
     });
-  }
 
-  candidates.push({
-    rule: findRule("global", area),
-    source: "global-area",
-  });
+  const winner = applicable[0]?.rule ?? null;
 
-  if (area !== "all") {
-    candidates.push({
-      rule: findRule("global", "all"),
-      source: "global-all",
-    });
-  }
-
-  const winner = candidates.find((candidate) => candidate.rule);
-
-  if (!winner?.rule) {
+  if (!winner) {
     return {
       blocked: false,
       hidden: false,
@@ -224,15 +222,24 @@ export function resolveMaintenance(
     };
   }
 
+  const source: MaintenanceResolution["source"] =
+    winner.scope === "user" && winner.area === area
+      ? "user-area"
+      : winner.scope === "user" && winner.area === "all"
+        ? "user-all"
+        : winner.scope === "global" && winner.area === area
+          ? "global-area"
+          : "global-all";
+
   return {
-    blocked: winner.rule.mode === "maintenance",
-    hidden: winner.rule.mode === "hidden",
-    mode: winner.rule.mode,
+    blocked: winner.mode === "maintenance",
+    hidden: winner.mode === "hidden",
+    mode: winner.mode,
     message:
-      winner.rule.mode === "maintenance"
-        ? winner.rule.message.trim() || DEFAULT_MAINTENANCE_MESSAGE
+      winner.mode === "maintenance"
+        ? winner.message.trim() || DEFAULT_MAINTENANCE_MESSAGE
         : "",
-    source: winner.source,
-    rule: winner.rule,
+    source,
+    rule: winner,
   };
 }
