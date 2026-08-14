@@ -818,9 +818,15 @@ export function HubProvider({
 
     void load();
 
+    // Realtime bleibt der schnellste Weg. Der kurze Polling-Fallback sorgt
+    // aber dafür, dass normale Nutzer Wartungs-/Ausblendungsänderungen
+    // auch dann zeitnah erhalten, wenn ein Realtime-Channel im Browser
+    // kurzzeitig nicht sauber verbunden ist.
     const intervalId = window.setInterval(() => {
-      void load();
-    }, 30_000);
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+    }, 3_000);
 
     const channel = supabase
       .channel(`maintenance-control-${user.id}`)
@@ -835,18 +841,38 @@ export function HubProvider({
           void load();
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (
+          status === "SUBSCRIBED" ||
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT"
+        ) {
+          void load();
+        }
+      });
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         void load();
       }
     };
+    const handleFocus = () => {
+      void load();
+    };
+    const handlePageShow = () => {
+      void load();
+    };
+    const handleOnline = () => {
+      void load();
+    };
 
     document.addEventListener(
       "visibilitychange",
       handleVisibility,
     );
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("online", handleOnline);
 
     return () => {
       active = false;
@@ -856,6 +882,9 @@ export function HubProvider({
         "visibilitychange",
         handleVisibility,
       );
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("online", handleOnline);
     };
   }, [authReady, user, loadMaintenanceForUser]);
 
