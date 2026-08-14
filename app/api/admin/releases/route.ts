@@ -20,6 +20,7 @@ type ReleaseBody = {
   publicVersion?: unknown;
   publicMessage?: unknown;
   publicMessageEnabled?: unknown;
+  rollMessageSpeed?: unknown;
   betaChannel?: unknown;
   betaVersion?: unknown;
   betaMessage?: unknown;
@@ -55,6 +56,25 @@ function cleanBoolean(value: unknown, field: string): boolean {
   }
 
   return value;
+}
+
+function cleanRollMessageSpeed(value: unknown): string {
+  const speed = typeof value === "string" ? value : "";
+  const allowed = [
+    "fast",
+    "normal",
+    "slow",
+    "very_slow",
+  ];
+
+  if (!allowed.includes(speed)) {
+    throw new AdminApiError(
+      400,
+      "Roll-Message-Geschwindigkeit ist ungültig.",
+    );
+  }
+
+  return speed;
 }
 
 async function loadReleaseState(
@@ -154,6 +174,9 @@ export async function PATCH(request: NextRequest) {
         public_message_enabled: cleanBoolean(
           body.publicMessageEnabled,
           "Public Roll-Message Status",
+        ),
+        roll_message_speed: cleanRollMessageSpeed(
+          body.rollMessageSpeed,
         ),
         beta_channel: cleanText(
           body.betaChannel,
