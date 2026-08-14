@@ -4795,3 +4795,91 @@ small,
   color: var(--accent);
   border-color: rgba(245, 166, 35, 0.45);
 }
+
+/* V17.2.2 – globale Release-Anzeige & Roll-Message */
+.sidebar-beta-tester-badge {
+  display: inline-flex;
+  margin-top: 7px;
+  padding: 3px 6px;
+  color: #b9d9ff;
+  background: rgba(85, 167, 255, 0.08);
+  border: 1px solid rgba(85, 167, 255, 0.28);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+
+.sidebar-roll-message {
+  position: relative;
+  width: 100%;
+  margin-top: 14px;
+  overflow: hidden;
+  color: #ffd99a;
+  background: rgba(245, 166, 35, 0.07);
+  border: 1px solid rgba(245, 166, 35, 0.24);
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.sidebar-roll-message::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 2;
+  width: 24px;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(90deg, #10161a, transparent);
+}
+
+.sidebar-roll-message::after {
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 2;
+  width: 24px;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(270deg, #10161a, transparent);
+}
+
+.sidebar-roll-message-beta {
+  color: #c8e2ff;
+  background: rgba(85, 167, 255, 0.075);
+  border-color: rgba(85, 167, 255, 0.28);
+}
+
+.sidebar-roll-message-track {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  gap: 42px;
+  padding: 8px 0;
+  animation: philamentixRollMessage 16s linear infinite;
+}
+
+.sidebar-roll-message-track span {
+  padding-left: 18px;
+}
+
+@keyframes philamentixRollMessage {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50% - 21px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-roll-message-track {
+    width: auto;
+    animation: none;
+  }
+
+  .sidebar-roll-message-track span:nth-child(2) {
+    display: none;
+  }
+}

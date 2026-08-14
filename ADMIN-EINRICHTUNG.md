@@ -20,3 +20,7 @@ Supabase SQL Editor ausführen:
 Danach ist keine weitere Environment Variable nötig. Nach dem Deployment
 meldet sich jeder angemeldete Benutzer automatisch. Der Adminbereich
 aktualisiert die Online-Anzeige alle 20 Sekunden.
+
+## V17.2.2 – Release Control & Beta-Tester
+
+Zusätzlich einmal `supabase/release_channels_v17_2_2.sql` im Supabase SQL Editor ausführen. Danach kann der Admin unter `/admin` Public-/Beta-Versionen, Roll-Messages und Beta-Testzugänge verwalten.

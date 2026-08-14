@@ -46,6 +46,68 @@ type PreferenceSyncState =
   | "local"
   | "error";
 
+export type ReleaseAudience = "public" | "beta";
+
+export type ReleaseInfo = {
+  audience: ReleaseAudience;
+  channel: string;
+  version: string;
+  message: string;
+  messageEnabled: boolean;
+  betaTester: boolean;
+  betaReleaseEnabled: boolean;
+  setupAvailable: boolean;
+};
+
+const DEFAULT_RELEASE_INFO: ReleaseInfo = {
+  audience: "public",
+  channel: "PROD",
+  version: "1.0",
+  message: "",
+  messageEnabled: false,
+  betaTester: false,
+  betaReleaseEnabled: false,
+  setupAvailable: false,
+};
+
+function releaseVersionParts(value: string): number[] {
+  const matches = value.match(/\d+/g);
+  return matches ? matches.map((part) => Number(part)) : [];
+}
+
+function releaseVersionAtLeast(
+  currentVersion: string,
+  requiredVersion: string,
+): boolean {
+  const current = releaseVersionParts(currentVersion);
+  const required = releaseVersionParts(requiredVersion);
+
+  if (required.length === 0) {
+    return currentVersion.trim() === requiredVersion.trim();
+  }
+
+  if (current.length === 0) {
+    return false;
+  }
+
+  const length = Math.max(current.length, required.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const currentPart = current[index] ?? 0;
+    const requiredPart = required[index] ?? 0;
+
+    if (currentPart > requiredPart) {
+      return true;
+    }
+
+    if (currentPart < requiredPart) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 type HubContextValue = {
   user: User | null;
   authReady: boolean;
@@ -57,6 +119,10 @@ type HubContextValue = {
   displayName: string;
   isAdmin: boolean;
   adminRoleReady: boolean;
+  releaseInfo: ReleaseInfo;
+  releaseReady: boolean;
+  refreshReleaseInfo: () => Promise<void>;
+  hasReleaseAccess: (requiredVersion: string) => boolean;
   filamentImageMode: FilamentImageMode;
   filamentDefaults: FilamentDefaults;
   preferenceSyncState: PreferenceSyncState;
@@ -286,6 +352,10 @@ export function HubProvider({
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminRoleReady, setAdminRoleReady] =
     useState(false);
+  const [releaseInfo, setReleaseInfo] =
+    useState<ReleaseInfo>(DEFAULT_RELEASE_INFO);
+  const [releaseReady, setReleaseReady] =
+    useState(false);
   const [filaments, setFilaments] = useState<
     Filament[]
   >([]);
@@ -361,6 +431,125 @@ export function HubProvider({
     [],
   );
 
+  const loadReleaseInfoForUser = useCallback(
+    async (userId: string) => {
+      const [releaseResult, betaResult] =
+        await Promise.all([
+          supabase
+            .from("app_release_state")
+            .select(
+              "public_channel,public_version,public_message,public_message_enabled,beta_channel,beta_version,beta_message,beta_message_enabled,beta_release_enabled",
+            )
+            .eq("id", 1)
+            .maybeSingle(),
+          supabase
+            .from("beta_testers")
+            .select("enabled")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        ]);
+
+      const releaseCode =
+        releaseResult.error?.code ?? "";
+      const releaseSetupMissing =
+        releaseCode === "42P01" ||
+        releaseCode === "PGRST204" ||
+        releaseCode === "PGRST205";
+
+      if (releaseResult.error) {
+        if (!releaseSetupMissing) {
+          console.warn(
+            "Release-Konfiguration konnte nicht geladen werden:",
+            releaseResult.error.message,
+          );
+        }
+
+        setReleaseInfo(DEFAULT_RELEASE_INFO);
+        setReleaseReady(true);
+        return;
+      }
+
+      const betaCode = betaResult.error?.code ?? "";
+      const betaSetupMissing =
+        betaCode === "42P01" ||
+        betaCode === "PGRST204" ||
+        betaCode === "PGRST205";
+
+      if (betaResult.error && !betaSetupMissing) {
+        console.warn(
+          "Beta-Status konnte nicht geladen werden:",
+          betaResult.error.message,
+        );
+      }
+
+      const state = releaseResult.data;
+
+      if (!state) {
+        setReleaseInfo(DEFAULT_RELEASE_INFO);
+        setReleaseReady(true);
+        return;
+      }
+
+      const betaTester =
+        !betaResult.error &&
+        betaResult.data?.enabled === true;
+      const betaVersion =
+        typeof state.beta_version === "string"
+          ? state.beta_version.trim()
+          : "";
+      const useBeta = Boolean(
+        betaTester &&
+          state.beta_release_enabled &&
+          betaVersion,
+      );
+
+      setReleaseInfo({
+        audience: useBeta ? "beta" : "public",
+        channel: useBeta
+          ? String(state.beta_channel || "BETA")
+          : String(state.public_channel || "PROD"),
+        version: useBeta
+          ? betaVersion
+          : String(state.public_version || "1.0"),
+        message: useBeta
+          ? String(state.beta_message || "")
+          : String(state.public_message || ""),
+        messageEnabled: useBeta
+          ? Boolean(state.beta_message_enabled)
+          : Boolean(state.public_message_enabled),
+        betaTester,
+        betaReleaseEnabled: Boolean(
+          state.beta_release_enabled,
+        ),
+        setupAvailable: true,
+      });
+      setReleaseReady(true);
+    },
+    [],
+  );
+
+  const refreshReleaseInfo = useCallback(
+    async () => {
+      if (!user) {
+        setReleaseInfo(DEFAULT_RELEASE_INFO);
+        setReleaseReady(true);
+        return;
+      }
+
+      await loadReleaseInfoForUser(user.id);
+    },
+    [loadReleaseInfoForUser, user],
+  );
+
+  const hasReleaseAccess = useCallback(
+    (requiredVersion: string) =>
+      releaseVersionAtLeast(
+        releaseInfo.version,
+        requiredVersion,
+      ),
+    [releaseInfo.version],
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -417,6 +606,55 @@ export function HubProvider({
       // Fehler wird im Context angezeigt.
     });
   }, [authReady, user, loadDataForUser]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
+    if (!user) {
+      setReleaseInfo(DEFAULT_RELEASE_INFO);
+      setReleaseReady(true);
+      return;
+    }
+
+    let active = true;
+    setReleaseReady(false);
+
+    const load = async () => {
+      if (!active) {
+        return;
+      }
+
+      await loadReleaseInfoForUser(user.id);
+    };
+
+    void load();
+
+    const intervalId = window.setInterval(() => {
+      void load();
+    }, 30_000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility,
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility,
+      );
+    };
+  }, [authReady, user, loadReleaseInfoForUser]);
 
   useEffect(() => {
     if (!authReady) {
@@ -1581,6 +1819,10 @@ export function HubProvider({
       displayName: getDisplayName(user),
       isAdmin,
       adminRoleReady,
+      releaseInfo,
+      releaseReady,
+      refreshReleaseInfo,
+      hasReleaseAccess,
       filamentImageMode,
       filamentDefaults,
       preferenceSyncState,
@@ -1609,6 +1851,10 @@ export function HubProvider({
       logs,
       isAdmin,
       adminRoleReady,
+      releaseInfo,
+      releaseReady,
+      refreshReleaseInfo,
+      hasReleaseAccess,
       filamentImageMode,
       filamentDefaults,
       preferenceSyncState,

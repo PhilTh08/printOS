@@ -42,7 +42,7 @@ export async function GET(
       );
     }
 
-    const [filamentResult, logResult, roleResult] =
+    const [filamentResult, logResult, roleResult, betaResult] =
       await Promise.all([
         context.adminClient
           .from("filaments")
@@ -62,6 +62,11 @@ export async function GET(
           .from("user_roles")
           .select("role")
           .eq("user_id", userId),
+        context.adminClient
+          .from("beta_testers")
+          .select("enabled")
+          .eq("user_id", userId)
+          .maybeSingle(),
       ]);
 
     if (filamentResult.error) {
@@ -74,6 +79,22 @@ export async function GET(
 
     if (roleResult.error) {
       throw new Error(roleResult.error.message);
+    }
+
+    let isBetaTester = false;
+
+    if (betaResult.error) {
+      const code = betaResult.error.code ?? "";
+      const missingBetaSetup =
+        code === "42P01" ||
+        code === "PGRST204" ||
+        code === "PGRST205";
+
+      if (!missingBetaSetup) {
+        throw new Error(betaResult.error.message);
+      }
+    } else {
+      isBetaTester = betaResult.data?.enabled === true;
     }
 
     let ordersAvailable = true;
@@ -136,6 +157,7 @@ export async function GET(
         isAdmin,
         isCurrentAdmin:
           targetUser.id === context.adminUser.id,
+        isBetaTester,
         userMetadata: targetUser.user_metadata,
       },
       filaments: filamentResult.data ?? [],

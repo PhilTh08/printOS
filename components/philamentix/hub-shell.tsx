@@ -84,6 +84,7 @@ export function HubShell({
     error,
     displayName,
     isAdmin,
+    releaseInfo,
     filaments,
     signOut,
   } = useHub();
@@ -204,8 +205,13 @@ export function HubShell({
               Philamentix<span>Hub</span>
             </div>
             <p className="version">
-              FILAMENT MANAGEMENT // V1.0
+              {releaseInfo.channel} // {releaseInfo.version}
             </p>
+            {releaseInfo.betaTester && (
+              <span className="sidebar-beta-tester-badge">
+                BETA TESTER
+              </span>
+            )}
           </div>
 
           <button
@@ -217,6 +223,26 @@ export function HubShell({
             ×
           </button>
         </div>
+
+        {releaseInfo.messageEnabled &&
+          releaseInfo.message.trim() && (
+            <div
+              className={`sidebar-roll-message ${
+                releaseInfo.audience === "beta"
+                  ? "sidebar-roll-message-beta"
+                  : ""
+              }`}
+              title={releaseInfo.message}
+              aria-label={`Systemmeldung: ${releaseInfo.message}`}
+            >
+              <div className="sidebar-roll-message-track">
+                <span>{releaseInfo.message}</span>
+                <span aria-hidden="true">
+                  {releaseInfo.message}
+                </span>
+              </div>
+            </div>
+          )}
 
         <nav>
           {visibleNavigation.map((group) => (

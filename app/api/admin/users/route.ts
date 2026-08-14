@@ -66,6 +66,32 @@ export async function GET(request: NextRequest) {
         .filter((row) => row.role === "admin")
         .map((row) => String(row.user_id)),
     );
+
+    const { data: betaRows, error: betaError } =
+      await context.adminClient
+        .from("beta_testers")
+        .select("user_id, enabled");
+
+    let betaTesterIds = new Set<string>();
+
+    if (betaError) {
+      const code = betaError.code ?? "";
+      const missingBetaSetup =
+        code === "42P01" ||
+        code === "PGRST204" ||
+        code === "PGRST205";
+
+      if (!missingBetaSetup) {
+        throw new Error(betaError.message);
+      }
+    } else {
+      betaTesterIds = new Set(
+        (betaRows ?? [])
+          .filter((row) => row.enabled === true)
+          .map((row) => String(row.user_id)),
+      );
+    }
+
     const presenceResult =
       await loadAdminPresence(
         context.adminClient,
@@ -108,6 +134,7 @@ export async function GET(request: NextRequest) {
           isAdmin: adminIds.has(user.id),
           isCurrentAdmin:
             user.id === context.adminUser.id,
+          isBetaTester: betaTesterIds.has(user.id),
           online:
             presence?.online ?? false,
           lastSeenAt:

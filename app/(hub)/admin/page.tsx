@@ -24,6 +24,7 @@ type AdminUser = {
   locked: boolean;
   isAdmin: boolean;
   isCurrentAdmin: boolean;
+  isBetaTester: boolean;
   online: boolean;
   lastSeenAt: string | null;
 };
@@ -67,6 +68,44 @@ type AdminAudit = {
   error_message: string | null;
 };
 
+type AdminReleaseConfig = {
+  id: number;
+  public_channel: string;
+  public_version: string;
+  public_message: string;
+  public_message_enabled: boolean;
+  beta_channel: string;
+  beta_version: string;
+  beta_message: string;
+  beta_message_enabled: boolean;
+  beta_release_enabled: boolean;
+  updated_at: string;
+};
+
+type ReleaseForm = {
+  publicChannel: string;
+  publicVersion: string;
+  publicMessage: string;
+  publicMessageEnabled: boolean;
+  betaChannel: string;
+  betaVersion: string;
+  betaMessage: string;
+  betaMessageEnabled: boolean;
+  betaReleaseEnabled: boolean;
+};
+
+const EMPTY_RELEASE_FORM: ReleaseForm = {
+  publicChannel: "PROD",
+  publicVersion: "1.0",
+  publicMessage: "",
+  publicMessageEnabled: false,
+  betaChannel: "BETA",
+  betaVersion: "",
+  betaMessage: "",
+  betaMessageEnabled: false,
+  betaReleaseEnabled: false,
+};
+
 type UserDetail = {
   user: {
     id: string;
@@ -78,6 +117,7 @@ type UserDetail = {
     locked: boolean;
     isAdmin: boolean;
     isCurrentAdmin: boolean;
+    isBetaTester: boolean;
     userMetadata: Record<string, unknown>;
   };
   filaments: AdminFilament[];
@@ -187,6 +227,7 @@ export default function AdminPage() {
     isAdmin,
     adminRoleReady,
     user: currentUser,
+    refreshReleaseInfo,
   } = useHub();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [selectedUserId, setSelectedUserId] =
@@ -194,6 +235,12 @@ export default function AdminPage() {
   const [detail, setDetail] =
     useState<UserDetail | null>(null);
   const [audit, setAudit] = useState<AdminAudit[]>([]);
+  const [releaseForm, setReleaseForm] =
+    useState<ReleaseForm>(EMPTY_RELEASE_FORM);
+  const [releaseLoaded, setReleaseLoaded] =
+    useState(false);
+  const [releaseLoading, setReleaseLoading] =
+    useState(false);
   const [activeTab, setActiveTab] =
     useState<AdminTab>("filaments");
   const [search, setSearch] = useState("");
@@ -268,6 +315,35 @@ export default function AdminPage() {
       audit: AdminAudit[];
     }>("/api/admin/audit");
     setAudit(result.audit);
+  }, [adminFetch]);
+
+  const loadRelease = useCallback(async () => {
+    setReleaseLoading(true);
+
+    try {
+      const result = await adminFetch<{
+        release: AdminReleaseConfig;
+      }>("/api/admin/releases");
+      const release = result.release;
+
+      setReleaseForm({
+        publicChannel: release.public_channel,
+        publicVersion: release.public_version,
+        publicMessage: release.public_message,
+        publicMessageEnabled:
+          release.public_message_enabled,
+        betaChannel: release.beta_channel,
+        betaVersion: release.beta_version,
+        betaMessage: release.beta_message,
+        betaMessageEnabled:
+          release.beta_message_enabled,
+        betaReleaseEnabled:
+          release.beta_release_enabled,
+      });
+      setReleaseLoaded(true);
+    } finally {
+      setReleaseLoading(false);
+    }
   }, [adminFetch]);
 
   const loadUsers = useCallback(async () => {
@@ -369,7 +445,11 @@ export default function AdminPage() {
       return;
     }
 
-    void Promise.all([loadUsers(), loadAudit()]).catch(
+    void Promise.all([
+      loadUsers(),
+      loadAudit(),
+      loadRelease(),
+    ]).catch(
       (caughtError) => {
         setError(
           caughtError instanceof Error
@@ -382,6 +462,7 @@ export default function AdminPage() {
     adminRoleReady,
     isAdmin,
     loadAudit,
+    loadRelease,
     loadUsers,
   ]);
 
@@ -477,6 +558,9 @@ export default function AdminPage() {
   const onlineCount = users.filter(
     (user) => user.online,
   ).length;
+  const betaCount = users.filter(
+    (user) => user.isBetaTester,
+  ).length;
   const selectedAccount =
     users.find(
       (account) =>
@@ -490,7 +574,136 @@ export default function AdminPage() {
         ? loadUserDetail(selectedUserId)
         : Promise.resolve(),
       loadAudit(),
+      loadRelease(),
     ]);
+  }
+
+  function setReleaseField<K extends keyof ReleaseForm>(
+    key: K,
+    value: ReleaseForm[K],
+  ) {
+    setReleaseForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
+  async function saveReleaseSettings(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await adminFetch("/api/admin/releases", {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: "save",
+          ...releaseForm,
+        }),
+      });
+      setMessage(
+        "Release-Einstellungen wurden gespeichert. Die Sidebar aktualisiert sich automatisch.",
+      );
+      await Promise.all([
+        loadRelease(),
+        loadAudit(),
+        refreshReleaseInfo(),
+      ]);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Release-Einstellungen konnten nicht gespeichert werden.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function publishBetaRelease() {
+    if (!releaseForm.betaVersion.trim()) {
+      setError(
+        "Trage zuerst eine Beta-Version ein.",
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Beta ${releaseForm.betaVersion} wirklich für alle Nutzer veröffentlichen?`,
+      )
+    ) {
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await adminFetch("/api/admin/releases", {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: "publishBeta",
+        }),
+      });
+      setMessage(
+        `Beta ${releaseForm.betaVersion} wurde als Public-Version veröffentlicht.`,
+      );
+      await Promise.all([
+        loadRelease(),
+        loadAudit(),
+        refreshReleaseInfo(),
+      ]);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Beta-Version konnte nicht veröffentlicht werden.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleBetaTester() {
+    if (!detail) {
+      return;
+    }
+
+    const enabled = !detail.user.isBetaTester;
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await adminFetch(
+        `/api/admin/users/${encodeURIComponent(
+          detail.user.id,
+        )}/beta`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ enabled }),
+        },
+      );
+      setMessage(
+        enabled
+          ? "Beta-Testzugang wurde freigeschaltet."
+          : "Beta-Testzugang wurde entfernt.",
+      );
+      await reloadEverything();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Beta-Testzugang konnte nicht geändert werden.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function toggleAccountLock() {
@@ -725,6 +938,233 @@ export default function AdminPage() {
         </div>
       )}
 
+      <section className={styles.releaseManager}>
+        <div className={styles.releaseManagerHeading}>
+          <div>
+            <span>Release Control</span>
+            <h2>Versionen & Roll-Message</h2>
+            <p>
+              Public gilt für alle Nutzer. Beta wird nur
+              freigeschalteten Testern angezeigt und kann
+              später mit einem Klick veröffentlicht werden.
+            </p>
+          </div>
+          <div className={styles.releaseStatusSummary}>
+            <span>PUBLIC</span>
+            <strong>
+              {releaseForm.publicChannel} // {releaseForm.publicVersion}
+            </strong>
+            {releaseForm.betaReleaseEnabled &&
+              releaseForm.betaVersion.trim() && (
+                <small>
+                  Beta aktiv: {releaseForm.betaChannel} // {releaseForm.betaVersion}
+                </small>
+              )}
+          </div>
+        </div>
+
+        {!releaseLoaded && !releaseLoading ? (
+          <div className={styles.releaseSetupWarning}>
+            Release-System noch nicht eingerichtet. Führe
+            <code>supabase/release_channels_v17_2_2.sql</code>
+            einmal im Supabase SQL Editor aus.
+          </div>
+        ) : (
+          <form
+            className={styles.releaseForm}
+            onSubmit={(event) =>
+              void saveReleaseSettings(event)
+            }
+          >
+            <article className={styles.releaseCard}>
+              <div className={styles.releaseCardTitle}>
+                <div>
+                  <span className={styles.publicDot} />
+                  <div>
+                    <strong>Public / Production</strong>
+                    <small>Für alle normalen Nutzer</small>
+                  </div>
+                </div>
+                <label className={styles.releaseToggle}>
+                  <input
+                    type="checkbox"
+                    checked={
+                      releaseForm.publicMessageEnabled
+                    }
+                    onChange={(event) =>
+                      setReleaseField(
+                        "publicMessageEnabled",
+                        event.target.checked,
+                      )
+                    }
+                  />
+                  Roll-Message
+                </label>
+              </div>
+
+              <div className={styles.releaseFields}>
+                <label>
+                  Kanal / Name
+                  <input
+                    value={releaseForm.publicChannel}
+                    maxLength={24}
+                    onChange={(event) =>
+                      setReleaseField(
+                        "publicChannel",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="PROD"
+                  />
+                </label>
+                <label>
+                  Version
+                  <input
+                    value={releaseForm.publicVersion}
+                    maxLength={40}
+                    onChange={(event) =>
+                      setReleaseField(
+                        "publicVersion",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="1.1"
+                  />
+                </label>
+                <label className={styles.releaseMessageField}>
+                  Roll-Message für alle
+                  <textarea
+                    value={releaseForm.publicMessage}
+                    maxLength={500}
+                    onChange={(event) =>
+                      setReleaseField(
+                        "publicMessage",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="z. B. Neue Druckbibliothek ist jetzt verfügbar!"
+                  />
+                </label>
+              </div>
+            </article>
+
+            <article
+              className={`${styles.releaseCard} ${styles.betaReleaseCard}`}
+            >
+              <div className={styles.releaseCardTitle}>
+                <div>
+                  <span className={styles.betaDot} />
+                  <div>
+                    <strong>Beta Release</strong>
+                    <small>Nur für freigeschaltete Beta-Tester</small>
+                  </div>
+                </div>
+                <label className={styles.releaseToggle}>
+                  <input
+                    type="checkbox"
+                    checked={
+                      releaseForm.betaReleaseEnabled
+                    }
+                    onChange={(event) =>
+                      setReleaseField(
+                        "betaReleaseEnabled",
+                        event.target.checked,
+                      )
+                    }
+                  />
+                  Beta aktiv
+                </label>
+              </div>
+
+              <div className={styles.releaseFields}>
+                <label>
+                  Kanal / Name
+                  <input
+                    value={releaseForm.betaChannel}
+                    maxLength={24}
+                    onChange={(event) =>
+                      setReleaseField(
+                        "betaChannel",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="BETA"
+                  />
+                </label>
+                <label>
+                  Version
+                  <input
+                    value={releaseForm.betaVersion}
+                    maxLength={40}
+                    onChange={(event) =>
+                      setReleaseField(
+                        "betaVersion",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="3.4"
+                  />
+                </label>
+                <label className={styles.releaseMessageField}>
+                  Beta Roll-Message
+                  <textarea
+                    value={releaseForm.betaMessage}
+                    maxLength={500}
+                    onChange={(event) =>
+                      setReleaseField(
+                        "betaMessage",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="z. B. Beta 3.4: Bitte neuen Auftragsworkflow testen."
+                  />
+                </label>
+                <label
+                  className={`${styles.releaseToggle} ${styles.betaMessageToggle}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={
+                      releaseForm.betaMessageEnabled
+                    }
+                    onChange={(event) =>
+                      setReleaseField(
+                        "betaMessageEnabled",
+                        event.target.checked,
+                      )
+                    }
+                  />
+                  Eigene Roll-Message für Beta-Tester
+                </label>
+              </div>
+            </article>
+
+            <div className={styles.releaseActions}>
+              <button
+                type="submit"
+                disabled={saving || releaseLoading}
+              >
+                {saving ? "Speichert …" : "Release-Einstellungen speichern"}
+              </button>
+              <button
+                className={styles.publishButton}
+                type="button"
+                disabled={
+                  saving ||
+                  releaseLoading ||
+                  !releaseForm.betaVersion.trim()
+                }
+                onClick={() =>
+                  void publishBetaRelease()
+                }
+              >
+                Beta → Public veröffentlichen
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+
       <section className={styles.statsGrid}>
         <article>
           <span>Konten</span>
@@ -747,6 +1187,11 @@ export default function AdminPage() {
           <small>
             Aktivität der letzten 75 Sek.
           </small>
+        </article>
+        <article>
+          <span>Beta-Tester</span>
+          <strong>{betaCount}</strong>
+          <small>früher Zugriff</small>
         </article>
         <article>
           <span>Adminaktionen</span>
@@ -843,6 +1288,9 @@ export default function AdminPage() {
                       : user.locked
                         ? "Gesperrt · "
                         : ""}
+                    {user.isBetaTester
+                      ? "Beta · "
+                      : ""}
                     {user.online
                       ? "Online"
                       : "Offline"}
@@ -926,6 +1374,31 @@ export default function AdminPage() {
                       ? "Gesperrt"
                       : "Aktiv"}
                   </span>
+
+                  <span
+                    className={
+                      detail.user.isBetaTester
+                        ? styles.betaBadge
+                        : styles.standardBadge
+                    }
+                  >
+                    {detail.user.isBetaTester
+                      ? "Beta-Tester"
+                      : "Standard"}
+                  </span>
+
+                  <button
+                    className={styles.betaAccessButton}
+                    type="button"
+                    disabled={saving}
+                    onClick={() =>
+                      void toggleBetaTester()
+                    }
+                  >
+                    {detail.user.isBetaTester
+                      ? "Beta entfernen"
+                      : "Beta freischalten"}
+                  </button>
 
                   <button
                     className={
