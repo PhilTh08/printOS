@@ -1395,3 +1395,249 @@
     width: 100%;
   }
 }
+
+/* V17.2.9 – Rescan */
+.detailToolbar {
+  flex-wrap: wrap;
+}
+
+.lastScanLabel {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.rescanPanel {
+  width: min(1040px, 100%);
+}
+
+.rescanSourceLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 16px;
+  background: #10181c;
+  border: 1px solid #303c43;
+  border-radius: 10px;
+}
+
+.rescanSourceLine > div {
+  min-width: 0;
+}
+
+.rescanSourceLine span,
+.rescanSourceLine strong,
+.rescanSourceLine small {
+  display: block;
+}
+
+.rescanSourceLine span {
+  color: #79baff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rescanSourceLine strong {
+  margin-top: 5px;
+  overflow: hidden;
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rescanSourceLine small {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.rescanWarning {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  color: #ffe2a1;
+  background: rgba(245, 166, 35, 0.07);
+  border: 1px solid rgba(245, 166, 35, 0.34);
+  border-radius: 8px;
+}
+
+.rescanWarning strong {
+  font-size: 13px;
+}
+
+.rescanWarning span {
+  color: #cdb98d;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rescanStats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.rescanStats article {
+  min-width: 0;
+  padding: 13px;
+  background: #10181c;
+  border: 1px solid #303c43;
+  border-radius: 9px;
+}
+
+.rescanStats span,
+.rescanStats strong,
+.rescanStats small {
+  display: block;
+}
+
+.rescanStats span {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rescanStats strong {
+  margin-top: 7px;
+  font-size: 25px;
+}
+
+.rescanStats small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.rescanNew span,
+.rescanNew strong {
+  color: #8ee8b4;
+}
+
+.rescanChanged span,
+.rescanChanged strong {
+  color: #79baff;
+}
+
+.rescanMoved span,
+.rescanMoved strong {
+  color: #c5a7ff;
+}
+
+.rescanMissing span,
+.rescanMissing strong {
+  color: #ffb36b;
+}
+
+.rescanUnchanged span,
+.rescanUnchanged strong {
+  color: #91a0a7;
+}
+
+.rescanNotice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.rescanNotice span {
+  padding: 6px 9px;
+  color: #87969d;
+  background: #0d1519;
+  border: 1px solid #2d383e;
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+.rescanDetails {
+  padding: 15px;
+  background: #10181c;
+  border: 1px solid #303c43;
+  border-radius: 10px;
+}
+
+.rescanGroup {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 11px 12px;
+  background: #0b1317;
+  border: 1px solid #2b373d;
+  border-radius: 8px;
+}
+
+.rescanGroup strong {
+  margin-bottom: 3px;
+  color: #cbd7db;
+  font-size: 12px;
+}
+
+.rescanGroup span {
+  overflow: hidden;
+  color: #87969d;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rescanGroupMissing {
+  border-color: rgba(245, 166, 35, 0.3);
+}
+
+.rescanAllGood {
+  padding: 18px;
+  color: #8ee8b4;
+  background: rgba(57, 217, 138, 0.05);
+  border: 1px solid rgba(57, 217, 138, 0.22);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.rescanActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.missingFileBadge {
+  width: fit-content;
+  margin-top: 7px !important;
+  padding: 4px 7px;
+  color: #ffbf78 !important;
+  background: rgba(245, 166, 35, 0.07);
+  border: 1px solid rgba(245, 166, 35, 0.26);
+  border-radius: 5px;
+  font-weight: 800;
+  white-space: normal !important;
+}
+
+@media (max-width: 900px) {
+  .rescanStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lastScanLabel {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .rescanSourceLine,
+  .rescanActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rescanStats {
+    grid-template-columns: 1fr;
+  }
+
+  .rescanActions button {
+    width: 100%;
+  }
+}

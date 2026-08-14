@@ -54,6 +54,8 @@ type PrintProjectRow = {
   tags: string[];
   favorite: boolean;
   cover_path: string | null;
+  scan_root_name?: string;
+  last_scanned_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -71,6 +73,8 @@ type PrintProjectFileRow = {
   relative_path: string;
   source_modified_at: string | null;
   source_kind: "upload" | "folder_scan";
+  source_missing?: boolean;
+  source_last_seen_at?: string | null;
   generated_preview_path: string | null;
   model_width_mm: number | null;
   model_depth_mm: number | null;
@@ -96,6 +100,32 @@ type ProjectForm = {
   description: string;
   tags: string;
   favorite: boolean;
+};
+
+type RescanCandidate = {
+  scanned: ScannedPrintFile;
+  existing?: PrintProjectFileRow;
+  nextVersion?: number;
+};
+
+type RescanMove = {
+  scanned: ScannedPrintFile;
+  existing: PrintProjectFileRow;
+};
+
+type RescanComparison = {
+  projectId: string;
+  rootName: string;
+  rootMismatch: boolean;
+  scannedAt: string;
+  newFiles: RescanCandidate[];
+  changedFiles: RescanCandidate[];
+  movedFiles: RescanMove[];
+  unchangedFiles: PrintProjectFileRow[];
+  missingFiles: PrintProjectFileRow[];
+  ignoredEntries: number;
+  invalidEntries: number;
+  disabledNewEntries: number;
 };
 
 const EMPTY_FORM: ProjectForm = {
@@ -163,6 +193,48 @@ function isViewerMigrationMissing(error: unknown): boolean {
     "triangle_count",
     "version_number",
   ].some((column) => message.includes(column));
+}
+
+function isRescanMigrationMissing(error: unknown): boolean {
+  if (errorCode(error) === "PGRST204") {
+    return true;
+  }
+
+  const message = errorMessage(error);
+  return [
+    "scan_root_name",
+    "last_scanned_at",
+    "source_missing",
+    "source_last_seen_at",
+  ].some((column) => message.includes(column));
+}
+
+function sourceModifiedMs(value: string | null | undefined): number {
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return "Noch nie";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function metadataFromFile(file: PrintProjectFileRow): ModelMetadata | null {
@@ -238,6 +310,7 @@ export default function PrintLibraryPage() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const versionInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
+  const rescanInputRef = useRef<HTMLInputElement | null>(null);
   const [projects, setProjects] = useState<PrintProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<PrintProject | null>(
     null,
@@ -281,6 +354,16 @@ export default function PrintLibraryPage() {
     total: number;
     fileName: string;
   } | null>(null);
+  const [rescanProject, setRescanProject] = useState<PrintProject | null>(null);
+  const [rescanComparison, setRescanComparison] = useState<RescanComparison | null>(null);
+  const [rescanChecking, setRescanChecking] = useState(false);
+  const [rescanApplying, setRescanApplying] = useState(false);
+  const [rescanMigrationMissing, setRescanMigrationMissing] = useState(false);
+  const [rescanProgress, setRescanProgress] = useState<{
+    current: number;
+    total: number;
+    fileName: string;
+  } | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -295,6 +378,12 @@ export default function PrintLibraryPage() {
     if (folderInput) {
       folderInput.setAttribute("webkitdirectory", "");
       folderInput.setAttribute("directory", "");
+    }
+
+    const rescanInput = rescanInputRef.current;
+    if (rescanInput) {
+      rescanInput.setAttribute("webkitdirectory", "");
+      rescanInput.setAttribute("directory", "");
     }
 
     try {
@@ -1630,6 +1719,491 @@ export default function PrintLibraryPage() {
     }
   }
 
+  function startRescan(project: PrintProject) {
+    clearFeedback();
+
+    if (migrationMissing || viewerMigrationMissing) {
+      setError(
+        "Für den Rescan müssen zuerst die V17.1- und V17.2-Migrationen installiert sein.",
+      );
+      return;
+    }
+
+    setRescanProject(project);
+    setRescanComparison(null);
+    setRescanProgress(null);
+    window.setTimeout(() => rescanInputRef.current?.click(), 0);
+  }
+
+  function closeRescan() {
+    if (rescanChecking || rescanApplying) {
+      return;
+    }
+
+    setRescanComparison(null);
+    setRescanProject(null);
+    setRescanProgress(null);
+  }
+
+  async function handleRescanDirectorySelection(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const files = Array.from(
+      event.target.files ?? [],
+    ) as DirectorySelectableFile[];
+    event.target.value = "";
+
+    if (!user || !rescanProject || files.length === 0) {
+      return;
+    }
+
+    clearFeedback();
+    setRescanChecking(true);
+    setRescanComparison(null);
+
+    try {
+      const scan = scanDirectoryFiles(files);
+      const existingResult = await supabase
+        .from("print_project_files")
+        .select(
+          "id,user_id,project_id,storage_path,file_name,file_type,mime_type,size_bytes,is_preview,relative_path,source_modified_at,source_kind,source_missing,source_last_seen_at,generated_preview_path,model_width_mm,model_depth_mm,model_height_mm,model_volume_mm3,triangle_count,metadata_extracted_at,version_group_id,version_number,version_note,created_at",
+        )
+        .eq("user_id", user.id)
+        .eq("project_id", rescanProject.id)
+        .eq("source_kind", "folder_scan")
+        .order("version_number", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (existingResult.error) {
+        if (isRescanMigrationMissing(existingResult.error)) {
+          setRescanMigrationMissing(true);
+          throw new Error(
+            "Bitte zuerst supabase/print_library_v17_2_9.sql im Supabase SQL Editor ausführen.",
+          );
+        }
+        throw existingResult.error;
+      }
+
+      setRescanMigrationMissing(false);
+      const existingRows = (existingResult.data ?? []) as PrintProjectFileRow[];
+      const latestByGroup = new Map<string, PrintProjectFileRow>();
+      const latestByPath = new Map<string, PrintProjectFileRow>();
+      const maxVersionByGroup = new Map<string, number>();
+
+      for (const row of existingRows) {
+        const groupId = row.version_group_id ?? row.id;
+        maxVersionByGroup.set(
+          groupId,
+          Math.max(maxVersionByGroup.get(groupId) ?? 0, Number(row.version_number) || 1),
+        );
+
+        if (!latestByGroup.has(groupId)) {
+          latestByGroup.set(groupId, row);
+        }
+      }
+
+      for (const row of latestByGroup.values()) {
+        const key = row.relative_path.trim().toLocaleLowerCase("de");
+        if (key && !latestByPath.has(key)) {
+          latestByPath.set(key, row);
+        }
+      }
+
+      const scannedByPath = new Map<string, ScannedPrintFile>();
+      const allRecognizedPaths = new Set<string>();
+      for (const scanned of scan.files) {
+        const key = scanned.relativePath.trim().toLocaleLowerCase("de");
+        if (key) {
+          allRecognizedPaths.add(key);
+        }
+        if (scanned.status !== "ready") {
+          continue;
+        }
+        if (key && !scannedByPath.has(key)) {
+          scannedByPath.set(key, scanned);
+        }
+      }
+
+      const rawNew: RescanCandidate[] = [];
+      const changedFiles: RescanCandidate[] = [];
+      const unchangedFiles: PrintProjectFileRow[] = [];
+
+      for (const [key, scanned] of scannedByPath) {
+        const existing = latestByPath.get(key);
+        if (!existing) {
+          rawNew.push({ scanned });
+          continue;
+        }
+
+        const unchanged =
+          Number(existing.size_bytes) === scanned.size &&
+          sourceModifiedMs(existing.source_modified_at) === scanned.lastModified;
+
+        if (unchanged) {
+          unchangedFiles.push(existing);
+          continue;
+        }
+
+        const groupId = existing.version_group_id ?? "";
+        changedFiles.push({
+          scanned,
+          existing,
+          nextVersion: groupId
+            ? (maxVersionByGroup.get(groupId) ?? (Number(existing.version_number) || 1)) + 1
+            : (Number(existing.version_number) || 1) + 1,
+        });
+      }
+
+      const rawMissing = [...latestByPath.entries()]
+        .filter(([key]) => !allRecognizedPaths.has(key))
+        .map(([, row]) => row);
+
+      const newFingerprintGroups = new Map<string, RescanCandidate[]>();
+      for (const candidate of rawNew) {
+        const scanned = candidate.scanned;
+        const fingerprint = `${scanned.extension}|${scanned.size}|${scanned.lastModified}`;
+        const group = newFingerprintGroups.get(fingerprint) ?? [];
+        group.push(candidate);
+        newFingerprintGroups.set(fingerprint, group);
+      }
+
+      const missingFingerprintGroups = new Map<string, PrintProjectFileRow[]>();
+      for (const existing of rawMissing) {
+        const fingerprint = `${existing.file_type}|${Number(existing.size_bytes)}|${sourceModifiedMs(existing.source_modified_at)}`;
+        const group = missingFingerprintGroups.get(fingerprint) ?? [];
+        group.push(existing);
+        missingFingerprintGroups.set(fingerprint, group);
+      }
+
+      const movedNewIds = new Set<string>();
+      const movedMissingIds = new Set<string>();
+      const movedFiles: RescanMove[] = [];
+
+      for (const [fingerprint, newGroup] of newFingerprintGroups) {
+        const missingGroup = missingFingerprintGroups.get(fingerprint) ?? [];
+        if (newGroup.length !== 1 || missingGroup.length !== 1) {
+          continue;
+        }
+
+        movedFiles.push({
+          scanned: newGroup[0].scanned,
+          existing: missingGroup[0],
+        });
+        movedNewIds.add(newGroup[0].scanned.id);
+        movedMissingIds.add(missingGroup[0].id);
+      }
+
+      const remainingNew = rawNew.filter(
+        (candidate) => !movedNewIds.has(candidate.scanned.id),
+      );
+      const newFiles = remainingNew.filter((candidate) =>
+        enabledScanExtensions.has(candidate.scanned.extension),
+      );
+      const disabledNewEntries = remainingNew.length - newFiles.length;
+      const missingFiles = rawMissing.filter(
+        (existing) => !movedMissingIds.has(existing.id),
+      );
+
+      setRescanComparison({
+        projectId: rescanProject.id,
+        rootName: scan.rootName,
+        rootMismatch: Boolean(
+          rescanProject.scan_root_name &&
+            rescanProject.scan_root_name !== scan.rootName,
+        ),
+        scannedAt: new Date().toISOString(),
+        newFiles,
+        changedFiles,
+        movedFiles,
+        unchangedFiles,
+        missingFiles,
+        ignoredEntries: scan.unsupportedEntries,
+        invalidEntries: scan.tooLargeEntries + scan.pathTooLongEntries,
+        disabledNewEntries,
+      });
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Der Ordner konnte nicht erneut geprüft werden.",
+      );
+    } finally {
+      setRescanChecking(false);
+    }
+  }
+
+  async function applyRescan() {
+    if (!user || !rescanProject || !rescanComparison) {
+      return;
+    }
+
+    if (rescanMigrationMissing) {
+      setError(
+        "Bitte zuerst supabase/print_library_v17_2_9.sql im Supabase SQL Editor ausführen.",
+      );
+      return;
+    }
+
+    const uploadCandidates = [
+      ...rescanComparison.newFiles,
+      ...rescanComparison.changedFiles,
+    ];
+    const uploadSize = uploadCandidates.reduce(
+      (sum, candidate) => sum + candidate.scanned.size,
+      0,
+    );
+
+    if (uploadCandidates.length > MAX_SCAN_IMPORT_FILES) {
+      setError(
+        `Pro Rescan können maximal ${MAX_SCAN_IMPORT_FILES} neue oder geänderte Dateien übernommen werden.`,
+      );
+      return;
+    }
+
+    if (uploadSize > MAX_SCAN_IMPORT_SIZE) {
+      setError(
+        "Die neuen und geänderten Dateien sind zusammen größer als 1 GB.",
+      );
+      return;
+    }
+
+    clearFeedback();
+    setRescanApplying(true);
+    const totalSteps = Math.max(
+      1,
+      uploadCandidates.length +
+        rescanComparison.movedFiles.length +
+        (rescanComparison.unchangedFiles.length > 0 ? 1 : 0) +
+        (rescanComparison.missingFiles.length > 0 ? 1 : 0),
+    );
+    let currentStep = 0;
+    setRescanProgress({
+      current: 0,
+      total: totalSteps,
+      fileName: "Rescan wird vorbereitet …",
+    });
+
+    const uploadedPaths: string[] = [];
+    const insertedIds: string[] = [];
+    let nextCoverPath = rescanProject.cover_path;
+    let analysisWarnings = 0;
+    const nowIso = new Date().toISOString();
+
+    const advance = (fileName: string) => {
+      currentStep += 1;
+      setRescanProgress({ current: currentStep, total: totalSteps, fileName });
+    };
+
+    try {
+      for (const candidate of uploadCandidates) {
+        const scanned = candidate.scanned;
+        advance(scanned.relativePath);
+        const storagePath = `${user.id}/${rescanProject.id}/${crypto.randomUUID()}-${safeFileName(scanned.name)}`;
+        const uploadResult = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(storagePath, scanned.file, {
+            cacheControl: "3600",
+            contentType: scanned.file.type || "application/octet-stream",
+            upsert: false,
+          });
+
+        if (uploadResult.error) {
+          throw uploadResult.error;
+        }
+        uploadedPaths.push(storagePath);
+
+        const isPreview = PREVIEW_IMAGE_EXTENSIONS.has(scanned.extension);
+        const isChanged = Boolean(candidate.existing);
+        const versionNumber = isChanged
+          ? candidate.nextVersion ?? ((Number(candidate.existing?.version_number) || 1) + 1)
+          : 1;
+        const insertPayload = {
+          user_id: user.id,
+          project_id: rescanProject.id,
+          storage_path: storagePath,
+          file_name: scanned.name,
+          file_type: scanned.extension,
+          mime_type: scanned.file.type || "application/octet-stream",
+          size_bytes: scanned.size,
+          is_preview: isPreview,
+          relative_path: scanned.relativePath,
+          source_modified_at:
+            scanned.lastModified > 0
+              ? new Date(scanned.lastModified).toISOString()
+              : null,
+          source_kind: "folder_scan" as const,
+          source_missing: false,
+          source_last_seen_at: nowIso,
+          ...(isChanged && candidate.existing?.version_group_id
+            ? {
+                version_group_id: candidate.existing.version_group_id,
+                version_number: versionNumber,
+                version_note: `Rescan · Version ${versionNumber}`,
+              }
+            : {
+                version_number: 1,
+                version_note: "Rescan-Import",
+              }),
+        };
+
+        const insertResult = await supabase
+          .from("print_project_files")
+          .insert(insertPayload)
+          .select("*")
+          .single();
+
+        if (insertResult.error) {
+          throw insertResult.error;
+        }
+
+        const newRow = insertResult.data as PrintProjectFileRow;
+        insertedIds.push(newRow.id);
+        let generatedPreviewPath: string | null = null;
+
+        if (isViewableModelExtension(scanned.extension)) {
+          try {
+            generatedPreviewPath = await analyzeLocalModel(scanned.file, newRow);
+            if (generatedPreviewPath) {
+              uploadedPaths.push(generatedPreviewPath);
+            }
+          } catch {
+            analysisWarnings += 1;
+          }
+        }
+
+        const coverCandidate = isPreview ? storagePath : generatedPreviewPath;
+        if (
+          coverCandidate &&
+          (!nextCoverPath ||
+            nextCoverPath === candidate.existing?.storage_path ||
+            nextCoverPath === candidate.existing?.generated_preview_path)
+        ) {
+          nextCoverPath = coverCandidate;
+        }
+      }
+
+      for (const move of rescanComparison.movedFiles) {
+        advance(`${move.existing.relative_path} → ${move.scanned.relativePath}`);
+        const updateResult = await supabase
+          .from("print_project_files")
+          .update({
+            file_name: move.scanned.name,
+            relative_path: move.scanned.relativePath,
+            source_modified_at:
+              move.scanned.lastModified > 0
+                ? new Date(move.scanned.lastModified).toISOString()
+                : null,
+            source_missing: false,
+            source_last_seen_at: nowIso,
+          })
+          .eq("id", move.existing.id)
+          .eq("user_id", user.id);
+
+        if (updateResult.error) {
+          throw updateResult.error;
+        }
+      }
+
+      if (rescanComparison.unchangedFiles.length > 0) {
+        advance("Unveränderte Dateien bestätigen");
+        const unchangedResult = await supabase
+          .from("print_project_files")
+          .update({
+            source_missing: false,
+            source_last_seen_at: nowIso,
+          })
+          .eq("user_id", user.id)
+          .in(
+            "id",
+            rescanComparison.unchangedFiles.map((file) => file.id),
+          );
+
+        if (unchangedResult.error) {
+          throw unchangedResult.error;
+        }
+      }
+
+      if (rescanComparison.missingFiles.length > 0) {
+        advance("Fehlende Dateien markieren");
+        const missingResult = await supabase
+          .from("print_project_files")
+          .update({ source_missing: true })
+          .eq("user_id", user.id)
+          .in(
+            "id",
+            rescanComparison.missingFiles.map((file) => file.id),
+          );
+
+        if (missingResult.error) {
+          throw missingResult.error;
+        }
+      }
+
+      if (currentStep === 0) {
+        advance("Scanstatus speichern");
+      }
+
+      const projectUpdate = await supabase
+        .from("print_projects")
+        .update({
+          scan_root_name: rescanComparison.rootName,
+          last_scanned_at: nowIso,
+          cover_path: nextCoverPath,
+        })
+        .eq("id", rescanProject.id)
+        .eq("user_id", user.id);
+
+      if (projectUpdate.error) {
+        throw projectUpdate.error;
+      }
+
+      const summary = [
+        `${rescanComparison.newFiles.length} neu`,
+        `${rescanComparison.changedFiles.length} geändert`,
+        `${rescanComparison.movedFiles.length} verschoben`,
+        `${rescanComparison.missingFiles.length} nicht gefunden`,
+        `${rescanComparison.unchangedFiles.length} unverändert`,
+      ].join(" · ");
+
+      setMessage(
+        `Rescan abgeschlossen: ${summary}${analysisWarnings > 0 ? ` · ${analysisWarnings} Modell${analysisWarnings === 1 ? "" : "e"} nicht automatisch analysiert` : ""}.`,
+      );
+      const projectToReload: PrintProject = {
+        ...rescanProject,
+        scan_root_name: rescanComparison.rootName,
+        last_scanned_at: nowIso,
+        cover_path: nextCoverPath,
+      };
+      setRescanComparison(null);
+      setRescanProject(null);
+      setRescanProgress(null);
+      await loadProjects();
+      if (selectedProject?.id === projectToReload.id) {
+        await loadProjectFiles(projectToReload);
+      }
+    } catch (caughtError) {
+      if (insertedIds.length > 0) {
+        await supabase
+          .from("print_project_files")
+          .delete()
+          .eq("user_id", user.id)
+          .in("id", insertedIds);
+      }
+      if (uploadedPaths.length > 0) {
+        await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths);
+      }
+
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Die Rescan-Änderungen konnten nicht übernommen werden.",
+      );
+    } finally {
+      setRescanApplying(false);
+      setRescanProgress(null);
+    }
+  }
+
   async function uploadFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
@@ -2102,6 +2676,13 @@ export default function PrintLibraryPage() {
             multiple
             onChange={handleDirectorySelection}
           />
+          <input
+            ref={rescanInputRef}
+            className={styles.hiddenInput}
+            type="file"
+            multiple
+            onChange={(event) => void handleRescanDirectorySelection(event)}
+          />
           <button
             className="secondary-button"
             type="button"
@@ -2379,6 +2960,14 @@ export default function PrintLibraryPage() {
                         onClick={() => void loadProjectFiles(project)}
                       >
                         Öffnen
+                      </button>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        disabled={rescanChecking || rescanApplying || migrationMissing || viewerMigrationMissing}
+                        onClick={() => startRescan(project)}
+                      >
+                        ↻ Rescan
                       </button>
                       <button
                         className="secondary-button"
@@ -2787,6 +3376,197 @@ export default function PrintLibraryPage() {
         </div>
       )}
 
+      {rescanProject && rescanComparison && (
+        <div className={styles.scannerBackdrop} role="presentation">
+          <section
+            className={`${styles.scannerPanel} ${styles.rescanPanel}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Druckordner erneut scannen"
+          >
+            <header className={styles.scannerHeader}>
+              <div>
+                <span>RESCAN · {rescanProject.name}</span>
+                <h2>Änderungen gefunden</h2>
+                <p>
+                  Der lokale Ordner wurde mit dem letzten Stand der Druckbibliothek
+                  verglichen. Fehlende Dateien werden nur markiert und niemals
+                  automatisch gelöscht.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Rescan schließen"
+                disabled={rescanApplying}
+                onClick={closeRescan}
+              >
+                ×
+              </button>
+            </header>
+
+            <div className={styles.scannerBody}>
+              <section className={styles.rescanSourceLine}>
+                <div>
+                  <span>Ausgewählter Ordner</span>
+                  <strong>{rescanComparison.rootName}</strong>
+                  <small>
+                    Letzter gespeicherter Scan: {formatDateTime(rescanProject.last_scanned_at)}
+                  </small>
+                </div>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={rescanApplying}
+                  onClick={() => rescanInputRef.current?.click()}
+                >
+                  Anderen Ordner wählen
+                </button>
+              </section>
+
+              {rescanComparison.rootMismatch && (
+                <div className={styles.rescanWarning}>
+                  <strong>Ordnername weicht ab</strong>
+                  <span>
+                    Bisher war „{rescanProject.scan_root_name}“ hinterlegt. Prüfe kurz,
+                    ob du wirklich den richtigen Projektordner ausgewählt hast.
+                  </span>
+                </div>
+              )}
+
+              <section className={styles.rescanStats}>
+                <article className={styles.rescanNew}>
+                  <span>Neu</span>
+                  <strong>{rescanComparison.newFiles.length}</strong>
+                  <small>werden hinzugefügt</small>
+                </article>
+                <article className={styles.rescanChanged}>
+                  <span>Geändert</span>
+                  <strong>{rescanComparison.changedFiles.length}</strong>
+                  <small>werden neue Versionen</small>
+                </article>
+                <article className={styles.rescanMoved}>
+                  <span>Verschoben</span>
+                  <strong>{rescanComparison.movedFiles.length}</strong>
+                  <small>Pfad wird aktualisiert</small>
+                </article>
+                <article className={styles.rescanMissing}>
+                  <span>Nicht gefunden</span>
+                  <strong>{rescanComparison.missingFiles.length}</strong>
+                  <small>nur markieren</small>
+                </article>
+                <article className={styles.rescanUnchanged}>
+                  <span>Unverändert</span>
+                  <strong>{rescanComparison.unchangedFiles.length}</strong>
+                  <small>keine Aktion nötig</small>
+                </article>
+              </section>
+
+              {(rescanComparison.ignoredEntries > 0 ||
+                rescanComparison.invalidEntries > 0 ||
+                rescanComparison.disabledNewEntries > 0) && (
+                <div className={styles.rescanNotice}>
+                  {rescanComparison.ignoredEntries > 0 && (
+                    <span>{rescanComparison.ignoredEntries} nicht unterstützte Dateien ignoriert</span>
+                  )}
+                  {rescanComparison.invalidEntries > 0 && (
+                    <span>{rescanComparison.invalidEntries} Dateien zu groß oder mit zu langem Pfad</span>
+                  )}
+                  {rescanComparison.disabledNewEntries > 0 && (
+                    <span>{rescanComparison.disabledNewEntries} neue Dateien durch deine Format-Auswahl übersprungen</span>
+                  )}
+                </div>
+              )}
+
+              <section className={styles.rescanDetails}>
+                <div className={styles.scanSectionHeading}>
+                  <div>
+                    <span>Vorschau</span>
+                    <h3>Was wird geändert?</h3>
+                  </div>
+                  <small>Es werden höchstens 24 Einträge je Kategorie angezeigt.</small>
+                </div>
+
+                {rescanComparison.newFiles.length > 0 && (
+                  <div className={styles.rescanGroup}>
+                    <strong>+ Neue Dateien</strong>
+                    {rescanComparison.newFiles.slice(0, 24).map(({ scanned }) => (
+                      <span key={`new:${scanned.id}`}>{scanned.relativePath}</span>
+                    ))}
+                  </div>
+                )}
+                {rescanComparison.changedFiles.length > 0 && (
+                  <div className={styles.rescanGroup}>
+                    <strong>↻ Geänderte Dateien</strong>
+                    {rescanComparison.changedFiles.slice(0, 24).map(({ scanned, nextVersion }) => (
+                      <span key={`changed:${scanned.id}`}>
+                        {scanned.relativePath} → V{nextVersion}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {rescanComparison.movedFiles.length > 0 && (
+                  <div className={styles.rescanGroup}>
+                    <strong>⇄ Verschobene Dateien</strong>
+                    {rescanComparison.movedFiles.slice(0, 24).map(({ scanned, existing }) => (
+                      <span key={`moved:${existing.id}`}>
+                        {existing.relative_path} → {scanned.relativePath}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {rescanComparison.missingFiles.length > 0 && (
+                  <div className={`${styles.rescanGroup} ${styles.rescanGroupMissing}`}>
+                    <strong>⚠ Lokal nicht gefunden</strong>
+                    {rescanComparison.missingFiles.slice(0, 24).map((file) => (
+                      <span key={`missing:${file.id}`}>{file.relative_path}</span>
+                    ))}
+                  </div>
+                )}
+                {rescanComparison.newFiles.length === 0 &&
+                  rescanComparison.changedFiles.length === 0 &&
+                  rescanComparison.movedFiles.length === 0 &&
+                  rescanComparison.missingFiles.length === 0 && (
+                    <div className={styles.rescanAllGood}>
+                      ✓ Der Ordner ist bereits vollständig synchron.
+                    </div>
+                  )}
+              </section>
+
+              {rescanProgress && (
+                <div className={styles.scanProgress}>
+                  <div>
+                    <span>
+                      Schritt {rescanProgress.current} von {rescanProgress.total}
+                    </span>
+                    <strong>{rescanProgress.fileName}</strong>
+                  </div>
+                  <progress max={rescanProgress.total} value={rescanProgress.current} />
+                </div>
+              )}
+
+              <div className={styles.rescanActions}>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={rescanApplying}
+                  onClick={closeRescan}
+                >
+                  Abbrechen
+                </button>
+                <button
+                  className="primary-button"
+                  type="button"
+                  disabled={rescanApplying}
+                  onClick={() => void applyRescan()}
+                >
+                  {rescanApplying ? "Rescan wird übernommen …" : "Änderungen übernehmen"}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
       {selectedProject && (
         <div className={styles.detailBackdrop} role="presentation">
           <section className={styles.detailPanel} role="dialog" aria-modal="true">
@@ -2842,7 +3622,23 @@ export default function PrintLibraryPage() {
               >
                 Ordner in dieses Projekt scannen
               </button>
-              <span>Maximal 100 MB pro Datei</span>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={
+                  uploading ||
+                  rescanChecking ||
+                  rescanApplying ||
+                  migrationMissing ||
+                  viewerMigrationMissing
+                }
+                onClick={() => startRescan(selectedProject)}
+              >
+                {rescanChecking ? "Prüfe Ordner …" : "↻ Rescan"}
+              </button>
+              <span className={styles.lastScanLabel}>
+                Zuletzt gescannt: {formatDateTime(selectedProject.last_scanned_at)}
+              </span>
             </div>
 
             {viewerFile && viewerUrl && (
@@ -2916,6 +3712,11 @@ export default function PrintLibraryPage() {
                         {file.relative_path && file.relative_path !== file.file_name && (
                           <small title={file.relative_path}>
                             {file.relative_path}
+                          </small>
+                        )}
+                        {file.source_missing && (
+                          <small className={styles.missingFileBadge}>
+                            ⚠ Beim letzten Rescan lokal nicht gefunden
                           </small>
                         )}
                       </div>
