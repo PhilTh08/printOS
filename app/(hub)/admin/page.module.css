@@ -726,6 +726,36 @@
   }
 }
 
+
+.betaVersionOption:disabled {
+  cursor: default;
+  opacity: 0.78;
+  transform: none;
+}
+
+.betaVersionOption:disabled:hover {
+  transform: none;
+  background: rgba(85, 167, 255, 0.09);
+  border-color: var(--blue);
+}
+
+.betaReleaseOffNotice {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  color: #d6b780;
+  background: rgba(255, 184, 77, 0.045);
+  border: 1px solid rgba(255, 184, 77, 0.18);
+  border-radius: 7px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.betaReleaseOffNotice strong {
+  color: #ffd28a;
+  font-size: 10px;
+}
+
 @media (max-width: 520px) {
   .statsGrid {
     grid-template-columns: 1fr 1fr;

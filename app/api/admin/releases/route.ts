@@ -125,7 +125,12 @@ export async function PATCH(request: NextRequest) {
   try {
     const context = await requireAdmin(request);
     const body = (await request.json()) as ReleaseBody;
-    const action = body.action === "publishBeta" ? "publishBeta" : "save";
+    const action =
+      body.action === "publishBeta"
+        ? "publishBeta"
+        : body.action === "setBetaVersion"
+          ? "setBetaVersion"
+          : "save";
     const before = await loadReleaseState(context);
 
     let update: Record<string, unknown>;
@@ -152,6 +157,28 @@ export async function PATCH(request: NextRequest) {
       };
       auditAction = "release.beta.publish";
       reason = `Beta ${betaVersion} als Public-Version veröffentlicht`;
+    } else if (action === "setBetaVersion") {
+      const betaVersion = cleanText(
+        body.betaVersion,
+        "Beta-Version",
+        40,
+        true,
+      );
+
+      if (!/^\d+(?:\.\d+){1,3}$/.test(betaVersion)) {
+        throw new AdminApiError(
+          400,
+          "Beta-Version muss aus Zahlen bestehen, z. B. 18.4.",
+        );
+      }
+
+      update = {
+        beta_version: betaVersion,
+        updated_at: new Date().toISOString(),
+        updated_by: context.adminUser.id,
+      };
+      auditAction = "release.beta.version.switch";
+      reason = `Beta-Version auf ${betaVersion} gewechselt`;
     } else {
       update = {
         public_channel: cleanText(

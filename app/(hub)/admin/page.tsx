@@ -825,6 +825,63 @@ export default function AdminPage() {
     }));
   }
 
+  async function switchBetaVersion(nextVersion: string) {
+    const currentVersion = savedBetaVersion.trim();
+    const targetVersion = nextVersion.trim();
+
+    if (!targetVersion || targetVersion === currentVersion) {
+      return;
+    }
+
+    const isDowngrade =
+      currentVersion &&
+      compareReleaseVersions(
+        targetVersion,
+        currentVersion,
+      ) < 0;
+
+    if (
+      isDowngrade &&
+      !window.confirm(
+        `Beta von ${currentVersion} auf ${targetVersion} downgraden?\n\nNeuere Beta-Module werden nur ausgeblendet. Bereits gespeicherte Daten bleiben vollständig erhalten.`,
+      )
+    ) {
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await adminFetch("/api/admin/releases", {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: "setBetaVersion",
+          betaVersion: targetVersion,
+        }),
+      });
+
+      setMessage(
+        `Beta ${targetVersion} ist jetzt aktiv. Beta-Tester erhalten die Modulfreigabe automatisch.`,
+      );
+
+      await Promise.all([
+        loadRelease(),
+        loadAudit(),
+        refreshReleaseInfo(),
+      ]);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Beta-Version konnte nicht gewechselt werden.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveReleaseSettings(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -1549,9 +1606,9 @@ export default function AdminPage() {
                     <div>
                       <span>Beta-Version auswählen</span>
                       <small>
-                        Wechsel jederzeit zwischen den vorhandenen
-                        Beta-Stufen. Ein Downgrade blendet neuere
-                        Funktionen nur aus.
+                        Klick auf eine Version aktiviert sie sofort.
+                        Ein Downgrade blendet neuere Funktionen nur
+                        aus; gespeicherte Daten bleiben erhalten.
                       </small>
                     </div>
                     <div className={styles.betaVersionState}>
@@ -1584,11 +1641,9 @@ export default function AdminPage() {
                               ? styles.betaVersionOptionSelected
                               : ""
                           }`}
+                          disabled={saving || releaseLoading || active}
                           onClick={() =>
-                            setReleaseField(
-                              "betaVersion",
-                              option.version,
-                            )
+                            void switchBetaVersion(option.version)
                           }
                         >
                           <div>
@@ -1626,6 +1681,15 @@ export default function AdminPage() {
                       das Release-Gating ausgeblendet.
                     </span>
                   </div>
+                  {!releaseForm.betaReleaseEnabled && (
+                    <div className={styles.betaReleaseOffNotice}>
+                      <strong>Beta-Release ist deaktiviert</strong>
+                      <span>
+                        Die gewählte Version wird gespeichert, aber Beta-Tester
+                        sehen die Module erst, wenn „Beta-Release aktiv“ eingeschaltet ist.
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <label className={styles.releaseMessageField}>
                   Beta Roll-Message

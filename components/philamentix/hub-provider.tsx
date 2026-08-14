@@ -121,6 +121,49 @@ function releaseVersionAtLeast(
   return true;
 }
 
+function sameReleaseInfo(left: ReleaseInfo, right: ReleaseInfo): boolean {
+  return (
+    left.audience === right.audience &&
+    left.channel === right.channel &&
+    left.version === right.version &&
+    left.message === right.message &&
+    left.messageEnabled === right.messageEnabled &&
+    left.rollMessageSpeed === right.rollMessageSpeed &&
+    left.betaTester === right.betaTester &&
+    left.betaReleaseEnabled === right.betaReleaseEnabled &&
+    left.setupAvailable === right.setupAvailable
+  );
+}
+
+function sameMaintenanceRules(
+  left: MaintenanceRule[],
+  right: MaintenanceRule[],
+): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    const a = left[index];
+    const b = right[index];
+
+    if (
+      a.id !== b.id ||
+      a.scope !== b.scope ||
+      a.user_id !== b.user_id ||
+      a.area !== b.area ||
+      a.mode !== b.mode ||
+      a.message !== b.message ||
+      a.enabled !== b.enabled ||
+      a.updated_at !== b.updated_at
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 type HubContextValue = {
   user: User | null;
   authReady: boolean;
@@ -488,9 +531,18 @@ export function HubProvider({
             "Release-Konfiguration konnte nicht geladen werden:",
             releaseResult.error.message,
           );
+          // Bei einem kurzen Netzwerk-/Realtime-Fehler den zuletzt
+          // bekannten Release-Zustand behalten. Sonst würden Beta-Module
+          // sichtbar verschwinden und kurz darauf wieder auftauchen.
+          setReleaseReady(true);
+          return;
         }
 
-        setReleaseInfo(DEFAULT_RELEASE_INFO);
+        setReleaseInfo((current) =>
+          sameReleaseInfo(current, DEFAULT_RELEASE_INFO)
+            ? current
+            : DEFAULT_RELEASE_INFO,
+        );
         setReleaseReady(true);
         return;
       }
@@ -506,6 +558,10 @@ export function HubProvider({
           "Beta-Status konnte nicht geladen werden:",
           betaResult.error.message,
         );
+        // Ein temporärer Fehler beim Beta-Status darf den Nutzer nicht
+        // spontan auf PROD zurückwerfen. Wir behalten den letzten Zustand.
+        setReleaseReady(true);
+        return;
       }
 
       const state = releaseResult.data;
@@ -529,7 +585,7 @@ export function HubProvider({
           betaVersion,
       );
 
-      setReleaseInfo({
+      const nextReleaseInfo: ReleaseInfo = {
         audience: useBeta ? "beta" : "public",
         channel: useBeta
           ? String(state.beta_channel || "BETA")
@@ -558,7 +614,13 @@ export function HubProvider({
           state.beta_release_enabled,
         ),
         setupAvailable: true,
-      });
+      };
+
+      setReleaseInfo((current) =>
+        sameReleaseInfo(current, nextReleaseInfo)
+          ? current
+          : nextReleaseInfo,
+      );
       setReleaseReady(true);
     },
     [],
@@ -608,23 +670,35 @@ export function HubProvider({
             "Wartungsregeln konnten nicht geladen werden:",
             maintenanceError.message,
           );
+          // Bei einem temporären Fehler die zuletzt bekannten Regeln
+          // behalten, damit Navigation und Seiten nicht sichtbar springen.
+          setMaintenanceReady(true);
+          return;
         }
 
-        setMaintenanceRules([]);
+        setMaintenanceRules((current) =>
+          current.length === 0 ? current : [],
+        );
         setMaintenanceSetupAvailable(false);
         setMaintenanceReady(true);
         return;
       }
 
-      const rules = (data ?? []).filter((row) => {
+      const rules = ((data ?? []).filter((row) => {
         const scope = String(row.scope);
         return (
           scope === "global" ||
           (scope === "user" && String(row.user_id) === userId)
         );
-      }) as MaintenanceRule[];
+      }) as MaintenanceRule[]).sort((left, right) =>
+        String(left.id).localeCompare(String(right.id)),
+      );
 
-      setMaintenanceRules(rules);
+      setMaintenanceRules((current) =>
+        sameMaintenanceRules(current, rules)
+          ? current
+          : rules,
+      );
       setMaintenanceSetupAvailable(true);
       setMaintenanceReady(true);
     },
@@ -750,12 +824,17 @@ export function HubProvider({
     }
 
     if (!user) {
-      setReleaseInfo(DEFAULT_RELEASE_INFO);
+      setReleaseInfo((current) =>
+        sameReleaseInfo(current, DEFAULT_RELEASE_INFO)
+          ? current
+          : DEFAULT_RELEASE_INFO,
+      );
       setReleaseReady(true);
       return;
     }
 
     let active = true;
+    let refreshTimer: number | null = null;
     setReleaseReady(false);
 
     const load = async () => {
@@ -766,30 +845,84 @@ export function HubProvider({
       await loadReleaseInfoForUser(user.id);
     };
 
+    const scheduleLoad = (delay = 180) => {
+      if (!active) {
+        return;
+      }
+
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
+
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        void load();
+      }, delay);
+    };
+
     void load();
 
     const intervalId = window.setInterval(() => {
-      void load();
-    }, 30_000);
+      if (document.visibilityState === "visible") {
+        scheduleLoad(0);
+      }
+    }, 60_000);
+
+    const releaseChannel = supabase
+      .channel(`release-state-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "app_release_state",
+          filter: "id=eq.1",
+        },
+        () => scheduleLoad(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "beta_testers",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => scheduleLoad(),
+      )
+      .subscribe();
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        void load();
+        scheduleLoad(0);
       }
     };
+
+    const handleFocus = () => scheduleLoad(0);
+    const handleOnline = () => scheduleLoad(0);
 
     document.addEventListener(
       "visibilitychange",
       handleVisibility,
     );
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handleFocus);
+    window.addEventListener("online", handleOnline);
 
     return () => {
       active = false;
       window.clearInterval(intervalId);
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
       document.removeEventListener(
         "visibilitychange",
         handleVisibility,
       );
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handleFocus);
+      window.removeEventListener("online", handleOnline);
+      void supabase.removeChannel(releaseChannel);
     };
   }, [authReady, user, loadReleaseInfoForUser]);
 
@@ -818,15 +951,14 @@ export function HubProvider({
 
     void load();
 
-    // Realtime bleibt der schnellste Weg. Der kurze Polling-Fallback sorgt
-    // aber dafür, dass normale Nutzer Wartungs-/Ausblendungsänderungen
-    // auch dann zeitnah erhalten, wenn ein Realtime-Channel im Browser
-    // kurzzeitig nicht sauber verbunden ist.
+    // Realtime ist der Hauptweg. Der Polling-Fallback läuft bewusst
+    // ruhig im Hintergrund, damit der gesamte Hub nicht sichtbar
+    // neu rendert, wenn sich an den Regeln nichts geändert hat.
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === "visible") {
         void load();
       }
-    }, 3_000);
+    }, 60_000);
 
     const channel = supabase
       .channel(`maintenance-control-${user.id}`)
