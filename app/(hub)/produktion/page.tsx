@@ -383,6 +383,148 @@ function maintenanceState(printer: ProductionPrinterRow) {
   };
 }
 
+
+const CODE39_PATTERNS: Record<string, string> = {
+  "0": "nnnwwnwnn",
+  "1": "wnnwnnnnw",
+  "2": "nnwwnnnnw",
+  "3": "wnwwnnnnn",
+  "4": "nnnwwnnnw",
+  "5": "wnnwwnnnn",
+  "6": "nnwwwnnnn",
+  "7": "nnnwnnwnw",
+  "8": "wnnwnnwnn",
+  "9": "nnwwnnwnn",
+  A: "wnnnnwnnw",
+  B: "nnwnnwnnw",
+  C: "wnwnnwnnn",
+  D: "nnnnwwnnw",
+  E: "wnnnwwnnn",
+  F: "nnwnwwnnn",
+  G: "nnnnnwwnw",
+  H: "wnnnnwwnn",
+  I: "nnwnnwwnn",
+  J: "nnnnwwwnn",
+  K: "wnnnnnnww",
+  L: "nnwnnnnww",
+  M: "wnwnnnnwn",
+  N: "nnnnwnnww",
+  O: "wnnnwnnwn",
+  P: "nnwnwnnwn",
+  Q: "nnnnnnwww",
+  R: "wnnnnnwwn",
+  S: "nnwnnnwwn",
+  T: "nnnnwnwwn",
+  U: "wwnnnnnnw",
+  V: "nwwnnnnnw",
+  W: "wwwnnnnnn",
+  X: "nwnnwnnnw",
+  Y: "wwnnwnnnn",
+  Z: "nwwnwnnnn",
+  "-": "nwnnnnwnw",
+  ".": "wwnnnnwnn",
+  " ": "nwwnnnwnn",
+  "$": "nwnwnwnnn",
+  "/": "nwnwnnnwn",
+  "+": "nwnnnwnwn",
+  "%": "nnnwnwnwn",
+  "*": "nwnnwnwnn",
+};
+
+function normalizeBarcodeValue(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+function parseScannedJobCode(value: string): { labelCode?: string; jobId?: string } {
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+
+  try {
+    const url = new URL(trimmed);
+    const label = url.searchParams.get("label") || undefined;
+    const jobId = url.searchParams.get("job") || undefined;
+    return { labelCode: label ? normalizeBarcodeValue(label) : undefined, jobId };
+  } catch {
+    // no-op
+  }
+
+  const inlineMatch = trimmed.match(/[?&](label|job)=([^&#]+)/i);
+  if (inlineMatch) {
+    const key = inlineMatch[1].toLowerCase();
+    const value = decodeURIComponent(inlineMatch[2]);
+    return key === "label"
+      ? { labelCode: normalizeBarcodeValue(value) }
+      : { jobId: value };
+  }
+
+  return { labelCode: normalizeBarcodeValue(trimmed) };
+}
+
+function Code39Barcode({ value, className }: { value: string; className?: string }) {
+  const normalized = normalizeBarcodeValue(value);
+  if (!normalized) return null;
+
+  const encoded = `*${normalized}*`;
+  const narrow = 2;
+  const wide = 5;
+  const gap = 2;
+  const quietZone = 10;
+  const barHeight = 54;
+
+  const bars: Array<{ x: number; width: number }> = [];
+  let x = quietZone;
+
+  for (const char of encoded) {
+    const pattern = CODE39_PATTERNS[char];
+    if (!pattern) continue;
+
+    for (let index = 0; index < pattern.length; index += 1) {
+      const width = pattern[index] === "w" ? wide : narrow;
+      const isBar = index % 2 === 0;
+      if (isBar) bars.push({ x, width });
+      x += width;
+    }
+
+    x += gap;
+  }
+
+  const totalWidth = x + quietZone - gap;
+  const textY = barHeight + 14;
+
+  return (
+    <svg
+      viewBox={`0 0 ${totalWidth} ${textY + 4}`}
+      className={className}
+      role="img"
+      aria-label={`Barcode ${normalized}`}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect x="0" y="0" width={totalWidth} height={textY + 4} fill="#ffffff" />
+      {bars.map((bar, index) => (
+        <rect
+          key={`${bar.x}-${bar.width}-${index}`}
+          x={bar.x}
+          y="0"
+          width={bar.width}
+          height={barHeight}
+          fill="#111111"
+        />
+      ))}
+      <text
+        x={totalWidth / 2}
+        y={textY}
+        textAnchor="middle"
+        fontFamily="Arial, sans-serif"
+        fontSize="10"
+        letterSpacing="1.4"
+        fill="#111111"
+      >
+        {normalized}
+      </text>
+    </svg>
+  );
+}
+
 export default function ProductionPage() {
   const { user, filaments, releaseInfo, releaseReady, hasReleaseAccess } = useHub();
 
@@ -423,8 +565,10 @@ export default function ProductionPage() {
 
   const [labelJobId, setLabelJobId] = useState<string | null>(null);
   const [labelPartNumber, setLabelPartNumber] = useState(1);
+  const [scanValue, setScanValue] = useState("");
 
   const loadedOnceRef = useRef(false);
+  const scannerInputRef = useRef<HTMLInputElement | null>(null);
   const refreshInFlightRef = useRef(false);
   const realtimeRefreshTimerRef = useRef<number | null>(null);
   const openedFromQrRef = useRef(false);
@@ -768,6 +912,12 @@ export default function ProductionPage() {
       setLabelJobId(match.id);
     }
   }, [access18_4, jobs]);
+
+  useEffect(() => {
+    if (activeTab !== "labels" || !access18_4) return;
+    const timer = window.setTimeout(() => scannerInputRef.current?.focus(), 60);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, access18_4, labelJobId]);
 
   function openCreateJob() {
     setEditingJobId(null);
@@ -1242,8 +1392,30 @@ export default function ProductionPage() {
   }
 
   function openLabel(job: ProductionJobRow) {
+    setActiveTab("labels");
     setLabelJobId(job.id);
     setLabelPartNumber(1);
+  }
+
+  function handleScanSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const parsed = parseScannedJobCode(scanValue);
+    if (!parsed.labelCode && !parsed.jobId) {
+      setError("Kein gültiger Barcode-/QR-Inhalt erkannt.");
+      return;
+    }
+
+    const match = jobs.find((job) => (parsed.labelCode && normalizeBarcodeValue(job.label_code) === parsed.labelCode) || (parsed.jobId && job.id === parsed.jobId));
+
+    if (!match) {
+      setError(`Kein Produktionsjob zu „${scanValue.trim()}“ gefunden.`);
+      return;
+    }
+
+    setError("");
+    setMessage(`Produktionsjob „${match.title}“ geöffnet.`);
+    setScanValue("");
+    openLabel(match);
   }
 
   async function printLabel() {
@@ -1543,11 +1715,29 @@ export default function ProductionPage() {
 
               {activeTab === "labels" && access18_4 && (
                 <section className={styles.moduleSection}>
-                  <div className={styles.sectionHeader}><div><span>V18.4 BETA</span><h2>Produktionsetiketten & QR-Codes</h2><p>QR-Code scannen → der passende Produktionsjob öffnet sich direkt im Hub.</p></div></div>
+                  <div className={styles.sectionHeader}><div><span>V18.4 BETA</span><h2>Produktionsetiketten, QR & Barcode</h2><p>QR-Code fürs Handy, Barcode für deinen Handscanner: beides öffnet den passenden Produktionsjob direkt im Hub.</p></div></div>
+                  <div className={styles.scanCard}>
+                    <div>
+                      <strong>Handscanner / Barcode öffnen</strong>
+                      <p>Scanne den Produktionscode oder einen QR-Link. Der Job öffnet sich direkt, ohne langes Suchen.</p>
+                    </div>
+                    <form className={styles.scanForm} onSubmit={handleScanSubmit}>
+                      <input
+                        ref={scannerInputRef}
+                        value={scanValue}
+                        onChange={(event) => setScanValue(event.target.value)}
+                        placeholder="PH-7A2D39C14F82 oder kompletter QR-Link"
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                      <button type="submit" className={styles.primaryButton}>Öffnen</button>
+                    </form>
+                    <small className={styles.scanHint}>Tipp: Viele Handscanner senden am Ende automatisch Enter – dann öffnet sich der Job direkt.</small>
+                  </div>
                   <div className={styles.labelList}>
                     {jobs.filter((job) => !["cancelled"].includes(job.status)).map((job) => {
                       const order = job.order_id ? orderMap.get(job.order_id) : undefined;
-                      return <article className={styles.labelRow} key={job.id}><div><span className={styles.labelCode}>{job.label_code || "Wird erzeugt"}</span><strong>{job.title}</strong><small>{order ? `${orderCode(order.id)} · ${order.customer_name || order.title}` : STATUS_LABELS[job.status]} · {job.label_print_count || 0}× gedruckt</small></div><button type="button" onClick={() => openLabel(job)}>QR-Etikett öffnen</button></article>;
+                      return <article className={styles.labelRow} key={job.id}><div><span className={styles.labelCode}>{job.label_code || "Wird erzeugt"}</span><strong>{job.title}</strong><small>{order ? `${orderCode(order.id)} · ${order.customer_name || order.title}` : STATUS_LABELS[job.status]} · {job.label_print_count || 0}× gedruckt</small></div><button type="button" onClick={() => openLabel(job)}>Etikett öffnen</button></article>;
                     })}
                   </div>
                 </section>
@@ -1630,9 +1820,12 @@ export default function ProductionPage() {
               <div className={styles.labelBrand}><strong>PHILAMENTIX</strong><span>PRODUCTION</span></div>
               <div className={styles.labelContent}>
                 <div className={styles.labelText}><span className={styles.printLabelCode}>{selectedLabelJob.label_code}</span><h3>{selectedLabelJob.title}</h3>{selectedLabelJob.order_id && <p>{orderCode(selectedLabelJob.order_id)} · {orderMap.get(selectedLabelJob.order_id)?.customer_name || orderMap.get(selectedLabelJob.order_id)?.title}</p>}<p>Teil {labelPartNumber}/{Math.max(1, selectedLabelJob.quantity)} · {Math.round(selectedLabelJob.material_grams)} g · {selectedLabelJob.printer_id ? printerMap.get(selectedLabelJob.printer_id)?.name : "Drucker offen"}</p><small>{selectedLabelJob.print_file_id ? fileMap.get(selectedLabelJob.print_file_id)?.file_name : "Keine Druckdatei verknüpft"}</small></div>
-                <div className={styles.qrBox}>{labelUrl && <QRCodeSVG value={labelUrl} size={150} level="M" marginSize={1} />}</div>
+                <div className={styles.labelMedia}>
+                  <div className={styles.qrBox}>{labelUrl && <QRCodeSVG value={labelUrl} size={132} level="M" marginSize={1} />}</div>
+                  <div className={styles.barcodeBox}><Code39Barcode value={selectedLabelJob.label_code} className={styles.barcodeSvg} /></div>
+                </div>
               </div>
-              <div className={styles.labelFooter}><span>SCAN → JOB ÖFFNEN</span><span>{new Date().toLocaleDateString("de-DE")}</span></div>
+              <div className={styles.labelFooter}><span>QR ODER BARCODE → JOB ÖFFNEN</span><span>{new Date().toLocaleDateString("de-DE")}</span></div>
             </div>
             <div className={styles.modalActions}><button className={styles.secondaryButton} type="button" onClick={() => setLabelJobId(null)}>Schließen</button><button className={styles.primaryButton} type="button" onClick={() => void printLabel()}>🖨 Etikett drucken</button></div>
           </section>
