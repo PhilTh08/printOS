@@ -63,9 +63,27 @@ async function checkVercel(): Promise<{ health: HealthItem; deployments: VercelD
       };
     }) : [];
 
-    const failed = deployments.filter((entry) => ["ERROR", "CANCELED", "CANCELLED"].includes(entry.state)).length;
-    const running = deployments.filter((entry) => ["BUILDING", "QUEUED", "INITIALIZING"].includes(entry.state)).length;
-    return { health: { id: "vercel", label: "Vercel Deployment API", level: failed > 0 ? "warning" : "ok", message: failed > 0 ? `${failed} fehlgeschlagene Deployments in den letzten ${deployments.length}` : running > 0 ? `${running} Deployment(s) laufen gerade` : `${projectBody.name ?? projectRef} erreichbar`, latencyMs: elapsed(started), critical: false }, deployments };
+    const latest = deployments[0] ?? null;
+    const latestFailed = Boolean(latest && ["ERROR", "CANCELED", "CANCELLED"].includes(latest.state));
+    const latestRunning = Boolean(latest && ["BUILDING", "QUEUED", "INITIALIZING"].includes(latest.state));
+
+    return {
+      health: {
+        id: "vercel",
+        label: "Vercel Deployment API",
+        level: latestFailed ? "error" : latestRunning ? "warning" : "ok",
+        message: latestFailed
+          ? `Letztes Deployment fehlgeschlagen: ${latest?.commitMessage || latest?.branch || latest?.name || "unbekannt"}`
+          : latestRunning
+            ? `Letztes Deployment läuft gerade: ${latest?.commitMessage || latest?.branch || latest?.name || "unbekannt"}`
+            : latest
+              ? `Letztes Deployment ${latest.state} · ${latest.commitMessage || latest.branch || latest.name}`
+              : `${projectBody.name ?? projectRef} erreichbar · keine Deployments gefunden`,
+        latencyMs: elapsed(started),
+        critical: false,
+      },
+      deployments,
+    };
   } catch (error) {
     return { health: { id: "vercel", label: "Vercel Deployment API", level: "warning", message: cleanError(error), latencyMs: elapsed(started), critical: false }, deployments: [] };
   }
