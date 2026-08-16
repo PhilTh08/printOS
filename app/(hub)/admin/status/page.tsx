@@ -20,6 +20,7 @@ type StatusPayload = {
   problems: Array<{ id: string; label: string; level: Level; message: string }>;
   deployments: Deployment[];
   stability: { available: boolean; period: Period; items: StabilityItem[] };
+  simulation?: boolean;
   config: { vercelLive: boolean; githubLive: boolean };
 };
 
@@ -88,7 +89,8 @@ export default function SystemStatusPage() {
   const [nextRefresh, setNextRefresh] = useState(REFRESH_MS / 1000);
   const [testActive, setTestActive] = useState(false);
 
-  const loadStatus = useCallback(async (options?: { manual?: boolean; history?: boolean; selectedPeriod?: Period }) => {
+  const loadStatus = useCallback(async (options?: { manual?: boolean; history?: boolean; selectedPeriod?: Period; simulate?: boolean }) => {
+    if (testActive && !options?.simulate && !options?.manual) return;
     if (options?.manual) setRefreshing(true);
     setRequestError("");
     try {
@@ -96,6 +98,7 @@ export default function SystemStatusPage() {
       if (!session) throw new Error("Sitzung abgelaufen. Bitte neu anmelden.");
       const selectedPeriod = options?.selectedPeriod ?? period;
       const params = new URLSearchParams({ period: selectedPeriod, history: options?.history === false ? "0" : "1" });
+      if (options?.simulate) params.set("simulate", "1");
       const response = await fetch(`/api/admin/system-status?${params.toString()}`, { cache: "no-store", headers: { Authorization: `Bearer ${session.access_token}` } });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || "Systemstatus konnte nicht geladen werden.");
@@ -111,7 +114,7 @@ export default function SystemStatusPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [period]);
+  }, [period, testActive]);
 
   useEffect(() => {
     if (!adminRoleReady || !isAdmin) return;
@@ -122,35 +125,8 @@ export default function SystemStatusPage() {
     return () => { window.clearInterval(refreshTimer); window.clearInterval(historyTimer); window.clearInterval(countdownTimer); };
   }, [adminRoleReady, isAdmin, loadStatus]);
 
-  const displayItems = useMemo<HealthItem[]>(() => {
-    const items = status?.items ?? [];
-    if (!testActive) return items;
-    return [
-      ...items,
-      {
-        id: "simulation",
-        label: "Systemtest · Simulation",
-        level: "error",
-        message: "Simulierter kritischer Systemausfall. Es wurde kein echter Dienst abgeschaltet.",
-        latencyMs: null,
-        critical: true,
-      },
-    ];
-  }, [status?.items, testActive]);
-
-  const displayProblems = useMemo(() => {
-    const problems = status?.problems ?? [];
-    if (!testActive) return problems;
-    return [
-      ...problems,
-      {
-        id: "simulation",
-        label: "Systemtest · Simulation",
-        level: "error" as Level,
-        message: "Kritischer Ausfall wird nur zu Testzwecken simuliert. Der Test endet automatisch.",
-      },
-    ];
-  }, [status?.problems, testActive]);
+  const displayItems = status?.items ?? [];
+  const displayProblems = status?.problems ?? [];
 
   const summary = useMemo(() => ({
     ok: displayItems.filter((item) => item.level === "ok").length,
@@ -180,21 +156,26 @@ export default function SystemStatusPage() {
 
   async function changePeriod(next: Period) {
     setPeriod(next);
-    await loadStatus({ history: true, selectedPeriod: next });
+    await loadStatus({ history: true, selectedPeriod: next, manual: true });
   }
 
-  function runTest() {
+  async function runTest() {
     if (testActive) return;
     setTestActive(true);
-    window.setTimeout(() => setTestActive(false), 12000);
+    await loadStatus({ history: false, simulate: true });
+    window.setTimeout(() => {
+      setTestActive(false);
+      void loadStatus({ manual: true, history: false });
+    }, 8000);
   }
 
   if (!adminRoleReady) return <div className={styles.state}>Adminberechtigung wird geprüft …</div>;
   if (!isAdmin) return <div className={styles.state}>Kein Adminzugriff.</div>;
 
-  const level: Level = testActive ? "error" : status?.overall ?? "warning";
-  const copy = testActive
-    ? { title: "TEST: Störung erkannt", text: "Simulierter kritischer Ausfall. Reale Dienste und Stabilitätsdaten bleiben unverändert." }
+  const level: Level = status?.overall ?? "warning";
+  const isSimulation = Boolean(status?.simulation && testActive);
+  const copy = isSimulation
+    ? { title: "TEST: Störung erkannt", text: "Der Server hat absichtlich einen kritischen Testfehler zurückgegeben. Reale Dienste bleiben unverändert." }
     : overallCopy(level);
   const labels = periodLabels(period);
 
@@ -207,10 +188,10 @@ export default function SystemStatusPage() {
           <p>Live-Überwachung für Server, Supabase, Release Center, GitHub und Vercel. Die Ansicht aktualisiert sich automatisch alle 10 Sekunden.</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <button type="button" className={styles.refreshButton} disabled={testActive} onClick={runTest}>
+          <button type="button" className={styles.refreshButton} disabled={testActive} onClick={() => void runTest()}>
             {testActive ? "Test läuft …" : "Test"}
           </button>
-          <button type="button" className={styles.refreshButton} disabled={refreshing} onClick={() => void loadStatus({ manual: true, history: true })}>
+          <button type="button" className={styles.refreshButton} disabled={refreshing || testActive} onClick={() => void loadStatus({ manual: true, history: true })}>
             {refreshing ? "Prüfung läuft …" : "Jetzt prüfen"}
           </button>
         </div>
@@ -220,8 +201,8 @@ export default function SystemStatusPage() {
 
       <section className={`${styles.overallCard} ${styles[level]}`}>
         <div className={styles.pulseWrap}><span className={styles.pulse} /></div>
-        <div className={styles.overallText}><span>{testActive ? "SIMULATION" : "GESAMTSTATUS"}</span><h2>{copy.title}</h2><p>{copy.text}</p></div>
-        <div className={styles.liveMeta}><strong>{testActive ? "TEST" : "LIVE"}</strong><span>Letzter Check {formatTime(status?.checkedAt ?? null)}</span><span>{testActive ? "endet automatisch nach 12 Sekunden" : `Nächster Check in ${nextRefresh}s`}</span>{status && <small>Prüfdauer {status.durationMs} ms</small>}</div>
+        <div className={styles.overallText}><span>{isSimulation ? "SERVER-TEST" : "GESAMTSTATUS"}</span><h2>{copy.title}</h2><p>{copy.text}</p></div>
+        <div className={styles.liveMeta}><strong>{isSimulation ? "TEST" : "LIVE"}</strong><span>Letzter Check {formatTime(status?.checkedAt ?? null)}</span><span>{isSimulation ? "echter API-Test · endet automatisch" : `Nächster Check in ${nextRefresh}s`}</span>{status && <small>Prüfdauer {status.durationMs} ms</small>}</div>
       </section>
 
       <section className={styles.summaryGrid}>
