@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import styles from "./page.module.css";
 
 type Channel = "production" | "beta" | "public";
+type HealthLevel = "ok" | "warning" | "down";
 
 type ReleaseState = {
   production_channel?: string;
@@ -33,6 +34,20 @@ type Build = {
   error_message: string | null;
   created_at: string;
   completed_at: string | null;
+};
+
+type HealthCheck = {
+  id: string;
+  label: string;
+  ok: boolean;
+  detail: string;
+};
+
+type ReleaseHealth = {
+  level: HealthLevel;
+  summary: string;
+  checks: HealthCheck[];
+  checkedAt: string;
 };
 
 const CHANNELS: Array<{
@@ -69,10 +84,17 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function healthLabel(level: HealthLevel) {
+  if (level === "ok") return "SYSTEM OK";
+  if (level === "warning") return "FEHLER / WARNUNG";
+  return "SYSTEM NICHT BEREIT";
+}
+
 export default function ReleaseCenterPage() {
   const { isAdmin, adminRoleReady, refreshReleaseInfo } = useHub();
   const [release, setRelease] = useState<ReleaseState | null>(null);
   const [builds, setBuilds] = useState<Build[]>([]);
+  const [health, setHealth] = useState<ReleaseHealth | null>(null);
   const [channel, setChannel] = useState<Channel>("production");
   const [version, setVersion] = useState("18.5");
   const [changelog, setChangelog] = useState("");
@@ -103,11 +125,30 @@ export default function ReleaseCenterPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await adminFetch<{ release: ReleaseState; builds: Build[] }>(
-        "/api/admin/release-center",
-      );
+      const result = await adminFetch<{
+        release: ReleaseState;
+        builds: Build[];
+        health: ReleaseHealth;
+      }>("/api/admin/release-center");
       setRelease(result.release);
       setBuilds(result.builds);
+      setHealth(result.health);
+    } catch (caught) {
+      const detail = caught instanceof Error ? caught.message : "Release Center nicht erreichbar.";
+      setHealth({
+        level: "down",
+        summary: "Release Center konnte nicht vollständig geladen werden.",
+        checkedAt: new Date().toISOString(),
+        checks: [
+          {
+            id: "backend",
+            label: "Release Center Backend",
+            ok: false,
+            detail,
+          },
+        ],
+      });
+      throw caught;
     } finally {
       setLoading(false);
     }
@@ -116,6 +157,16 @@ export default function ReleaseCenterPage() {
   useEffect(() => {
     if (!adminRoleReady || !isAdmin) return;
     void load().catch((caught) => setError(caught instanceof Error ? caught.message : "Laden fehlgeschlagen."));
+  }, [adminRoleReady, isAdmin, load]);
+
+  useEffect(() => {
+    if (!adminRoleReady || !isAdmin) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void load().catch(() => undefined);
+      }
+    }, 60_000);
+    return () => window.clearInterval(timer);
   }, [adminRoleReady, isAdmin, load]);
 
   const latestByChannel = useMemo(() => {
@@ -189,8 +240,37 @@ export default function ReleaseCenterPage() {
   if (!adminRoleReady) return <div className={styles.state}>Adminberechtigung wird geprüft …</div>;
   if (!isAdmin) return <div className={styles.state}>Kein Adminzugriff.</div>;
 
+  const healthLevel = health?.level ?? "warning";
+
   return (
     <div className={styles.page}>
+      <section className={`${styles.systemStatus} ${styles[`systemStatus_${healthLevel}`]}`}>
+        <div className={styles.statusPulseWrap}>
+          <span className={styles.statusPulse} />
+          <span className={styles.statusPulseRing} />
+        </div>
+        <div className={styles.statusMain}>
+          <div className={styles.statusTopline}>
+            <strong>{healthLabel(healthLevel)}</strong>
+            <span>{health ? `Geprüft ${formatDate(health.checkedAt)}` : "Prüfung läuft …"}</span>
+          </div>
+          <p>{health?.summary ?? "Systemstatus wird geprüft …"}</p>
+          {health && (
+            <div className={styles.statusChecks}>
+              {health.checks.map((check) => (
+                <span key={check.id} data-ok={check.ok ? "true" : "false"} title={check.detail}>
+                  <i />
+                  {check.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <button type="button" className={styles.statusRefresh} onClick={() => void load()} disabled={loading}>
+          {loading ? "Prüfe …" : "Neu prüfen"}
+        </button>
+      </section>
+
       <header className={styles.header}>
         <div>
           <span>V18.5 · RELEASE CENTER</span>
@@ -319,11 +399,6 @@ export default function ReleaseCenterPage() {
           </div>
         )}
       </section>
-
-      <aside className={styles.setupNote}>
-        <strong>Einmalige Server-Einrichtung</strong>
-        <p>Für den automatischen GitHub-Push braucht Vercel die Environment Variable <code>GITHUB_RELEASE_TOKEN</code>. Die Datenbank benötigt außerdem einmal <code>supabase/release_center_v18_5.sql</code>.</p>
-      </aside>
     </div>
   );
 }
