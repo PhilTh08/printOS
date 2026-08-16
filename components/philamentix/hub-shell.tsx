@@ -314,10 +314,10 @@ export function HubShell({
                     pathname === item.href ||
                     (item.href === "/filamente" &&
                       pathname.startsWith("/filamente/")) ||
-                    (item.href === "/admin" &&
-                      pathname.startsWith("/admin")) ||
                     (item.href === "/druckbibliothek" &&
-                      pathname.startsWith("/druckbibliothek"));
+                      pathname.startsWith("/druckbibliothek/")) ||
+                    (item.href === "/admin" &&
+                      pathname.startsWith("/admin/"));
                   const itemMaintenanceArea =
                     maintenanceAreaForPathname(item.href);
                   const itemInMaintenance = Boolean(
@@ -368,7 +368,6 @@ export function HubShell({
               </div>
             );
           })}
-
         </nav>
 
         <div className="sidebar-account">

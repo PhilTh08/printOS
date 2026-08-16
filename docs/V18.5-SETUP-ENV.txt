@@ -1,0 +1,4 @@
+Vercel Environment Variables for V18.5 Release Center:
+
+GITHUB_RELEASE_TOKEN=<fine-grained token with Contents Read/Write for PhilTh08/printOS>
+GITHUB_RELEASE_REPO=PhilTh08/printOS   (optional; this is the default)
