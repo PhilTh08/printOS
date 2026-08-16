@@ -25,7 +25,7 @@ Release Center, System-Log und Systemstatus sind bewusst nur im Adminbereich err
 - GitHub Release API
 - Vercel Deployment API
 
-Zusätzlich werden die letzten Vercel Deployments mit Status, Branch, Commit-Nachricht und Link angezeigt.
+Zusätzlich werden die letzten Vercel Deployments mit Status, Branch, Commit-Nachricht und Link angezeigt. Laufende, erfolgreiche und fehlgeschlagene Deployments sind farblich getrennt.
 
 ### Statusfarben
 
@@ -47,3 +47,13 @@ Optional:
 - `VERCEL_TEAM_ID` (nur nötig, wenn der Token explizit einem Team zugeordnet werden muss)
 
 Nach Änderung der Environment Variables das Preview Deployment neu deployen.
+
+## Letzter visueller Check
+
+- Admin-Leiste vollständig und ohne Überlappung
+- Release Center Statusleiste plausibel
+- System-Log lädt
+- Systemstatus aktualisiert sich nach 10 Sekunden
+- Fehlerzentrale verständlich
+- Vercel Deployments erscheinen nach Hinterlegen des Tokens
+- mobile / kleinere Fensterbreite kurz prüfen
