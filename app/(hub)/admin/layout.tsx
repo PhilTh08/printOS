@@ -20,6 +20,10 @@ const ADMIN_AREAS = [
     href: "/admin/logs",
     label: "System-Log",
   },
+  {
+    href: "/admin/status",
+    label: "Systemstatus",
+  },
 ] as const;
 
 export default function AdminLayout({
@@ -71,6 +75,10 @@ export default function AdminLayout({
           <Link className={styles.integratedAdminLink} href="/admin/logs">
             <span className={styles.navDot} aria-hidden="true" />
             System-Log
+          </Link>
+          <Link className={styles.integratedAdminLink} href="/admin/status">
+            <span className={styles.navDot} aria-hidden="true" />
+            Systemstatus
           </Link>
         </>,
         adminSectionNav,
