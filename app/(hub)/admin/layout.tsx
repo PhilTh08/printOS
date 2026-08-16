@@ -8,29 +8,13 @@ import { createPortal } from "react-dom";
 import styles from "./layout.module.css";
 
 const ADMIN_AREAS = [
-  {
-    href: "/admin",
-    label: "Admin & Support",
-  },
-  {
-    href: "/admin/releases",
-    label: "Release Center",
-  },
-  {
-    href: "/admin/logs",
-    label: "System-Log",
-  },
-  {
-    href: "/admin/status",
-    label: "Systemstatus",
-  },
+  { href: "/admin", label: "Admin & Support" },
+  { href: "/admin/releases", label: "Release" },
+  { href: "/admin/logs", label: "System-Log" },
+  { href: "/admin/status", label: "Systemstatus" },
 ] as const;
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [adminSectionNav, setAdminSectionNav] = useState<HTMLElement | null>(null);
 
@@ -45,19 +29,26 @@ export default function AdminLayout({
 
     const findNav = () => {
       if (cancelled) return;
-
       const nav = document.querySelector<HTMLElement>('nav[aria-label="Adminbereiche"]');
       if (nav) {
+        const buttons = Array.from(nav.querySelectorAll<HTMLButtonElement>("button"));
+        const oldRelease = buttons.find((button) => button.textContent?.trim() === "Release");
+        if (oldRelease) oldRelease.style.display = "none";
+
+        if (window.localStorage.getItem("philamentix-admin-section") === "release") {
+          window.localStorage.setItem("philamentix-admin-section", "users");
+          const usersButton = buttons.find((button) => button.textContent?.trim() === "Benutzer");
+          usersButton?.click();
+        }
+
         setAdminSectionNav(nav);
         return;
       }
-
       attempts += 1;
       if (attempts < 20) window.setTimeout(findNav, 50);
     };
 
     findNav();
-
     return () => {
       cancelled = true;
       setAdminSectionNav(null);
@@ -70,7 +61,7 @@ export default function AdminLayout({
           <span className={styles.navDivider} aria-hidden="true" />
           <Link className={styles.integratedAdminLink} href="/admin/releases">
             <span className={styles.navDot} aria-hidden="true" />
-            Release Center
+            Release
           </Link>
           <Link className={styles.integratedAdminLink} href="/admin/logs">
             <span className={styles.navDot} aria-hidden="true" />
@@ -92,17 +83,9 @@ export default function AdminLayout({
       {showSubpageNavigation && (
         <nav className={styles.subpageBar} aria-label="Admin Center Navigation">
           {ADMIN_AREAS.map((area) => {
-            const active =
-              area.href === "/admin"
-                ? pathname === "/admin"
-                : pathname === area.href || pathname.startsWith(`${area.href}/`);
-
+            const active = area.href === "/admin" ? pathname === "/admin" : pathname === area.href || pathname.startsWith(`${area.href}/`);
             return (
-              <Link
-                key={area.href}
-                href={area.href}
-                className={`${styles.subpageLink} ${active ? styles.subpageLinkActive : ""}`}
-              >
+              <Link key={area.href} href={area.href} className={`${styles.subpageLink} ${active ? styles.subpageLinkActive : ""}`}>
                 <span className={styles.navDot} aria-hidden="true" />
                 <strong>{area.label}</strong>
               </Link>
@@ -110,7 +93,6 @@ export default function AdminLayout({
           })}
         </nav>
       )}
-
       {integratedLinks}
       <div className={styles.adminContent}>{children}</div>
     </div>
