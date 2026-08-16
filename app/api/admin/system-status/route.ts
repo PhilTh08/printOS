@@ -71,11 +71,11 @@ async function checkVercel(): Promise<{ health: HealthItem; deployments: VercelD
       health: {
         id: "vercel",
         label: "Vercel Deployment API",
-        level: latestFailed ? "error" : latestRunning ? "warning" : "ok",
+        level: latestFailed ? "error" : "ok",
         message: latestFailed
           ? `Letztes Deployment fehlgeschlagen: ${latest?.commitMessage || latest?.branch || latest?.name || "unbekannt"}`
           : latestRunning
-            ? `Letztes Deployment läuft gerade: ${latest?.commitMessage || latest?.branch || latest?.name || "unbekannt"}`
+            ? `Deployment läuft gerade · wird nicht als Störung gewertet: ${latest?.commitMessage || latest?.branch || latest?.name || "unbekannt"}`
             : latest
               ? `Letztes Deployment ${latest.state} · ${latest.commitMessage || latest.branch || latest.name}`
               : `${projectBody.name ?? projectRef} erreichbar · keine Deployments gefunden`,
@@ -113,9 +113,7 @@ async function loadStability(adminClient: any, items: HealthItem[], period: Peri
     if (query.error) return { available: false, period, items: [] };
     const rows = query.data ?? [];
     const okCount = rows.filter((row: any) => row.level === "ok").length;
-    const latencies: number[] = rows
-      .map((row: any) => row.latency_ms)
-      .filter((value: unknown): value is number => typeof value === "number");
+    const latencies: number[] = rows.map((row: any) => row.latency_ms).filter((value: unknown): value is number => typeof value === "number");
     const buckets: HealthLevel[][] = Array.from({ length: 18 }, () => []);
     const periodMs = PERIOD_HOURS[period] * 60 * 60 * 1000;
     for (const row of rows) {
