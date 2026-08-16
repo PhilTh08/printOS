@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { supabase } from "@/lib/supabase";
 import styles from "./layout.module.css";
 
 const ADMIN_AREAS = [
@@ -13,6 +14,13 @@ const ADMIN_AREAS = [
   { href: "/admin/logs", label: "System-Log" },
   { href: "/admin/status", label: "Systemstatus" },
 ] as const;
+
+type AdminAccountLabel = {
+  id: string;
+  email: string;
+  displayName?: string;
+  isAdmin?: boolean;
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -52,6 +60,76 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => {
       cancelled = true;
       setAdminSectionNav(null);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (pathname !== "/admin") return;
+
+    let cancelled = false;
+    let observer: MutationObserver | null = null;
+    const cleanupListeners: Array<() => void> = [];
+
+    const setupMaintenanceAccountLabels = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session || cancelled) return;
+
+        const response = await fetch("/api/admin/users", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!response.ok || cancelled) return;
+
+        const result = await response.json() as { users?: AdminAccountLabel[] };
+        const users = result.users ?? [];
+        const accountById = new Map(users.map((account) => [account.id, account]));
+
+        const updateLabels = () => {
+          if (cancelled) return;
+
+          for (const select of Array.from(document.querySelectorAll<HTMLSelectElement>("select"))) {
+            const matchingOptions = Array.from(select.options).filter((option) => accountById.has(option.value));
+            if (matchingOptions.length === 0) continue;
+
+            for (const option of matchingOptions) {
+              const account = accountById.get(option.value);
+              if (!account) continue;
+              option.textContent = `${account.email}${account.isAdmin ? " · Admin" : ""}`;
+            }
+
+            const updateSecondaryLabel = () => {
+              const account = accountById.get(select.value);
+              const small = select.parentElement?.querySelector<HTMLElement>("small");
+              if (!small || !account) return;
+              small.textContent = account.displayName && account.displayName !== account.email
+                ? account.displayName
+                : "";
+            };
+
+            updateSecondaryLabel();
+            if (select.dataset.maintenanceEmailLabels !== "true") {
+              select.dataset.maintenanceEmailLabels = "true";
+              select.addEventListener("change", updateSecondaryLabel);
+              cleanupListeners.push(() => select.removeEventListener("change", updateSecondaryLabel));
+            }
+          }
+        };
+
+        updateLabels();
+        observer = new MutationObserver(updateLabels);
+        observer.observe(document.body, { childList: true, subtree: true });
+      } catch {
+        // Die Wartungsansicht bleibt auch ohne Zusatz-Label vollständig nutzbar.
+      }
+    };
+
+    void setupMaintenanceAccountLabels();
+
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+      cleanupListeners.forEach((cleanup) => cleanup());
     };
   }, [pathname]);
 
