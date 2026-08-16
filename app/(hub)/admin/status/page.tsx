@@ -70,6 +70,18 @@ function periodLabels(period: Period) {
   if (period === "30d") return ["vor 30 Tagen", "vor 15 Tagen", "Jetzt"];
   return ["vor 24 Std.", "vor 12 Std.", "Jetzt"];
 }
+function chartBucketLabel(period: Period, index: number, total: number) {
+  const fraction = total <= 1 ? 1 : index / (total - 1);
+  if (fraction >= 0.97) return "Jetzt";
+  if (period === "24h") return `vor ${Math.max(1, Math.round(24 * (1 - fraction)))} Std.`;
+  if (period === "7d") return `vor ${Math.max(1, Math.round(7 * (1 - fraction)))} Tag(en)`;
+  return `vor ${Math.max(1, Math.round(30 * (1 - fraction)))} Tag(en)`;
+}
+function levelLabel(level: Level) {
+  if (level === "ok") return "OK";
+  if (level === "warning") return "Warnung";
+  return "Fehler";
+}
 
 export default function SystemStatusPage() {
   const { isAdmin, adminRoleReady } = useHub();
@@ -238,8 +250,12 @@ export default function SystemStatusPage() {
                         className={`${styles.chartPoint} ${styles[`chart${point.level === "ok" ? "Ok" : point.level === "warning" ? "Warning" : "Error"}`]}`}
                         cx={point.x}
                         cy={point.y}
-                        r="3.5"
-                      />
+                        r="4.5"
+                        tabIndex={0}
+                        aria-label={`${chartBucketLabel(period, index, chartPoints.length)}: ${levelLabel(point.level)}, ${Math.round(point.score)} Prozent Systemgesundheit`}
+                      >
+                        <title>{`${chartBucketLabel(period, index, chartPoints.length)} · ${levelLabel(point.level)} · ${Math.round(point.score)} % Systemgesundheit`}</title>
+                      </circle>
                     ))}
                   </svg>
                   <div className={styles.chartScale}><span>100%</span><span>50%</span><span>0%</span></div>
@@ -258,7 +274,7 @@ export default function SystemStatusPage() {
                   <div className={styles.stabilityMetric}><span>Ø Antwort</span><strong>{item.avgLatencyMs === null ? "–" : `${item.avgLatencyMs} ms`}</strong></div>
                   <div className={styles.stabilityMetric}><span>Probleme</span><strong>{item.problems}</strong></div>
                   <div className={styles.miniTrend} aria-label="Stabilitätsverlauf">
-                    {item.trend.map((trendLevel, index) => <i key={index} data-level={trendLevel} />)}
+                    {item.trend.map((trendLevel, index) => <i key={index} data-level={trendLevel} title={`${chartBucketLabel(period, index, item.trend.length)} · ${levelLabel(trendLevel)}`} />)}
                   </div>
                 </article>
               ))}
