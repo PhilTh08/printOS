@@ -140,6 +140,7 @@ export async function GET(request: NextRequest) {
     const requestedPeriod = request.nextUrl.searchParams.get("period");
     const period: Period = requestedPeriod === "7d" || requestedPeriod === "30d" ? requestedPeriod : "24h";
     const includeHistory = request.nextUrl.searchParams.get("history") !== "0";
+    const simulate = request.nextUrl.searchParams.get("simulate") === "1";
     const items: HealthItem[] = [{ id: "server", label: "Philamentix Server", level: "ok", message: "Admin-API antwortet und Adminberechtigung ist gültig.", latencyMs: elapsed(requestStarted), critical: true }];
 
     const dbStarted = Date.now();
@@ -156,15 +157,28 @@ export async function GET(request: NextRequest) {
 
     const [github, vercel] = await Promise.all([checkGithub(), checkVercel()]);
     items.push(github, vercel.health);
-    const historyAvailable = await persistSamples(context.adminClient, items);
-    const stability = includeHistory && historyAvailable ? await loadStability(context.adminClient, items, period) : { available: historyAvailable, period, items: [] as StabilityItem[] };
+
+    if (simulate) {
+      items.unshift({
+        id: "simulation",
+        label: "Simulierter Systemausfall",
+        level: "error",
+        message: "TESTMODUS: Dieser Fehler wurde serverseitig absichtlich erzeugt. Es wurde kein echter Dienst abgeschaltet.",
+        latencyMs: elapsed(requestStarted),
+        critical: true,
+      });
+    }
+
+    const historyItems = simulate ? items.filter((item) => item.id !== "simulation") : items;
+    const historyAvailable = await persistSamples(context.adminClient, historyItems);
+    const stability = includeHistory && historyAvailable ? await loadStability(context.adminClient, historyItems, period) : { available: historyAvailable, period, items: [] as StabilityItem[] };
 
     const criticalError = items.some((item) => item.critical && item.level === "error");
     const anyProblem = items.some((item) => item.level !== "ok");
     const overall: HealthLevel = criticalError ? "error" : anyProblem ? "warning" : "ok";
     const problems = items.filter((item) => item.level !== "ok").map((item) => ({ id: item.id, label: item.label, level: item.level, message: item.message }));
 
-    return NextResponse.json({ overall, checkedAt: new Date().toISOString(), durationMs: elapsed(requestStarted), items, problems, deployments: vercel.deployments, stability, config: { vercelLive: Boolean(process.env.VERCEL_API_TOKEN?.trim()), githubLive: Boolean(process.env.GITHUB_RELEASE_TOKEN?.trim()) } });
+    return NextResponse.json({ overall, checkedAt: new Date().toISOString(), durationMs: elapsed(requestStarted), items, problems, deployments: vercel.deployments, stability, simulation: simulate, config: { vercelLive: Boolean(process.env.VERCEL_API_TOKEN?.trim()), githubLive: Boolean(process.env.GITHUB_RELEASE_TOKEN?.trim()) } });
   } catch (error) {
     return adminErrorResponse(error);
   }
