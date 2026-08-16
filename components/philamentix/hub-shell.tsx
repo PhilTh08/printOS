@@ -75,16 +75,6 @@ const adminNavigation = {
       icon: "◆",
       label: "Admin & Support",
     },
-    {
-      href: "/admin/releases",
-      icon: "↟",
-      label: "Release Center",
-    },
-    {
-      href: "/admin/logs",
-      icon: "≡",
-      label: "System-Log",
-    },
   ],
 };
 
@@ -326,9 +316,8 @@ export function HubShell({
                       pathname.startsWith("/filamente/")) ||
                     (item.href === "/druckbibliothek" &&
                       pathname.startsWith("/druckbibliothek/")) ||
-                    (item.href !== "/admin" &&
-                      item.href.startsWith("/admin/") &&
-                      pathname.startsWith(`${item.href}/`));
+                    (item.href === "/admin" &&
+                      pathname.startsWith("/admin/"));
                   const itemMaintenanceArea =
                     maintenanceAreaForPathname(item.href);
                   const itemInMaintenance = Boolean(
