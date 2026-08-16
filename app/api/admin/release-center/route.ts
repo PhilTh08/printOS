@@ -23,6 +23,20 @@ const CHANNEL_BRANCH: Record<string, string> = {
   public: "main",
 };
 
+type HealthCheck = {
+  id: string;
+  label: string;
+  ok: boolean;
+  detail: string;
+};
+
+type ReleaseHealth = {
+  level: "ok" | "warning" | "down";
+  summary: string;
+  checks: HealthCheck[];
+  checkedAt: string;
+};
+
 function githubToken() {
   const token = process.env.GITHUB_RELEASE_TOKEN?.trim();
   if (!token) {
@@ -56,6 +70,85 @@ async function gh(path: string, init?: RequestInit) {
     );
   }
   return body;
+}
+
+async function readReleaseHealth(): Promise<ReleaseHealth> {
+  const token = process.env.GITHUB_RELEASE_TOKEN?.trim();
+  const secretConfigured = Boolean(
+    process.env.SUPABASE_SECRET_KEY?.trim() ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+  );
+
+  let githubOk = false;
+  let githubDetail = "GITHUB_RELEASE_TOKEN fehlt.";
+
+  if (token) {
+    try {
+      const response = await fetch(`${API}/repos/${REPO}`, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        cache: "no-store",
+      });
+
+      githubOk = response.ok;
+      githubDetail = response.ok
+        ? `GitHub-Zugriff auf ${REPO} ist bereit.`
+        : `GitHub antwortet mit HTTP ${response.status}.`;
+    } catch {
+      githubDetail = "GitHub konnte nicht erreicht werden.";
+    }
+  }
+
+  const checks: HealthCheck[] = [
+    {
+      id: "server",
+      label: "Server / Supabase Admin",
+      ok: secretConfigured,
+      detail: secretConfigured
+        ? "Server-Schlüssel ist konfiguriert."
+        : "SUPABASE_SECRET_KEY oder SUPABASE_SERVICE_ROLE_KEY fehlt.",
+    },
+    {
+      id: "database",
+      label: "Release-Datenbank",
+      ok: true,
+      detail: "Release-State und Release-Historie sind erreichbar.",
+    },
+    {
+      id: "github",
+      label: "GitHub Deployment",
+      ok: githubOk,
+      detail: githubDetail,
+    },
+  ];
+
+  if (!secretConfigured) {
+    return {
+      level: "down",
+      summary: "Release Center ist nicht vollständig betriebsbereit.",
+      checks,
+      checkedAt: new Date().toISOString(),
+    };
+  }
+
+  if (!githubOk) {
+    return {
+      level: "warning",
+      summary: "Release Center läuft, aber GitHub-Deployments haben ein Problem.",
+      checks,
+      checkedAt: new Date().toISOString(),
+    };
+  }
+
+  return {
+    level: "ok",
+    summary: "Alle Release-Dienste sind bereit.",
+    checks,
+    checkedAt: new Date().toISOString(),
+  };
 }
 
 async function ensureBranch(branch: string) {
@@ -167,7 +260,9 @@ export async function GET(request: NextRequest) {
     if (releaseError) throw new Error(releaseError.message);
     if (buildsError) throw new Error(buildsError.message);
 
-    return NextResponse.json({ release, builds: builds ?? [] });
+    const health = await readReleaseHealth();
+
+    return NextResponse.json({ release, builds: builds ?? [], health });
   } catch (error) {
     return adminErrorResponse(error);
   }
