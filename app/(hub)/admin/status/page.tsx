@@ -23,12 +23,7 @@ type StatusPayload = {
   config: { vercelLive: boolean; githubLive: boolean };
 };
 
-type ChartPoint = {
-  x: number;
-  y: number;
-  score: number;
-  level: Level;
-};
+type ChartPoint = { x: number; y: number; score: number; level: Level };
 
 const REFRESH_MS = 10000;
 const HISTORY_REFRESH_MS = 60000;
@@ -91,6 +86,7 @@ export default function SystemStatusPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [nextRefresh, setNextRefresh] = useState(REFRESH_MS / 1000);
+  const [testActive, setTestActive] = useState(false);
 
   const loadStatus = useCallback(async (options?: { manual?: boolean; history?: boolean; selectedPeriod?: Period }) => {
     if (options?.manual) setRefreshing(true);
@@ -105,9 +101,7 @@ export default function SystemStatusPage() {
       if (!response.ok) throw new Error(payload?.error || "Systemstatus konnte nicht geladen werden.");
       setStatus((current) => {
         const incoming = payload as StatusPayload;
-        if (options?.history === false && current?.stability?.items?.length) {
-          incoming.stability = current.stability;
-        }
+        if (options?.history === false && current?.stability?.items?.length) incoming.stability = current.stability;
         return incoming;
       });
       setNextRefresh(REFRESH_MS / 1000);
@@ -128,26 +122,51 @@ export default function SystemStatusPage() {
     return () => { window.clearInterval(refreshTimer); window.clearInterval(historyTimer); window.clearInterval(countdownTimer); };
   }, [adminRoleReady, isAdmin, loadStatus]);
 
-  const summary = useMemo(() => {
+  const displayItems = useMemo<HealthItem[]>(() => {
     const items = status?.items ?? [];
-    return { ok: items.filter((item) => item.level === "ok").length, warning: items.filter((item) => item.level === "warning").length, error: items.filter((item) => item.level === "error").length };
-  }, [status]);
+    if (!testActive) return items;
+    return [
+      ...items,
+      {
+        id: "simulation",
+        label: "Systemtest · Simulation",
+        level: "error",
+        message: "Simulierter kritischer Systemausfall. Es wurde kein echter Dienst abgeschaltet.",
+        latencyMs: null,
+        critical: true,
+      },
+    ];
+  }, [status?.items, testActive]);
+
+  const displayProblems = useMemo(() => {
+    const problems = status?.problems ?? [];
+    if (!testActive) return problems;
+    return [
+      ...problems,
+      {
+        id: "simulation",
+        label: "Systemtest · Simulation",
+        level: "error" as Level,
+        message: "Kritischer Ausfall wird nur zu Testzwecken simuliert. Der Test endet automatisch.",
+      },
+    ];
+  }, [status?.problems, testActive]);
+
+  const summary = useMemo(() => ({
+    ok: displayItems.filter((item) => item.level === "ok").length,
+    warning: displayItems.filter((item) => item.level === "warning").length,
+    error: displayItems.filter((item) => item.level === "error").length,
+  }), [displayItems]);
 
   const chartPoints = useMemo<ChartPoint[]>(() => {
     const stabilityItems = status?.stability?.items ?? [];
     const bucketCount = stabilityItems.reduce((max, item) => Math.max(max, item.trend.length), 0);
     if (!bucketCount) return [];
-
     const chartWidth = CHART_WIDTH - CHART_PADDING_X * 2;
     const chartHeight = CHART_HEIGHT - CHART_PADDING_Y * 2;
-
     return Array.from({ length: bucketCount }, (_, index) => {
-      const levels = stabilityItems
-        .map((item) => item.trend[index])
-        .filter((value): value is Level => value === "ok" || value === "warning" || value === "error");
-      const score = levels.length
-        ? levels.reduce((sum: number, value: Level) => sum + levelScore(value), 0) / levels.length
-        : 58;
+      const levels = stabilityItems.map((item) => item.trend[index]).filter((value): value is Level => value === "ok" || value === "warning" || value === "error");
+      const score = levels.length ? levels.reduce((sum: number, value: Level) => sum + levelScore(value), 0) / levels.length : 58;
       const x = CHART_PADDING_X + (bucketCount === 1 ? 0 : (index / (bucketCount - 1)) * chartWidth);
       const y = CHART_PADDING_Y + ((100 - score) / 100) * chartHeight;
       return { x, y, score, level: levels.length ? worstLevel(levels) : "warning" };
@@ -164,11 +183,19 @@ export default function SystemStatusPage() {
     await loadStatus({ history: true, selectedPeriod: next });
   }
 
+  function runTest() {
+    if (testActive) return;
+    setTestActive(true);
+    window.setTimeout(() => setTestActive(false), 12000);
+  }
+
   if (!adminRoleReady) return <div className={styles.state}>Adminberechtigung wird geprüft …</div>;
   if (!isAdmin) return <div className={styles.state}>Kein Adminzugriff.</div>;
 
-  const level = status?.overall ?? "warning";
-  const copy = overallCopy(level);
+  const level: Level = testActive ? "error" : status?.overall ?? "warning";
+  const copy = testActive
+    ? { title: "TEST: Störung erkannt", text: "Simulierter kritischer Ausfall. Reale Dienste und Stabilitätsdaten bleiben unverändert." }
+    : overallCopy(level);
   const labels = periodLabels(period);
 
   return (
@@ -179,17 +206,22 @@ export default function SystemStatusPage() {
           <h1>Alles auf einen Blick.</h1>
           <p>Live-Überwachung für Server, Supabase, Release Center, GitHub und Vercel. Die Ansicht aktualisiert sich automatisch alle 10 Sekunden.</p>
         </div>
-        <button type="button" className={styles.refreshButton} disabled={refreshing} onClick={() => void loadStatus({ manual: true, history: true })}>
-          {refreshing ? "Prüfung läuft …" : "Jetzt prüfen"}
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <button type="button" className={styles.refreshButton} disabled={testActive} onClick={runTest}>
+            {testActive ? "Test läuft …" : "Test"}
+          </button>
+          <button type="button" className={styles.refreshButton} disabled={refreshing} onClick={() => void loadStatus({ manual: true, history: true })}>
+            {refreshing ? "Prüfung läuft …" : "Jetzt prüfen"}
+          </button>
+        </div>
       </header>
 
       {requestError && <div className={styles.requestError}>{requestError}</div>}
 
       <section className={`${styles.overallCard} ${styles[level]}`}>
         <div className={styles.pulseWrap}><span className={styles.pulse} /></div>
-        <div className={styles.overallText}><span>GESAMTSTATUS</span><h2>{copy.title}</h2><p>{copy.text}</p></div>
-        <div className={styles.liveMeta}><strong>LIVE</strong><span>Letzter Check {formatTime(status?.checkedAt ?? null)}</span><span>Nächster Check in {nextRefresh}s</span>{status && <small>Prüfdauer {status.durationMs} ms</small>}</div>
+        <div className={styles.overallText}><span>{testActive ? "SIMULATION" : "GESAMTSTATUS"}</span><h2>{copy.title}</h2><p>{copy.text}</p></div>
+        <div className={styles.liveMeta}><strong>{testActive ? "TEST" : "LIVE"}</strong><span>Letzter Check {formatTime(status?.checkedAt ?? null)}</span><span>{testActive ? "endet automatisch nach 12 Sekunden" : `Nächster Check in ${nextRefresh}s`}</span>{status && <small>Prüfdauer {status.durationMs} ms</small>}</div>
       </section>
 
       <section className={styles.summaryGrid}>
@@ -214,15 +246,8 @@ export default function SystemStatusPage() {
           <>
             <div className={styles.stabilityChartCard}>
               <div className={styles.chartHeader}>
-                <div>
-                  <strong>Systemgesundheit</strong>
-                  <small>{chartAverage === null ? "Noch keine Messwerte" : `Ø ${chartAverage} % im gewählten Zeitraum`}</small>
-                </div>
-                <div className={styles.chartLegend}>
-                  <span><i className={styles.legendOk} /> OK</span>
-                  <span><i className={styles.legendWarning} /> Warnung</span>
-                  <span><i className={styles.legendError} /> Fehler</span>
-                </div>
+                <div><strong>Systemgesundheit</strong><small>{chartAverage === null ? "Noch keine Messwerte" : `Ø ${chartAverage} % im gewählten Zeitraum`}</small></div>
+                <div className={styles.chartLegend}><span><i className={styles.legendOk} /> OK</span><span><i className={styles.legendWarning} /> Warnung</span><span><i className={styles.legendError} /> Fehler</span></div>
               </div>
 
               {chartPoints.length > 1 ? (
@@ -233,16 +258,7 @@ export default function SystemStatusPage() {
                     <line className={styles.chartGridLine} x1={CHART_PADDING_X} y1={CHART_HEIGHT - CHART_PADDING_Y} x2={CHART_WIDTH - CHART_PADDING_X} y2={CHART_HEIGHT - CHART_PADDING_Y} />
                     {chartPoints.slice(1).map((point, index) => {
                       const previous = chartPoints[index];
-                      return (
-                        <line
-                          key={`segment-${index}`}
-                          className={`${styles.chartSegment} ${styles[`chart${point.level === "ok" ? "Ok" : point.level === "warning" ? "Warning" : "Error"}`]}`}
-                          x1={previous.x}
-                          y1={previous.y}
-                          x2={point.x}
-                          y2={point.y}
-                        />
-                      );
+                      return <line key={`segment-${index}`} className={`${styles.chartSegment} ${styles[`chart${point.level === "ok" ? "Ok" : point.level === "warning" ? "Warning" : "Error"}`]}`} x1={previous.x} y1={previous.y} x2={point.x} y2={point.y} />;
                     })}
                     {chartPoints.map((point, index) => {
                       const tooltipWidth = 154;
@@ -266,9 +282,7 @@ export default function SystemStatusPage() {
                   <div className={styles.chartScale}><span>100%</span><span>50%</span><span>0%</span></div>
                   <div className={styles.chartAxis}><span>{labels[0]}</span><span>{labels[1]}</span><span>{labels[2]}</span></div>
                 </div>
-              ) : (
-                <div className={styles.chartEmpty}>Noch nicht genug Messpunkte für das Diagramm.</div>
-              )}
+              ) : <div className={styles.chartEmpty}>Noch nicht genug Messpunkte für das Diagramm.</div>}
             </div>
 
             <div className={styles.stabilityList}>
@@ -278,9 +292,7 @@ export default function SystemStatusPage() {
                   <div className={styles.stabilityMetric}><span>Uptime</span><strong>{item.uptime === null ? "–" : `${item.uptime.toFixed(2)} %`}</strong></div>
                   <div className={styles.stabilityMetric}><span>Ø Antwort</span><strong>{item.avgLatencyMs === null ? "–" : `${item.avgLatencyMs} ms`}</strong></div>
                   <div className={styles.stabilityMetric}><span>Probleme</span><strong>{item.problems}</strong></div>
-                  <div className={styles.miniTrend} aria-label="Stabilitätsverlauf">
-                    {item.trend.map((trendLevel, index) => <i key={index} data-level={trendLevel} title={`${chartBucketLabel(period, index, item.trend.length)} · ${levelLabel(trendLevel)}`} />)}
-                  </div>
+                  <div className={styles.miniTrend} aria-label="Stabilitätsverlauf">{item.trend.map((trendLevel, index) => <i key={index} data-level={trendLevel} title={`${chartBucketLabel(period, index, item.trend.length)} · ${levelLabel(trendLevel)}`} />)}</div>
                 </article>
               ))}
             </div>
@@ -289,9 +301,9 @@ export default function SystemStatusPage() {
       </section>
 
       <section className={styles.panel}>
-        <div className={styles.sectionHeading}><div><span>LIVE CHECKS</span><h2>Systemverbindungen</h2></div><small>{loading ? "Prüfung läuft …" : `${status?.items.length ?? 0} Prüfungen`}</small></div>
+        <div className={styles.sectionHeading}><div><span>LIVE CHECKS</span><h2>Systemverbindungen</h2></div><small>{loading ? "Prüfung läuft …" : `${displayItems.length} Prüfungen`}</small></div>
         <div className={styles.healthGrid}>
-          {(status?.items ?? []).map((item) => (
+          {displayItems.map((item) => (
             <article key={item.id} className={`${styles.healthCard} ${styles[item.level]}`}>
               <div className={styles.healthTop}><span className={styles.healthDot} /><div><strong>{item.label}</strong><small>{item.critical ? "KRITISCH" : "ZUSATZDIENST"}</small></div><b>{item.level === "ok" ? "OK" : item.level === "warning" ? "FEHLER" : "AUSFALL"}</b></div>
               <p>{item.message}</p><footer><span>{item.latencyMs === null ? "keine Messung" : `${item.latencyMs} ms`}</span></footer>
@@ -300,10 +312,10 @@ export default function SystemStatusPage() {
         </div>
       </section>
 
-      {(status?.problems.length ?? 0) > 0 && (
+      {displayProblems.length > 0 && (
         <section className={styles.problemPanel}>
-          <div className={styles.sectionHeading}><div><span>FEHLERZENTRALE</span><h2>{status?.problems.length} Problem(e) erkannt</h2></div></div>
-          <div className={styles.problemList}>{status?.problems.map((problem) => <article key={problem.id} className={styles[problem.level]}><span className={styles.healthDot} /><div><strong>{problem.label}</strong><p>{problem.message}</p></div></article>)}</div>
+          <div className={styles.sectionHeading}><div><span>FEHLERZENTRALE</span><h2>{displayProblems.length} Problem(e) erkannt</h2></div></div>
+          <div className={styles.problemList}>{displayProblems.map((problem) => <article key={problem.id} className={styles[problem.level]}><span className={styles.healthDot} /><div><strong>{problem.label}</strong><p>{problem.message}</p></div></article>)}</div>
         </section>
       )}
 
