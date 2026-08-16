@@ -23,8 +23,19 @@ type StatusPayload = {
   config: { vercelLive: boolean; githubLive: boolean };
 };
 
+type ChartPoint = {
+  x: number;
+  y: number;
+  score: number;
+  level: Level;
+};
+
 const REFRESH_MS = 10000;
 const HISTORY_REFRESH_MS = 60000;
+const CHART_WIDTH = 720;
+const CHART_HEIGHT = 150;
+const CHART_PADDING_X = 22;
+const CHART_PADDING_Y = 16;
 
 function formatTime(value: string | null) {
   if (!value) return "–";
@@ -43,6 +54,21 @@ function overallCopy(level: Level) {
   if (level === "ok") return { title: "Alle Systeme laufen", text: "Alle kritischen Dienste antworten aktuell ohne erkannten Fehler." };
   if (level === "warning") return { title: "Eingeschränkter Betrieb", text: "Der Hub läuft, aber mindestens ein Dienst meldet eine Warnung oder einen Fehler." };
   return { title: "Störung erkannt", text: "Mindestens ein kritischer Dienst ist aktuell nicht verfügbar." };
+}
+function levelScore(level: Level) {
+  if (level === "ok") return 100;
+  if (level === "warning") return 58;
+  return 16;
+}
+function worstLevel(levels: Level[]): Level {
+  if (levels.includes("error")) return "error";
+  if (levels.includes("warning")) return "warning";
+  return "ok";
+}
+function periodLabels(period: Period) {
+  if (period === "7d") return ["vor 7 Tagen", "vor 3,5 Tagen", "Jetzt"];
+  if (period === "30d") return ["vor 30 Tagen", "vor 15 Tagen", "Jetzt"];
+  return ["vor 24 Std.", "vor 12 Std.", "Jetzt"];
 }
 
 export default function SystemStatusPage() {
@@ -95,6 +121,32 @@ export default function SystemStatusPage() {
     return { ok: items.filter((item) => item.level === "ok").length, warning: items.filter((item) => item.level === "warning").length, error: items.filter((item) => item.level === "error").length };
   }, [status]);
 
+  const chartPoints = useMemo<ChartPoint[]>(() => {
+    const stabilityItems = status?.stability?.items ?? [];
+    const bucketCount = stabilityItems.reduce((max, item) => Math.max(max, item.trend.length), 0);
+    if (!bucketCount) return [];
+
+    const chartWidth = CHART_WIDTH - CHART_PADDING_X * 2;
+    const chartHeight = CHART_HEIGHT - CHART_PADDING_Y * 2;
+
+    return Array.from({ length: bucketCount }, (_, index) => {
+      const levels = stabilityItems
+        .map((item) => item.trend[index])
+        .filter((value): value is Level => value === "ok" || value === "warning" || value === "error");
+      const score = levels.length
+        ? levels.reduce((sum: number, value: Level) => sum + levelScore(value), 0) / levels.length
+        : 58;
+      const x = CHART_PADDING_X + (bucketCount === 1 ? 0 : (index / (bucketCount - 1)) * chartWidth);
+      const y = CHART_PADDING_Y + ((100 - score) / 100) * chartHeight;
+      return { x, y, score, level: levels.length ? worstLevel(levels) : "warning" };
+    });
+  }, [status?.stability?.items]);
+
+  const chartAverage = useMemo(() => {
+    if (!chartPoints.length) return null;
+    return Math.round(chartPoints.reduce((sum: number, point: ChartPoint) => sum + point.score, 0) / chartPoints.length);
+  }, [chartPoints]);
+
   async function changePeriod(next: Period) {
     setPeriod(next);
     await loadStatus({ history: true, selectedPeriod: next });
@@ -105,6 +157,7 @@ export default function SystemStatusPage() {
 
   const level = status?.overall ?? "warning";
   const copy = overallCopy(level);
+  const labels = periodLabels(period);
 
   return (
     <div className={styles.page}>
@@ -135,7 +188,7 @@ export default function SystemStatusPage() {
 
       <section className={`${styles.panel} ${styles.stabilityPanel}`}>
         <div className={styles.sectionHeading}>
-          <div><span>STABILITÄT</span><h2>Service-Verlauf</h2><p>Kompakte Historie der wichtigsten Verbindungen.</p></div>
+          <div><span>STABILITÄT</span><h2>Service-Verlauf</h2><p>Kompakter Verlauf der Systemgesundheit über den gewählten Zeitraum.</p></div>
           <div className={styles.periodSwitch}>
             {(["24h", "7d", "30d"] as Period[]).map((value) => (
               <button key={value} type="button" className={period === value ? styles.periodActive : ""} onClick={() => void changePeriod(value)}>{value === "7d" ? "7T" : value === "30d" ? "30T" : "24h"}</button>
@@ -146,19 +199,71 @@ export default function SystemStatusPage() {
         {!status?.stability?.available ? (
           <div className={styles.setupHint}>Für die Stabilitäts-Historie einmal <code>supabase/system_health_history_v18_5.sql</code> in Supabase ausführen.</div>
         ) : (
-          <div className={styles.stabilityList}>
-            {(status?.stability.items ?? []).map((item) => (
-              <article key={item.id}>
-                <div className={styles.stabilityName}><strong>{item.label}</strong><small>{item.samples ? `${item.samples} Messpunkte` : "Noch keine Historie"}</small></div>
-                <div className={styles.stabilityMetric}><span>Uptime</span><strong>{item.uptime === null ? "–" : `${item.uptime.toFixed(2)} %`}</strong></div>
-                <div className={styles.stabilityMetric}><span>Ø Antwort</span><strong>{item.avgLatencyMs === null ? "–" : `${item.avgLatencyMs} ms`}</strong></div>
-                <div className={styles.stabilityMetric}><span>Probleme</span><strong>{item.problems}</strong></div>
-                <div className={styles.miniTrend} aria-label="Stabilitätsverlauf">
-                  {item.trend.map((trendLevel, index) => <i key={index} data-level={trendLevel} />)}
+          <>
+            <div className={styles.stabilityChartCard}>
+              <div className={styles.chartHeader}>
+                <div>
+                  <strong>Systemgesundheit</strong>
+                  <small>{chartAverage === null ? "Noch keine Messwerte" : `Ø ${chartAverage} % im gewählten Zeitraum`}</small>
                 </div>
-              </article>
-            ))}
-          </div>
+                <div className={styles.chartLegend}>
+                  <span><i className={styles.legendOk} /> OK</span>
+                  <span><i className={styles.legendWarning} /> Warnung</span>
+                  <span><i className={styles.legendError} /> Fehler</span>
+                </div>
+              </div>
+
+              {chartPoints.length > 1 ? (
+                <div className={styles.chartWrap}>
+                  <svg className={styles.stabilityChart} viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} role="img" aria-label={`Systemstabilität ${period}`}>
+                    <line className={styles.chartGridLine} x1={CHART_PADDING_X} y1={CHART_PADDING_Y} x2={CHART_WIDTH - CHART_PADDING_X} y2={CHART_PADDING_Y} />
+                    <line className={styles.chartGridLine} x1={CHART_PADDING_X} y1={CHART_HEIGHT / 2} x2={CHART_WIDTH - CHART_PADDING_X} y2={CHART_HEIGHT / 2} />
+                    <line className={styles.chartGridLine} x1={CHART_PADDING_X} y1={CHART_HEIGHT - CHART_PADDING_Y} x2={CHART_WIDTH - CHART_PADDING_X} y2={CHART_HEIGHT - CHART_PADDING_Y} />
+                    {chartPoints.slice(1).map((point, index) => {
+                      const previous = chartPoints[index];
+                      return (
+                        <line
+                          key={`segment-${index}`}
+                          className={`${styles.chartSegment} ${styles[`chart${point.level === "ok" ? "Ok" : point.level === "warning" ? "Warning" : "Error"}`]}`}
+                          x1={previous.x}
+                          y1={previous.y}
+                          x2={point.x}
+                          y2={point.y}
+                        />
+                      );
+                    })}
+                    {chartPoints.map((point, index) => (
+                      <circle
+                        key={`point-${index}`}
+                        className={`${styles.chartPoint} ${styles[`chart${point.level === "ok" ? "Ok" : point.level === "warning" ? "Warning" : "Error"}`]}`}
+                        cx={point.x}
+                        cy={point.y}
+                        r="3.5"
+                      />
+                    ))}
+                  </svg>
+                  <div className={styles.chartScale}><span>100%</span><span>50%</span><span>0%</span></div>
+                  <div className={styles.chartAxis}><span>{labels[0]}</span><span>{labels[1]}</span><span>{labels[2]}</span></div>
+                </div>
+              ) : (
+                <div className={styles.chartEmpty}>Noch nicht genug Messpunkte für das Diagramm.</div>
+              )}
+            </div>
+
+            <div className={styles.stabilityList}>
+              {(status?.stability.items ?? []).map((item) => (
+                <article key={item.id}>
+                  <div className={styles.stabilityName}><strong>{item.label}</strong><small>{item.samples ? `${item.samples} Messpunkte` : "Noch keine Historie"}</small></div>
+                  <div className={styles.stabilityMetric}><span>Uptime</span><strong>{item.uptime === null ? "–" : `${item.uptime.toFixed(2)} %`}</strong></div>
+                  <div className={styles.stabilityMetric}><span>Ø Antwort</span><strong>{item.avgLatencyMs === null ? "–" : `${item.avgLatencyMs} ms`}</strong></div>
+                  <div className={styles.stabilityMetric}><span>Probleme</span><strong>{item.problems}</strong></div>
+                  <div className={styles.miniTrend} aria-label="Stabilitätsverlauf">
+                    {item.trend.map((trendLevel, index) => <i key={index} data-level={trendLevel} />)}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
         )}
       </section>
 
