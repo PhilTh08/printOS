@@ -244,19 +244,24 @@ export default function SystemStatusPage() {
                         />
                       );
                     })}
-                    {chartPoints.map((point, index) => (
-                      <circle
-                        key={`point-${index}`}
-                        className={`${styles.chartPoint} ${styles[`chart${point.level === "ok" ? "Ok" : point.level === "warning" ? "Warning" : "Error"}`]}`}
-                        cx={point.x}
-                        cy={point.y}
-                        r="4.5"
-                        tabIndex={0}
-                        aria-label={`${chartBucketLabel(period, index, chartPoints.length)}: ${levelLabel(point.level)}, ${Math.round(point.score)} Prozent Systemgesundheit`}
-                      >
-                        <title>{`${chartBucketLabel(period, index, chartPoints.length)} · ${levelLabel(point.level)} · ${Math.round(point.score)} % Systemgesundheit`}</title>
-                      </circle>
-                    ))}
+                    {chartPoints.map((point, index) => {
+                      const tooltipWidth = 154;
+                      const tooltipHeight = 52;
+                      const tooltipX = Math.min(CHART_WIDTH - tooltipWidth - 6, Math.max(6, point.x - tooltipWidth / 2));
+                      const tooltipY = point.y < 65 ? point.y + 13 : point.y - tooltipHeight - 13;
+                      const pointClass = styles[`chart${point.level === "ok" ? "Ok" : point.level === "warning" ? "Warning" : "Error"}`];
+                      return (
+                        <g key={`point-${index}`} className={styles.chartHoverPoint} tabIndex={0} aria-label={`${chartBucketLabel(period, index, chartPoints.length)}: ${levelLabel(point.level)}, ${Math.round(point.score)} Prozent Systemgesundheit`}>
+                          <circle className={`${styles.chartPointHit} ${pointClass}`} cx={point.x} cy={point.y} r="12" />
+                          <circle className={`${styles.chartPoint} ${pointClass}`} cx={point.x} cy={point.y} r="4.5" />
+                          <g className={styles.chartTooltipSvg} pointerEvents="none">
+                            <rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={tooltipHeight} rx="7" />
+                            <text x={tooltipX + 10} y={tooltipY + 17} className={styles.chartTooltipTitle}>{chartBucketLabel(period, index, chartPoints.length)}</text>
+                            <text x={tooltipX + 10} y={tooltipY + 34} className={styles.chartTooltipText}>{levelLabel(point.level)} · {Math.round(point.score)} % Gesundheit</text>
+                          </g>
+                        </g>
+                      );
+                    })}
                   </svg>
                   <div className={styles.chartScale}><span>100%</span><span>50%</span><span>0%</span></div>
                   <div className={styles.chartAxis}><span>{labels[0]}</span><span>{labels[1]}</span><span>{labels[2]}</span></div>
