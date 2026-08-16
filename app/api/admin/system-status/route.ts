@@ -113,7 +113,9 @@ async function loadStability(adminClient: any, items: HealthItem[], period: Peri
     if (query.error) return { available: false, period, items: [] };
     const rows = query.data ?? [];
     const okCount = rows.filter((row: any) => row.level === "ok").length;
-    const latencies = rows.map((row: any) => row.latency_ms).filter((value: unknown): value is number => typeof value === "number");
+    const latencies: number[] = rows
+      .map((row: any) => row.latency_ms)
+      .filter((value: unknown): value is number => typeof value === "number");
     const buckets: HealthLevel[][] = Array.from({ length: 18 }, () => []);
     const periodMs = PERIOD_HOURS[period] * 60 * 60 * 1000;
     for (const row of rows) {
@@ -124,7 +126,7 @@ async function loadStability(adminClient: any, items: HealthItem[], period: Peri
       id: service.id,
       label: service.label,
       uptime: rows.length ? Math.round((okCount / rows.length) * 10000) / 100 : null,
-      avgLatencyMs: latencies.length ? Math.round(latencies.reduce((sum, value) => sum + value, 0) / latencies.length) : null,
+      avgLatencyMs: latencies.length ? Math.round(latencies.reduce((sum: number, value: number) => sum + value, 0) / latencies.length) : null,
       problems: rows.filter((row: any) => row.level !== "ok").length,
       samples: rows.length,
       trend: buckets.map((levels) => levels.length ? worstLevel(levels) : "warning"),
