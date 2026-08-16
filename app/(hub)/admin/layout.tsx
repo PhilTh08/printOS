@@ -10,21 +10,15 @@ import styles from "./layout.module.css";
 const ADMIN_AREAS = [
   {
     href: "/admin",
-    icon: "◆",
     label: "Admin & Support",
-    description: "Benutzer, Release, Wartung & System",
   },
   {
     href: "/admin/releases",
-    icon: "↟",
     label: "Release Center",
-    description: "Production · Beta · Public",
   },
   {
     href: "/admin/logs",
-    icon: "≡",
     label: "System-Log",
-    description: "Alle wichtigen Systemaktionen",
   },
 ] as const;
 
@@ -69,12 +63,13 @@ export default function AdminLayout({
   const integratedLinks = adminSectionNav
     ? createPortal(
         <>
+          <span className={styles.navDivider} aria-hidden="true" />
           <Link className={styles.integratedAdminLink} href="/admin/releases">
-            <span>↟</span>
+            <span className={styles.navDot} aria-hidden="true" />
             Release Center
           </Link>
           <Link className={styles.integratedAdminLink} href="/admin/logs">
-            <span>≡</span>
+            <span className={styles.navDot} aria-hidden="true" />
             System-Log
           </Link>
         </>,
@@ -100,7 +95,7 @@ export default function AdminLayout({
                 href={area.href}
                 className={`${styles.subpageLink} ${active ? styles.subpageLinkActive : ""}`}
               >
-                <span>{area.icon}</span>
+                <span className={styles.navDot} aria-hidden="true" />
                 <strong>{area.label}</strong>
               </Link>
             );
