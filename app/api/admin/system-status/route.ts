@@ -7,11 +7,13 @@ export const dynamic = "force-dynamic";
 
 type HealthLevel = "ok" | "warning" | "error";
 type Period = "24h" | "7d" | "30d";
+type SimulationTarget = "database" | "release-db" | "system-log" | "github" | "vercel" | "all";
 type HealthItem = { id: string; label: string; level: HealthLevel; message: string; latencyMs: number | null; critical: boolean };
 type VercelDeployment = { uid: string; name: string; url: string | null; state: string; target: string | null; createdAt: number | null; readyAt: number | null; source: string | null; branch: string | null; commitMessage: string | null };
 type StabilityItem = { id: string; label: string; uptime: number | null; avgLatencyMs: number | null; problems: number; samples: number; trend: HealthLevel[] };
 
 const PERIOD_HOURS: Record<Period, number> = { "24h": 24, "7d": 168, "30d": 720 };
+const SIMULATION_TARGETS = new Set<SimulationTarget>(["database", "release-db", "system-log", "github", "vercel", "all"]);
 
 function elapsed(started: number) { return Math.max(0, Date.now() - started); }
 function cleanError(error: unknown) { return error instanceof Error ? error.message : "Unbekannter Fehler"; }
@@ -89,6 +91,19 @@ async function checkVercel(): Promise<{ health: HealthItem; deployments: VercelD
   }
 }
 
+function applySimulation(items: HealthItem[], target: SimulationTarget | null) {
+  if (!target) return items;
+  return items.map((item) => {
+    const selected = target === "all" ? true : item.id === target;
+    if (!selected) return item;
+    return {
+      ...item,
+      level: "error" as HealthLevel,
+      message: `TESTMODUS: Ausfall von ${item.label} wurde serverseitig simuliert. Der echte Dienst wurde nicht abgeschaltet.`,
+    };
+  });
+}
+
 async function persistSamples(adminClient: any, items: HealthItem[]) {
   const now = new Date();
   const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
@@ -140,7 +155,8 @@ export async function GET(request: NextRequest) {
     const requestedPeriod = request.nextUrl.searchParams.get("period");
     const period: Period = requestedPeriod === "7d" || requestedPeriod === "30d" ? requestedPeriod : "24h";
     const includeHistory = request.nextUrl.searchParams.get("history") !== "0";
-    const simulate = request.nextUrl.searchParams.get("simulate") === "1";
+    const requestedSimulation = request.nextUrl.searchParams.get("simulate") as SimulationTarget | null;
+    const simulation = requestedSimulation && SIMULATION_TARGETS.has(requestedSimulation) ? requestedSimulation : null;
     const items: HealthItem[] = [{ id: "server", label: "Philamentix Server", level: "ok", message: "Admin-API antwortet und Adminberechtigung ist gültig.", latencyMs: elapsed(requestStarted), critical: true }];
 
     const dbStarted = Date.now();
@@ -158,27 +174,28 @@ export async function GET(request: NextRequest) {
     const [github, vercel] = await Promise.all([checkGithub(), checkVercel()]);
     items.push(github, vercel.health);
 
-    if (simulate) {
-      items.unshift({
-        id: "simulation",
-        label: "Simulierter Systemausfall",
-        level: "error",
-        message: "TESTMODUS: Dieser Fehler wurde serverseitig absichtlich erzeugt. Es wurde kein echter Dienst abgeschaltet.",
-        latencyMs: elapsed(requestStarted),
-        critical: true,
-      });
-    }
+    const realItems = items.map((item) => ({ ...item }));
+    const displayItems = applySimulation(items, simulation);
 
-    const historyItems = simulate ? items.filter((item) => item.id !== "simulation") : items;
-    const historyAvailable = await persistSamples(context.adminClient, historyItems);
-    const stability = includeHistory && historyAvailable ? await loadStability(context.adminClient, historyItems, period) : { available: historyAvailable, period, items: [] as StabilityItem[] };
+    const historyAvailable = await persistSamples(context.adminClient, realItems);
+    const stability = includeHistory && historyAvailable ? await loadStability(context.adminClient, realItems, period) : { available: historyAvailable, period, items: [] as StabilityItem[] };
 
-    const criticalError = items.some((item) => item.critical && item.level === "error");
-    const anyProblem = items.some((item) => item.level !== "ok");
+    const criticalError = displayItems.some((item) => item.critical && item.level === "error");
+    const anyProblem = displayItems.some((item) => item.level !== "ok");
     const overall: HealthLevel = criticalError ? "error" : anyProblem ? "warning" : "ok";
-    const problems = items.filter((item) => item.level !== "ok").map((item) => ({ id: item.id, label: item.label, level: item.level, message: item.message }));
+    const problems = displayItems.filter((item) => item.level !== "ok").map((item) => ({ id: item.id, label: item.label, level: item.level, message: item.message }));
 
-    return NextResponse.json({ overall, checkedAt: new Date().toISOString(), durationMs: elapsed(requestStarted), items, problems, deployments: vercel.deployments, stability, simulation: simulate, config: { vercelLive: Boolean(process.env.VERCEL_API_TOKEN?.trim()), githubLive: Boolean(process.env.GITHUB_RELEASE_TOKEN?.trim()) } });
+    return NextResponse.json({
+      overall,
+      checkedAt: new Date().toISOString(),
+      durationMs: elapsed(requestStarted),
+      items: displayItems,
+      problems,
+      deployments: vercel.deployments,
+      stability,
+      simulation,
+      config: { vercelLive: Boolean(process.env.VERCEL_API_TOKEN?.trim()), githubLive: Boolean(process.env.GITHUB_RELEASE_TOKEN?.trim()) },
+    });
   } catch (error) {
     return adminErrorResponse(error);
   }
