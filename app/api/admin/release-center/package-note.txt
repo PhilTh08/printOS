@@ -1,1 +1,0 @@
-ZIP package paths are relative to the project root. Example: app/(hub)/produktion/page.tsx
