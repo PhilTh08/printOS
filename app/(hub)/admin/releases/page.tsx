@@ -11,6 +11,7 @@ type InternalChannel = "production" | "beta" | "public";
 type ReleaseChannel = "development" | "beta" | "production";
 type ReleaseTab = "overview" | "updates" | "promotions" | "history";
 type HealthLevel = "ok" | "warning" | "down";
+type RollMessageSpeed = "fast" | "normal" | "slow" | "very_slow";
 
 type ReleaseState = {
   production_channel?: string;
@@ -19,8 +20,13 @@ type ReleaseState = {
   beta_channel: string;
   beta_version: string;
   beta_release_enabled: boolean;
+  beta_message?: string;
+  beta_message_enabled?: boolean;
   public_channel: string;
   public_version: string;
+  public_message?: string;
+  public_message_enabled?: boolean;
+  roll_message_speed?: RollMessageSpeed;
 };
 
 type Build = {
@@ -117,6 +123,11 @@ export default function ReleasePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [productionMessage, setProductionMessage] = useState("");
+  const [productionMessageEnabled, setProductionMessageEnabled] = useState(false);
+  const [betaMessage, setBetaMessage] = useState("");
+  const [betaMessageEnabled, setBetaMessageEnabled] = useState(false);
+  const [rollMessageSpeed, setRollMessageSpeed] = useState<RollMessageSpeed>("normal");
 
   const adminFetch = useCallback(async <T,>(path: string, options?: RequestInit) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -131,26 +142,30 @@ export default function ReleasePage() {
     return result as T;
   }, []);
 
+  const applyReleaseState = useCallback((next: ReleaseState) => {
+    setRelease(next);
+    setProductionMessage(next.public_message ?? "");
+    setProductionMessageEnabled(Boolean(next.public_message_enabled));
+    setBetaMessage(next.beta_message ?? "");
+    setBetaMessageEnabled(Boolean(next.beta_message_enabled));
+    setRollMessageSpeed(next.roll_message_speed ?? "normal");
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await adminFetch<{ release: ReleaseState; builds: Build[]; health: ReleaseHealth }>("/api/admin/release-center");
-      setRelease(result.release);
+      applyReleaseState(result.release);
       setBuilds(result.builds);
       setHealth(result.health);
     } catch (caught) {
       const detail = caught instanceof Error ? caught.message : "Release-Bereich nicht erreichbar.";
-      setHealth({
-        level: "down",
-        summary: "Release-Bereich konnte nicht vollständig geladen werden.",
-        checkedAt: new Date().toISOString(),
-        checks: [{ id: "backend", label: "Release Backend", ok: false, detail }],
-      });
+      setHealth({ level: "down", summary: "Release-Bereich konnte nicht vollständig geladen werden.", checkedAt: new Date().toISOString(), checks: [{ id: "backend", label: "Release Backend", ok: false, detail }] });
       throw caught;
     } finally {
       setLoading(false);
     }
-  }, [adminFetch]);
+  }, [adminFetch, applyReleaseState]);
 
   useEffect(() => {
     if (!adminRoleReady || !isAdmin) return;
@@ -160,10 +175,10 @@ export default function ReleasePage() {
   useEffect(() => {
     if (!adminRoleReady || !isAdmin) return;
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load().catch(() => undefined);
+      if (document.visibilityState === "visible" && !saving) void load().catch(() => undefined);
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, [adminRoleReady, isAdmin, load]);
+  }, [adminRoleReady, isAdmin, load, saving]);
 
   const latestByInternalChannel = useMemo(() => {
     const map = new Map<InternalChannel, Build>();
@@ -177,13 +192,45 @@ export default function ReleasePage() {
     return release?.public_version;
   }
 
+  async function saveRollMessages() {
+    if (!release) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await adminFetch<{ release: ReleaseState }>("/api/admin/releases", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save",
+          publicChannel: release.public_channel || "PROD",
+          publicVersion: release.public_version || "1.0",
+          publicMessage: productionMessage,
+          publicMessageEnabled: productionMessageEnabled,
+          rollMessageSpeed,
+          betaChannel: release.beta_channel || "BETA",
+          betaVersion: release.beta_version || "",
+          betaMessage,
+          betaMessageEnabled,
+          betaReleaseEnabled: Boolean(release.beta_release_enabled),
+        }),
+      });
+      applyReleaseState(result.release);
+      setMessage("Roll-Message wurde gespeichert und in der Sidebar aktualisiert.");
+      await refreshReleaseInfo();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Roll-Message konnte nicht gespeichert werden.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!file) {
       setError("Bitte zuerst ein ZIP-Updatepaket auswählen.");
       return;
     }
-
     const definition = CHANNELS.find((item) => item.id === channel)!;
     setSaving(true);
     setError("");
@@ -208,20 +255,13 @@ export default function ReleasePage() {
 
   async function promote(action: "productionToBeta" | "betaToPublic") {
     const developmentToBeta = action === "productionToBeta";
-    const text = developmentToBeta
-      ? "Development-Version wirklich für deine Beta-Tester freigeben?"
-      : "Beta-Version wirklich als Production für alle Nutzer freigeben?";
+    const text = developmentToBeta ? "Development-Version wirklich für deine Beta-Tester freigeben?" : "Beta-Version wirklich als Production für alle Nutzer freigeben?";
     if (!window.confirm(text)) return;
-
     setSaving(true);
     setError("");
     setMessage("");
     try {
-      await adminFetch("/api/admin/release-center", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
+      await adminFetch("/api/admin/release-center", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
       setMessage(developmentToBeta ? "Development wurde für Beta freigegeben." : "Beta wurde als Production veröffentlicht.");
       await Promise.all([load(), refreshReleaseInfo()]);
     } catch (caught) {
@@ -249,11 +289,7 @@ export default function ReleasePage() {
       </section>
 
       <header className={styles.header}>
-        <div>
-          <span>V18.5 · RELEASE</span>
-          <h1>Release-Verwaltung</h1>
-          <p>Versionen einspielen, testen und kontrolliert von Development über Beta bis Production freigeben.</p>
-        </div>
+        <div><span>V18.5 · RELEASE</span><h1>Release-Verwaltung</h1><p>Versionen einspielen, testen und kontrolliert von Development über Beta bis Production freigeben.</p></div>
         <div className={styles.flow}>DEVELOPMENT <b>→</b> BETA <b>→</b> PRODUCTION</div>
       </header>
 
@@ -264,24 +300,42 @@ export default function ReleasePage() {
       {(message || error) && <div className={error ? styles.error : styles.success}>{error || message}</div>}
 
       {tab === "overview" && (
-        <section className={styles.channelGrid}>
-          {CHANNELS.map((item) => {
-            const latest = latestByInternalChannel.get(item.internal);
-            return <article key={item.id} className={`${styles.channelCard} ${styles[item.style]}`}>
-              <span>{item.eyebrow}</span><h2>{item.label}</h2><strong>{activeVersion(item) || "Noch keine Version"}</strong><p>{item.description}</p>
-              {latest && <small>Letzter Upload {formatDate(latest.created_at)} · {latest.status}</small>}
-            </article>;
-          })}
-        </section>
+        <>
+          <section className={styles.channelGrid}>
+            {CHANNELS.map((item) => {
+              const latest = latestByInternalChannel.get(item.internal);
+              return <article key={item.id} className={`${styles.channelCard} ${styles[item.style]}`}>
+                <span>{item.eyebrow}</span><h2>{item.label}</h2><strong>{activeVersion(item) || "Noch keine Version"}</strong><p>{item.description}</p>
+                {latest && <small>Letzter Upload {formatDate(latest.created_at)} · {latest.status}</small>}
+              </article>;
+            })}
+          </section>
+
+          <section className={styles.rollMessageSection}>
+            <div className={styles.sectionIntro}><span>SIDEBAR</span><h2>Roll-Message</h2><p>Hinweise in der Sidebar für Production und Beta verwalten.</p></div>
+            <div className={styles.rollMessageGrid}>
+              <article>
+                <div className={styles.rollMessageHeader}><div><strong>Production</strong><small>Für alle normalen Nutzer</small></div><label><input type="checkbox" checked={productionMessageEnabled} onChange={(e) => setProductionMessageEnabled(e.target.checked)} /> Aktiv</label></div>
+                <textarea maxLength={500} value={productionMessage} onChange={(e) => setProductionMessage(e.target.value)} placeholder="z. B. Neue Funktionen sind jetzt verfügbar!" />
+              </article>
+              <article>
+                <div className={styles.rollMessageHeader}><div><strong>Beta</strong><small>Nur für freigeschaltete Beta-Tester</small></div><label><input type="checkbox" checked={betaMessageEnabled} onChange={(e) => setBetaMessageEnabled(e.target.checked)} /> Aktiv</label></div>
+                <textarea maxLength={500} value={betaMessage} onChange={(e) => setBetaMessage(e.target.value)} placeholder="z. B. Bitte den neuen Workflow testen." />
+              </article>
+            </div>
+            <div className={styles.rollMessageFooter}>
+              <label>Geschwindigkeit<select value={rollMessageSpeed} onChange={(e) => setRollMessageSpeed(e.target.value as RollMessageSpeed)}><option value="fast">Schnell · 18 s</option><option value="normal">Normal · 26 s</option><option value="slow">Langsam · 34 s</option><option value="very_slow">Sehr langsam · 45 s</option></select></label>
+              <button type="button" onClick={() => void saveRollMessages()} disabled={saving || !release}>{saving ? "Speichert …" : "Roll-Message speichern"}</button>
+            </div>
+          </section>
+        </>
       )}
 
       {tab === "updates" && (
         <section className={styles.uploadSection}>
           <div className={styles.sectionIntro}><span>UPDATE HOCHLADEN</span><h2>Neue Version einspielen</h2><p>Wähle die Zielstufe. Die bestehende Datenstruktur bleibt kompatibel, der sichtbare Workflow ist Development → Beta → Production.</p></div>
           <form className={styles.uploadForm} onSubmit={upload}>
-            <div className={styles.channelChoice}>
-              {CHANNELS.map((item) => <button type="button" key={item.id} className={channel === item.id ? styles.channelChoiceActive : ""} onClick={() => setChannel(item.id)}><span>{item.eyebrow}</span><strong>{item.label}</strong></button>)}
-            </div>
+            <div className={styles.channelChoice}>{CHANNELS.map((item) => <button type="button" key={item.id} className={channel === item.id ? styles.channelChoiceActive : ""} onClick={() => setChannel(item.id)}><span>{item.eyebrow}</span><strong>{item.label}</strong></button>)}</div>
             <div className={styles.formGrid}>
               <label>Version<input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="18.5.1" /></label>
               <label className={styles.fileField}>ZIP-Updatepaket<input type="file" accept=".zip,application/zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /><span>{file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB` : "Noch keine Datei ausgewählt"}</span></label>
@@ -295,10 +349,7 @@ export default function ReleasePage() {
       {tab === "promotions" && (
         <section className={styles.promoteSection}>
           <div><span>FREIGABEN</span><h2>Version weitergeben</h2><p>Eine Version wird ohne erneuten Upload in die nächste Stufe übernommen.</p></div>
-          <div className={styles.promoteActions}>
-            <button disabled={saving || !release?.production_version} onClick={() => void promote("productionToBeta")}>Development → Beta</button>
-            <button disabled={saving || !release?.beta_version} onClick={() => void promote("betaToPublic")}>Beta → Production</button>
-          </div>
+          <div className={styles.promoteActions}><button disabled={saving || !release?.production_version} onClick={() => void promote("productionToBeta")}>Development → Beta</button><button disabled={saving || !release?.beta_version} onClick={() => void promote("betaToPublic")}>Beta → Production</button></div>
         </section>
       )}
 
