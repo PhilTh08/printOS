@@ -221,6 +221,7 @@ export default function AdminPage() {
   const [maintenanceLoaded, setMaintenanceLoaded] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
   const [maintenanceTarget, setMaintenanceTarget] = useState<MaintenanceTarget>("global");
+  const [maintenanceUserId, setMaintenanceUserId] = useState("");
   const [maintenanceMessage, setMaintenanceMessage] = useState(DEFAULT_MAINTENANCE_MESSAGE);
   const [adminSection, setAdminSection] = useState<AdminSection>("users");
   const [activeTab, setActiveTab] = useState<AdminTab>("filaments");
@@ -293,6 +294,11 @@ export default function AdminPage() {
       setUsers(result.users);
       setPresenceAvailable(result.presenceAvailable);
       setSelectedUserId((current) => current || result.users[0]?.id || "");
+      setMaintenanceUserId((current) =>
+        current && result.users.some((account) => account.id === current)
+          ? current
+          : result.users[0]?.id || "",
+      );
     } finally { setLoadingUsers(false); }
   }, [adminFetch]);
 
@@ -340,18 +346,22 @@ export default function AdminPage() {
   }, [adminRoleReady, isAdmin, loadPresence]);
 
   useEffect(() => {
-    if (!isAdmin || !selectedUserId) return;
+    if (!isAdmin || !selectedUserId || adminSection !== "users") return;
     void loadUserDetail(selectedUserId).catch((caughtError) => setError(caughtError instanceof Error ? caughtError.message : "Benutzerdaten konnten nicht geladen werden."));
-  }, [isAdmin, selectedUserId, loadUserDetail]);
+  }, [isAdmin, selectedUserId, loadUserDetail, adminSection]);
 
   useEffect(() => {
+    if (maintenanceTarget === "selected" && !maintenanceUserId && users.length > 0) {
+      setMaintenanceUserId(users[0].id);
+      return;
+    }
     const targetRule = maintenanceRules.find((rule) => {
       if (rule.mode !== "maintenance") return false;
       if (maintenanceTarget === "global") return rule.scope === "global" && rule.user_id === null;
-      return rule.scope === "user" && rule.user_id === selectedUserId;
+      return rule.scope === "user" && rule.user_id === maintenanceUserId;
     });
     setMaintenanceMessage(targetRule?.message?.trim() || DEFAULT_MAINTENANCE_MESSAGE);
-  }, [maintenanceRules, maintenanceTarget, selectedUserId]);
+  }, [maintenanceRules, maintenanceTarget, maintenanceUserId, users]);
 
   const filteredUsers = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -368,9 +378,10 @@ export default function AdminPage() {
   const onlineCount = users.filter((user) => user.online).length;
   const betaCount = users.filter((user) => user.isBetaTester).length;
   const selectedAccount = users.find((account) => account.id === selectedUserId) ?? null;
-  const maintenanceTargetUserId = maintenanceTarget === "selected" ? selectedUserId : "";
-  const maintenanceTargetLabel = maintenanceTarget === "global" ? "Alle Accounts" : selectedAccount?.email || "Kein Account ausgewählt";
-  const maintenanceTargetIsAdmin = Boolean(maintenanceTarget === "selected" && selectedAccount?.isAdmin);
+  const maintenanceAccount = users.find((account) => account.id === maintenanceUserId) ?? null;
+  const maintenanceTargetUserId = maintenanceTarget === "selected" ? maintenanceUserId : "";
+  const maintenanceTargetLabel = maintenanceTarget === "global" ? "Alle Accounts" : maintenanceAccount?.email || "Kein Account ausgewählt";
+  const maintenanceTargetIsAdmin = Boolean(maintenanceTarget === "selected" && maintenanceAccount?.isAdmin);
   const maintenanceActiveCount = maintenanceRules.filter((rule) => rule.enabled && rule.mode === "maintenance").length;
   const hiddenActiveCount = maintenanceRules.filter((rule) => rule.enabled && rule.mode === "hidden").length;
   const restrictedAreaCount = maintenanceActiveCount + hiddenActiveCount;
@@ -564,12 +575,13 @@ export default function AdminPage() {
           <div className={styles.maintenanceHeading}><div><span>Maintenance Control</span><h2>Wartungsmodus</h2><p>Bereiche global oder nur für einzelne Accounts öffnen, warten oder vollständig ausblenden. Account-Regeln haben Vorrang vor globalen Regeln.</p></div><div className={styles.maintenanceSummary}><span>AKTIVE EINSCHRÄNKUNGEN</span><strong>{restrictedAreaCount}</strong><small>Wartung {maintenanceActiveCount} · Ausgeblendet {hiddenActiveCount}</small></div></div>
           {!maintenanceLoaded && !maintenanceLoading ? <div className={styles.releaseSetupWarning}>Wartungs-Control-Center noch nicht eingerichtet. Führe <code>supabase/maintenance_control_v17_2_6.sql</code> einmal im Supabase SQL Editor aus.</div> : <>
             <div className={styles.maintenanceTargetBar}>
-              <div className={styles.maintenanceTargetSwitch}><button type="button" className={maintenanceTarget === "global" ? styles.maintenanceTargetActive : ""} onClick={() => setMaintenanceTarget("global")}>Alle Accounts</button><button type="button" className={maintenanceTarget === "selected" ? styles.maintenanceTargetActive : ""} disabled={users.length === 0} onClick={() => setMaintenanceTarget("selected")}>Einzelner Account</button></div>
-              <div className={styles.maintenanceTargetName}><span>Ziel</span>{maintenanceTarget === "selected" ? <select className={styles.maintenanceAccountSelect} value={selectedUserId} onChange={(event) => { setSelectedUserId(event.target.value); setEditingFilament(null); }}>{users.map((account) => <option key={account.id} value={account.id}>{account.email}{account.isAdmin ? " · Admin" : ""}</option>)}</select> : <strong>{maintenanceTargetLabel}</strong>}</div>
+              <div className={styles.maintenanceTargetSwitch}><button type="button" className={maintenanceTarget === "global" ? styles.maintenanceTargetActive : ""} onClick={() => setMaintenanceTarget("global")}>Alle Accounts</button><button type="button" className={maintenanceTarget === "selected" ? styles.maintenanceTargetActive : ""} disabled={users.length === 0} onClick={() => { if (!maintenanceUserId && users[0]?.id) setMaintenanceUserId(users[0].id); setMaintenanceTarget("selected"); }}>Einzelner Account</button></div>
+              <div className={styles.maintenanceTargetName}><span>Ziel</span>{maintenanceTarget === "selected" ? <select className={styles.maintenanceAccountSelect} value={maintenanceUserId} onChange={(event) => setMaintenanceUserId(event.target.value)}>{users.map((account) => <option key={account.id} value={account.id}>{account.email}{account.isAdmin ? " · Admin" : ""}</option>)}</select> : <strong>{maintenanceTargetLabel}</strong>}</div>
             </div>
+            {maintenanceTarget === "selected" && !maintenanceAccount && users.length > 0 && <div className={styles.maintenanceAdminBypass}><strong>Account wird geladen</strong>Die Wartungsauswahl wird gerade synchronisiert.</div>}
             {maintenanceTargetIsAdmin && <div className={styles.maintenanceAdminBypass}><strong>Admin-Bypass aktiv</strong>Dieser Account kann absichtlich nicht in Wartung gesperrt werden. So bleibt das Control-Center immer erreichbar.</div>}
-            <div className={styles.maintenanceControls}><div className={styles.maintenanceMessageGroup}><label className={styles.maintenanceMessage}>Wartungshinweis<input value={maintenanceMessage} maxLength={500} disabled={maintenanceTargetIsAdmin} onChange={(event) => setMaintenanceMessage(event.target.value)} placeholder={DEFAULT_MAINTENANCE_MESSAGE} /></label><button type="button" className={styles.maintenanceMessageSave} disabled={saving || maintenanceTargetIsAdmin || maintenanceTargetRuleCount === 0} onClick={() => void saveMaintenanceMessage()}>Hinweis übernehmen</button></div><div className={styles.maintenanceBulkActions}><button type="button" className={styles.maintenanceDangerButton} disabled={saving || maintenanceTargetIsAdmin} onClick={() => void setEntireHubMaintenance("maintenance")}>Gesamten Hub · Wartung</button><button type="button" className={styles.maintenanceOpenButton} disabled={saving || maintenanceTargetIsAdmin} onClick={() => void setEntireHubMaintenance("available")}>Gesamten Hub · Offen</button><button type="button" className={styles.maintenanceHiddenButton} disabled={saving || maintenanceTargetIsAdmin} onClick={() => void setEntireHubMaintenance("hidden")}>Gesamten Hub · Ausblenden</button><button type="button" disabled={saving || maintenanceTargetIsAdmin} onClick={() => void clearMaintenanceOverrides()}>Overrides entfernen</button></div></div>
-            <div className={styles.maintenanceAreaList}>{MAINTENANCE_AREAS.filter((area) => area.id !== "all").map((area) => { const directChoice = directMaintenanceChoice(area.id); const effective = effectiveMaintenanceForTarget(area.id); return <article className={styles.maintenanceAreaRow} key={area.id}><div className={styles.maintenanceAreaInfo}><div><strong>{area.label}</strong><small>{area.description}</small></div><span className={effective.hidden ? styles.maintenanceEffectiveHidden : effective.blocked ? styles.maintenanceEffectiveClosed : styles.maintenanceEffectiveOpen}>{effective.hidden ? "Effektiv: Ausgeblendet" : effective.blocked ? "Effektiv: Wartung" : "Effektiv: Offen"}</span></div><div className={styles.maintenanceChoices}>{([["inherit", "Erben"], ["available", "Offen"], ["maintenance", "Wartung"], ["hidden", "Ausblenden"]] as Array<[MaintenanceChoice, string]>).map(([choice, label]) => <button type="button" key={choice} className={`${directChoice === choice ? styles.maintenanceChoiceActive : ""} ${choice === "maintenance" && directChoice === choice ? styles.maintenanceChoiceDanger : choice === "hidden" && directChoice === choice ? styles.maintenanceChoiceHidden : ""}`} disabled={saving || maintenanceTargetIsAdmin || directChoice === choice} onClick={() => void setMaintenanceArea(area.id, choice)}>{label}</button>)}</div></article>; })}</div>
+            <div className={styles.maintenanceControls}><div className={styles.maintenanceMessageGroup}><label className={styles.maintenanceMessage}>Wartungshinweis<input value={maintenanceMessage} maxLength={500} disabled={maintenanceTargetIsAdmin || (maintenanceTarget === "selected" && !maintenanceAccount)} onChange={(event) => setMaintenanceMessage(event.target.value)} placeholder={DEFAULT_MAINTENANCE_MESSAGE} /></label><button type="button" className={styles.maintenanceMessageSave} disabled={saving || maintenanceTargetIsAdmin || maintenanceTargetRuleCount === 0 || (maintenanceTarget === "selected" && !maintenanceAccount)} onClick={() => void saveMaintenanceMessage()}>Hinweis übernehmen</button></div><div className={styles.maintenanceBulkActions}><button type="button" className={styles.maintenanceDangerButton} disabled={saving || maintenanceTargetIsAdmin || (maintenanceTarget === "selected" && !maintenanceAccount)} onClick={() => void setEntireHubMaintenance("maintenance")}>Gesamten Hub · Wartung</button><button type="button" className={styles.maintenanceOpenButton} disabled={saving || maintenanceTargetIsAdmin || (maintenanceTarget === "selected" && !maintenanceAccount)} onClick={() => void setEntireHubMaintenance("available")}>Gesamten Hub · Offen</button><button type="button" className={styles.maintenanceHiddenButton} disabled={saving || maintenanceTargetIsAdmin || (maintenanceTarget === "selected" && !maintenanceAccount)} onClick={() => void setEntireHubMaintenance("hidden")}>Gesamten Hub · Ausblenden</button><button type="button" disabled={saving || maintenanceTargetIsAdmin || (maintenanceTarget === "selected" && !maintenanceAccount)} onClick={() => void clearMaintenanceOverrides()}>Overrides entfernen</button></div></div>
+            <div className={styles.maintenanceAreaList}>{MAINTENANCE_AREAS.filter((area) => area.id !== "all").map((area) => { const directChoice = directMaintenanceChoice(area.id); const effective = effectiveMaintenanceForTarget(area.id); return <article className={styles.maintenanceAreaRow} key={area.id}><div className={styles.maintenanceAreaInfo}><div><strong>{area.label}</strong><small>{area.description}</small></div><span className={effective.hidden ? styles.maintenanceEffectiveHidden : effective.blocked ? styles.maintenanceEffectiveClosed : styles.maintenanceEffectiveOpen}>{effective.hidden ? "Effektiv: Ausgeblendet" : effective.blocked ? "Effektiv: Wartung" : "Effektiv: Offen"}</span></div><div className={styles.maintenanceChoices}>{([["inherit", "Erben"], ["available", "Offen"], ["maintenance", "Wartung"], ["hidden", "Ausblenden"]] as Array<[MaintenanceChoice, string]>).map(([choice, label]) => <button type="button" key={choice} className={`${directChoice === choice ? styles.maintenanceChoiceActive : ""} ${choice === "maintenance" && directChoice === choice ? styles.maintenanceChoiceDanger : choice === "hidden" && directChoice === choice ? styles.maintenanceChoiceHidden : ""}`} disabled={saving || maintenanceTargetIsAdmin || directChoice === choice || (maintenanceTarget === "selected" && !maintenanceAccount)} onClick={() => void setMaintenanceArea(area.id, choice)}>{label}</button>)}</div></article>; })}</div>
             <p className={styles.maintenanceHint}><strong>Erben</strong> = keine eigene Regel. Bei einem Account greifen dann die globalen Regeln. <strong>Offen</strong> überschreibt Wartung oder Ausblenden. <strong>Ausgeblendet</strong> entfernt den Bereich aus der Sidebar und sperrt auch direkten Zugriff auf die Seite.</p>
           </>}
         </section>
