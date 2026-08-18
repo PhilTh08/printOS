@@ -170,6 +170,17 @@ async function ensureBranch(branch: string) {
   }
 }
 
+async function requireExistingBranch(branch: string) {
+  try {
+    return await gh(`/repos/${REPO}/git/ref/heads/${encodeURIComponent(branch)}`);
+  } catch {
+    throw new AdminApiError(
+      409,
+      `Release-Branch ${branch} fehlt. Lade zuerst eine Version in diesem Kanal hoch.`,
+    );
+  }
+}
+
 function safePath(input: string) {
   const value = input.replace(/\\/g, "/").replace(/^\.\//, "");
   if (
@@ -242,6 +253,50 @@ async function commitZipToBranch(
   });
 
   return { commitSha: String(commit.sha), fileCount: entries.length };
+}
+
+async function promoteBranch(
+  sourceBranch: string,
+  targetBranch: string,
+  version: string,
+) {
+  const sourceRef = await requireExistingBranch(sourceBranch);
+  const targetRef = await ensureBranch(targetBranch);
+  const sourceSha = String(sourceRef.object.sha);
+  const targetSha = String(targetRef.object.sha);
+  const sourceCommit = await gh(`/repos/${REPO}/git/commits/${sourceSha}`);
+
+  if (sourceSha === targetSha) {
+    return {
+      sourceBranch,
+      targetBranch,
+      sourceSha,
+      commitSha: targetSha,
+      changed: false,
+    };
+  }
+
+  const promotionCommit = await gh(`/repos/${REPO}/git/commits`, {
+    method: "POST",
+    body: JSON.stringify({
+      message: `Promote ${version}: ${sourceBranch} -> ${targetBranch} via Philamentix Admin`,
+      tree: sourceCommit.tree.sha,
+      parents: [targetSha],
+    }),
+  });
+
+  await gh(`/repos/${REPO}/git/refs/heads/${encodeURIComponent(targetBranch)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ sha: promotionCommit.sha, force: false }),
+  });
+
+  return {
+    sourceBranch,
+    targetBranch,
+    sourceSha,
+    commitSha: String(promotionCommit.sha),
+    changed: true,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -405,9 +460,15 @@ export async function PATCH(request: NextRequest) {
     };
 
     let reason = "";
+    let version = "";
+    let sourceBranch = "";
+    let targetBranch = "";
+
     if (action === "productionToBeta") {
-      const version = String(state.production_version ?? "").trim();
+      version = String(state.production_version ?? "").trim();
       if (!version) throw new AdminApiError(400, "Keine Production-Version vorhanden.");
+      sourceBranch = CHANNEL_BRANCH.production;
+      targetBranch = CHANNEL_BRANCH.beta;
       Object.assign(update, {
         beta_channel: "BETA",
         beta_version: version,
@@ -415,8 +476,10 @@ export async function PATCH(request: NextRequest) {
       });
       reason = `Production ${version} für Beta-Tester freigegeben`;
     } else {
-      const version = String(state.beta_version ?? "").trim();
+      version = String(state.beta_version ?? "").trim();
       if (!version) throw new AdminApiError(400, "Keine Beta-Version vorhanden.");
+      sourceBranch = CHANNEL_BRANCH.beta;
+      targetBranch = CHANNEL_BRANCH.public;
       Object.assign(update, {
         public_channel: "PUBLIC",
         public_version: version,
@@ -431,9 +494,12 @@ export async function PATCH(request: NextRequest) {
       entityId: "global",
       reason,
       beforeData: state,
+      details: { sourceBranch, targetBranch, version },
     });
 
     try {
+      const promotion = await promoteBranch(sourceBranch, targetBranch, version);
+
       const { data, error } = await context.adminClient
         .from("app_release_state")
         .update(update)
@@ -441,8 +507,13 @@ export async function PATCH(request: NextRequest) {
         .select("*")
         .single();
       if (error) throw new Error(error.message);
-      await finishAdminAction(context, auditId, { status: "success", afterData: data });
-      return NextResponse.json({ release: data });
+
+      await finishAdminAction(context, auditId, {
+        status: "success",
+        afterData: { release: data, promotion },
+      });
+
+      return NextResponse.json({ release: data, promotion });
     } catch (error) {
       await finishAdminAction(context, auditId, {
         status: "failed",
