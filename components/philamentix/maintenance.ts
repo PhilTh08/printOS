@@ -177,39 +177,44 @@ export function resolveMaintenance(
   userId: string,
   area: MaintenanceArea,
 ): MaintenanceResolution {
-  const enabledRules = rules.filter((rule) => rule.enabled !== false);
+  let winner: MaintenanceRule | null = null;
+  let winnerUpdatedAt = -1;
+  let winnerSpecificity = -1;
 
-  const applicable = enabledRules
-    .filter((rule) => {
-      const appliesToUser =
-        rule.scope === "global" ||
-        (rule.scope === "user" && rule.user_id === userId);
-      const appliesToArea = rule.area === area || rule.area === "all";
+  // Keep this resolver allocation-free apart from the final result. The admin
+  // maintenance screen calls it for every area on every render, so building
+  // filtered/mapped/sorted arrays here can make the single-account view stall
+  // when presence updates trigger additional renders.
+  for (const rule of rules) {
+    if (rule.enabled === false) continue;
 
-      return appliesToUser && appliesToArea;
-    })
-    .map((rule) => {
-      const updatedAt = Date.parse(rule.updated_at ?? "") || 0;
-      const specificity =
-        rule.scope === "user" && rule.area === area
-          ? 4
-          : rule.scope === "global" && rule.area === area
-            ? 3
-            : rule.scope === "user" && rule.area === "all"
-              ? 2
-              : 1;
+    const appliesToUser =
+      rule.scope === "global" ||
+      (rule.scope === "user" && rule.user_id === userId);
+    if (!appliesToUser) continue;
 
-      return { rule, updatedAt, specificity };
-    })
-    .sort((left, right) => {
-      if (right.updatedAt !== left.updatedAt) {
-        return right.updatedAt - left.updatedAt;
-      }
+    const appliesToArea = rule.area === area || rule.area === "all";
+    if (!appliesToArea) continue;
 
-      return right.specificity - left.specificity;
-    });
+    const specificity =
+      rule.scope === "user" && rule.area === area
+        ? 4
+        : rule.scope === "global" && rule.area === area
+          ? 3
+          : rule.scope === "user" && rule.area === "all"
+            ? 2
+            : 1;
+    const updatedAt = Date.parse(rule.updated_at ?? "") || 0;
 
-  const winner = applicable[0]?.rule ?? null;
+    if (
+      updatedAt > winnerUpdatedAt ||
+      (updatedAt === winnerUpdatedAt && specificity > winnerSpecificity)
+    ) {
+      winner = rule;
+      winnerUpdatedAt = updatedAt;
+      winnerSpecificity = specificity;
+    }
+  }
 
   if (!winner) {
     return {
